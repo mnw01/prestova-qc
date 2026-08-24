@@ -1,0 +1,23 @@
+# ── 换行规范：仓库内和工作区一律 LF ───────────────────────────────────
+# 部署产物是 build-standalone.js 直接读源文件写出来的，源文件的换行会
+# 原样带进产物。Windows 上 core.autocrlf 把 index.html 检出成 CRLF 时，
+# 本地构建的产物比 Cloudflare CI（Linux）构建的多 9638 字节 —— 内容一致
+# 但字节不同，"哈希比对"这个验证手段就失效了。统一成 LF 之后两边逐字节
+# 相同，线上跑的是不是当前 commit 一比哈希就知道。
+* text=auto eol=lf
+
+# ── 二进制：绝不做换行转换 ────────────────────────────────────────────
+# 下面这两个文件**内部含有 \r\n 字节对**（docx 3 处、pdf 4 处）。一旦被
+# 当成文本规范化，那些 \r 会被剥掉，文件当场损坏且 git 不会报错。
+参考资料/实验室检验报告-空白模板.docx binary
+打印效果预览-空白表.pdf               binary
+
+# 按扩展名兜底 —— 现在仓库里没有的类型，将来加进来也不会被转换。
+*.docx  binary
+*.pdf   binary
+*.xlsx  binary
+*.png   binary
+*.jpg   binary
+*.ico   binary
+*.zip   binary
+*.woff2 binary
