@@ -1,0 +1,28 @@
+# The Worker name is the first DNS label of the workers.dev URL:
+#   <name>.<account-subdomain>.workers.dev  ->  qc.prestova.workers.dev
+# Renaming creates a NEW Worker — secrets do not carry over and must be re-set.
+name = "qc"
+main = "src/worker.js"
+compatibility_date = "2026-07-30"
+
+# run_worker_first is required: without it static assets are served before the
+# Worker runs, and the passcode gate would be bypassed for the page itself.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "prestova-qc"
+database_id = "b2706e7f-9999-4084-bead-06cdb2db07e2"
+
+# APAC bucket, created from the dashboard — the CLI/API `--location apac` hint
+# is best-effort and was ignored four times, always landing in ENAM.
+# R2 bucket location is fixed at creation, so this cannot be changed in place.
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "prestova-photos"
+
+[observability]
+enabled = true

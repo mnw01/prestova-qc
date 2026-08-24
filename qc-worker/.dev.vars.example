@@ -1,0 +1,3 @@
+# copy to .dev.vars for local `wrangler dev` (never commit real values)
+QC_PASSCODE=choose-anything-for-local-testing
+QC_COOKIE_SECRET=local-dev-only
