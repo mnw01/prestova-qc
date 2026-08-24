@@ -4,11 +4,11 @@
  * routing / auth / last-write-wins get verified before deploying.
  */
 import { DatabaseSync } from "node:sqlite";
-import { readFileSync } from "node:fs";
 import worker from "./src/worker.js";
+import { schemaSQL } from "./load-schema.mjs";
 
 const db = new DatabaseSync(":memory:");
-db.exec(readFileSync("./schema.sql", "utf8")); // exec takes the whole script, comments included
+db.exec(schemaSQL()); // exec takes the whole script, comments included
 
 /* D1-shaped shim over node:sqlite */
 const DB = {

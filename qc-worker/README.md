@@ -12,15 +12,23 @@
 
 ## 常用命令
     npm install
-    npx wrangler deploy                              # 部署
-    npx wrangler secret put QC_PASSCODE --name qc   # 改访问口令
-    npx wrangler tail                                 # 实时日志
-    node test.mjs                                     # 后端单元测试（34 项）
+    npm run migrate:list                             # 有无未应用的迁移
+    npm run migrate                                  # 应用迁移到线上
+    npm test                                         # 后端单元测试（84 项）
+    npx wrangler secret put QC_PASSCODE --name qc    # 改访问口令
+    npx wrangler tail                                # 实时日志
+    npx wrangler deploy                              # 手动部署（平时不用，走 CI）
 
 ## 改前端后怎么发布
-前端源文件在 `../前端源文件-prestova-inspection-report.html`。
-改完先跑 `node ../build-standalone.js` 生成 `../index.html`，
-再 `cp ../index.html public/index.html`，然后 `npx wrangler deploy`。
+前端源文件在 `../前端源文件-prestova-inspection-report.html`。改完 `git push`
+就行 —— Cloudflare Workers Builds 自动构建并部署，实测 43~52 秒。
+
+`build-standalone.js` 现在一次写出 `../index.html` 和 `public/index.html` 两份，
+以前那个手动 `cp` 不需要了。本地想先看效果就跑 `node ../build-standalone.js`，
+产物与 CI 构建的逐字节相同（靠 `.gitattributes` 统一换行，否则 Windows 上会多
+出 9638 字节的 CR）。
+
+**动了表结构就先 `npm run migrate` 再 push**，顺序反了这中间就是线上 500。
 
 ## 跨设备同步测试（两个浏览器配置模拟两台设备）
     node serve-worker.mjs 8801        # 用真实 worker.js 起本地 HTTP（口令 test1234）

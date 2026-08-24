@@ -5,15 +5,17 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 
-const ROOT = "H:/我的云端硬盘/开发/荣升检查报告/qc-worker/";
-const worker = (await import("file:///" + ROOT + "src/worker.js")).default;
+// 相对本文件解析，不再硬编码盘符 —— 原来写死的 H: 盘路径早已失效。
+const ROOT = new URL("../qc-worker/", import.meta.url);
+const worker = (await import(new URL("src/worker.js", ROOT).href)).default;
+const { schemaSQL } = await import(new URL("load-schema.mjs", ROOT).href);
 
 const PORT = Number(process.argv[2] || 8801);
 const PAGE = readFileSync(process.argv[3]);
 const TEST_JS = readFileSync(process.argv[4]);
 
 const db = new DatabaseSync(":memory:");
-db.exec(readFileSync(ROOT + "schema.sql", "utf8"));
+db.exec(schemaSQL());
 
 const DB = {
   prepare(sql) {

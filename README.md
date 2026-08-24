@@ -24,7 +24,8 @@ build-standalone.js                          ← 构建：套 <head> 外壳 + �
 check-isolation.js                           ← 板块隔离检查，不过就中断构建
 qc-worker/
   src/worker.js       后端（认证、同步 API、照片直传 R2）
-  schema.sql          D1 表结构
+  migrations/         D1 表结构，唯一真相源（wrangler d1 migrations）
+  load-schema.mjs     拼接 migrations/，供测试库和本地后端建表
   test.mjs            服务端单元测试（真实 worker + 内存 SQLite）
   wrangler.toml       Worker 配置
 参考资料/            开发期的工具脚本（构建 demo、跑 harness、扫配色、灌词典）
@@ -99,11 +100,29 @@ npx wrangler secret put QC_COOKIE_SECRET    # 会话签名用，随机长字符�
 
 没配 `QC_ADMIN_PASSCODE` 时，`QC_PASSCODE` 仍然给 admin 角色（向后兼容）。
 
-### 建库
+### 表结构与迁移
+
+表结构的唯一真相源是 `qc-worker/migrations/`，走 wrangler 的 D1 迁移机制。
+`0001_baseline.sql` 是 2026-08-24 时生产库的实际结构，全部 `IF NOT EXISTS`，
+对已有库执行是空操作，对空库执行则建出与生产一致的结构。测试库和本地后端
+也从这里建表（`load-schema.mjs`），所以它们跑的结构和线上一致。
 
 ```bash
-npx wrangler d1 execute prestova-qc --remote --file qc-worker/schema.sql
+cd qc-worker
+npm run migrate:list           # 看有没有未应用的迁移
+npm run migrate                # 应用到线上
+npm run migrate:new -- 加XX列  # 新建一个迁移文件
 ```
+
+**顺序不能反：先迁移，确认无误，再 git push。**
+
+push 会立刻触发 CI 部署（实测 43~52 秒）。要是新代码读写的列还没加到线上库，
+这中间就是线上 500。反过来先迁移是安全的 —— 多一个还没人用的列不影响旧代码。
+
+**不要再手工 `ALTER TABLE`。** 手工改动不进 `d1_migrations`，重建库时会丢，
+线上结构和 `migrations/` 也就此分家。`locked` 列当初正是这么跑偏的：线上被
+ALTER 追加到了末尾，而 schema.sql 里写在 payload 之前，两边不一致，直到这次
+逐列比对才发现。
 
 ## 几个绕不开的设计
 

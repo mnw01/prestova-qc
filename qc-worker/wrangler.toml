@@ -16,6 +16,10 @@ run_worker_first = true
 binding = "DB"
 database_name = "prestova-qc"
 database_id = "b2706e7f-9999-4084-bead-06cdb2db07e2"
+# 表结构改动一律走 migrations/ —— 手工 ALTER 不会被记录，下次重建库就丢了。
+# 顺序很重要：先 `npm run migrate`，确认无误再 git push（push 会立刻触发
+# CI 部署，代码先于表结构上线就是线上 500）。
+migrations_dir = "migrations"
 
 # APAC bucket, created from the dashboard — the CLI/API `--location apac` hint
 # is best-effort and was ignored four times, always landing in ENAM.

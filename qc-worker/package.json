@@ -5,5 +5,11 @@
   "devDependencies": {
     "wrangler": "^4"
   },
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "test": "node test.mjs",
+    "migrate": "npx --yes wrangler@4 d1 migrations apply prestova-qc --remote",
+    "migrate:list": "npx --yes wrangler@4 d1 migrations list prestova-qc --remote",
+    "migrate:new": "npx --yes wrangler@4 d1 migrations create prestova-qc"
+  }
 }

@@ -8,12 +8,13 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import worker from "./src/worker.js";
+import { schemaSQL } from "./load-schema.mjs";
 
 const PORT = Number(process.argv[2] || 8799);
 const PAGE = readFileSync("./public/index.html");
 
 const db = new DatabaseSync(":memory:");
-db.exec(readFileSync("./schema.sql", "utf8"));
+db.exec(schemaSQL());
 
 const DB = {
   prepare(sql) {
