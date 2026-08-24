@@ -63,10 +63,26 @@ node 参考资料/serve-test.mjs 8801 index.html <driver.js>
 ## 部署
 
 ```bash
-node check-isolation.js && node build-standalone.js
-cp index.html qc-worker/public/index.html
+node build-standalone.js            # 隔离检查 + 同时写出两份产物
 cd qc-worker && npx wrangler deploy
 ```
+
+原来这里还有一步 `cp index.html qc-worker/public/index.html`，现在构建脚本自己写
+两份了。那一步**忘了不会报错** —— wrangler 照样部署成功，现场跑的却还是旧页面。
+
+### Workers Builds（GitHub 自动部署）
+
+面板里 `qc` → Settings → Build，必须按这三项配，否则构建失败或部署出空壳：
+
+| 项 | 值 |
+|---|---|
+| Root directory | `qc-worker` |
+| Build command | `cd .. && node build-standalone.js` |
+| Deploy command | `npx wrangler deploy`（默认值） |
+
+Root 必须是 `qc-worker` —— 面板上的 Worker 名要跟该目录下 `wrangler.toml` 的
+`name` 对上。build 要 `cd ..` 是因为构建脚本在仓库根目录，而 `public/` 不进仓库，
+得在 CI 上现生成。Worker secret 不受部署影响，不用重设。
 
 回滚：`npx wrangler rollback --name qc`（每次部署的版本都留着）。
 数据回滚：D1 Time Travel，可回到 30 天内任意时间点。

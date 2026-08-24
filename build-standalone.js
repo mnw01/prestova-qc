@@ -5,6 +5,11 @@ const path = require("path");
 const SRC = path.join(__dirname, "前端源文件-prestova-inspection-report.html");
 const OUTDIR = __dirname;
 const OUT = path.join(OUTDIR, "index.html");
+// The Worker serves the page out of its own assets dir, so the build writes
+// both copies. This used to be a manual `cp` before every deploy; forgetting it
+// is silent — wrangler happily deploys the stale copy and the floor keeps
+// running the old page while you think you shipped.
+const ASSET_OUT = path.join(__dirname, "qc-worker", "public", "index.html");
 
 let body = fs.readFileSync(SRC, "utf8");
 
@@ -57,4 +62,7 @@ fs.mkdirSync(OUTDIR, { recursive: true });
 fs.writeFileSync(OUT, html, "utf8");
 console.log("wrote:", OUT);
 console.log("size :", (Buffer.byteLength(html, "utf8") / 1024).toFixed(1), "KB");
+fs.mkdirSync(path.dirname(ASSET_OUT), { recursive: true });
+fs.writeFileSync(ASSET_OUT, html, "utf8");
+console.log("wrote:", ASSET_OUT);
 console.log("brand in page:", /Prestova Home Living Indonesia/.test(html) ? "OK" : "MISSING");
