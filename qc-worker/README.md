@@ -8,7 +8,8 @@
 - R2:     `prestova-photos` （APAC，必须从 Cloudflare 后台建才能指定区域，
           命令行的 --location 是 best-effort，实测四次都被放到 ENAM。
           桶的区域建完不可改。）
-- 秘钥:   QC_PASSCODE / QC_COOKIE_SECRET（用 wrangler secret 管理，不在代码里）
+- 秘钥:   QC_PASSCODE / QC_ADMIN_PASSCODE / QC_COOKIE_SECRET
+          （用 wrangler secret 管理，不在代码里，也读不回来 —— 丢了只能重设）
 
 ## 常用命令
     npm install
@@ -29,6 +30,44 @@
 出 9638 字节的 CR）。
 
 **动了表结构就先 `npm run migrate` 再 push**，顺序反了这中间就是线上 500。
+
+## Workers Builds 的配置（2026-08-24 踩过大坑）
+面板里的**根目录**和**构建命令**两个字段填了不生效 —— 存得进去、重新加载也
+显示，但构建时读到的仍是旧值（连试三次，跨度 15 分钟）。原因没查明。
+
+所以配置全部写进**命令字段**里，不依赖那两个字段：
+
+    根目录     /
+    构建命令   （空）
+    部署命令   node build-standalone.js && npx wrangler deploy --config qc-worker/wrangler.toml
+    版本命令   node build-standalone.js && npx wrangler versions upload --config qc-worker/wrangler.toml
+
+`--config` 指向子目录的配置时，`main` 和 `assets.directory` 都相对**配置文件**
+解析，所以里面的 `src/worker.js` 和 `./public` 不用改。
+
+### 那次事故（线上坏了 13 小时）
+根目录是 `/` 且没有构建命令时，`npx wrangler deploy` 在仓库根目录找不到
+wrangler.toml，会**自作主张生成一份「静态网站」配置**（Framework: Static、
+Output Directory: `.`）把整个 Worker 替换掉，后果：
+
+- `/api/*` 全部 404 —— 前端第一次同步就失败，触发 `SYNC.enabled=false`，
+  五个同步按钮静默隐藏、整个会话不再重试，**而且不给任何提示**
+- 口令闸门失效，未认证也能拿到完整应用
+- **三个密钥被全部清空**（`wrangler secret list` 返回 `[]`）
+- 整个仓库根目录变成公开可下载的静态资源
+
+面板上三次构建全部显示「成功」—— 从 CI 的角度它确实成功地部署了一个静态网站。
+
+判断线上是否健康的最快办法：
+
+    curl -s -o /dev/null -w "%{http_code}
+" https://qc.prestova.workers.dev/api/logout
+
+**200 = Worker 在跑**（这个路由在鉴权之前，无条件返回 200）。
+**404 = Worker 被绕过**，静态资源在响应，按上面的配置重新部署并检查密钥。
+
+顺带：`wrangler versions upload` 找不到配置时是干净报错退出，不会造成破坏 ——
+只有 `deploy` 会自动生成配置。所以非生产分支构建失败是安全的。
 
 ## 跨设备同步测试（两个浏览器配置模拟两台设备）
     node serve-worker.mjs 8801        # 用真实 worker.js 起本地 HTTP（口令 test1234）
