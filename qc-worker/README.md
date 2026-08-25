@@ -39,8 +39,18 @@
 
     根目录     /
     构建命令   （空）
-    部署命令   node build-standalone.js && npx wrangler deploy --config qc-worker/wrangler.toml
-    版本命令   node build-standalone.js && npx wrangler versions upload --config qc-worker/wrangler.toml
+    部署命令   node build-standalone.js && git diff --exit-code index.html && cd qc-worker && npm test && cd .. && npx wrangler deploy --config qc-worker/wrangler.toml
+    版本命令   node -v && node build-standalone.js && git diff --exit-code index.html && cd qc-worker && npm test && cd .. && npx wrangler versions upload --config qc-worker/wrangler.toml
+
+命令里除了构建和部署，还串了两道守卫，任何一道不过都短路，不会部署：
+
+- `git diff --exit-code index.html` —— 仓库里那份 index.html 是构建产物。改了
+  源文件却忘了重新构建就 push 的话，CI 构建出来的和提交的不一致，这里当场红。
+- `npm test` —— 84 项服务端测试（认证、路由、last-write-wins）。构建本身只检查
+  前端的板块隔离，完全不碰 worker.js；没有这一步，改坏鉴权也会照常上线。
+
+`node -v` 只在非生产分支跑，把 CI 的 Node 版本记进日志——测试用 node:sqlite，
+需要 22.5+，哪天 CI 降级了从日志一眼能看出来。
 
 `--config` 指向子目录的配置时，`main` 和 `assets.directory` 都相对**配置文件**
 解析，所以里面的 `src/worker.js` 和 `./public` 不用改。
