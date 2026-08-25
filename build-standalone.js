@@ -58,6 +58,18 @@ ${body.trim()}
 </html>
 `;
 
+// 品牌串丢了就中断构建，而且要在写文件**之前**拦下——别在磁盘上留一份坏产物
+// 等着被部署。以前这里只 console.log 一句 MISSING，那是人肉跑构建、盯着输出
+// 的年代；现在 push 就自动部署，构建日志没人看，只打印等于没有。上面那道隔离
+// 检查是 process.exit(1)，同一个文件里两道关卡该一样硬。
+if (!/Prestova Home Living Indonesia/.test(html)) {
+  console.error("");
+  console.error("品牌串丢失，已中断构建：页面里找不到 Prestova Home Living Indonesia");
+  console.error("");
+  process.exit(1);
+}
+console.log("brand in page:", "OK");
+
 fs.mkdirSync(OUTDIR, { recursive: true });
 fs.writeFileSync(OUT, html, "utf8");
 console.log("wrote:", OUT);
@@ -65,4 +77,3 @@ console.log("size :", (Buffer.byteLength(html, "utf8") / 1024).toFixed(1), "KB")
 fs.mkdirSync(path.dirname(ASSET_OUT), { recursive: true });
 fs.writeFileSync(ASSET_OUT, html, "utf8");
 console.log("wrote:", ASSET_OUT);
-console.log("brand in page:", /Prestova Home Living Indonesia/.test(html) ? "OK" : "MISSING");
