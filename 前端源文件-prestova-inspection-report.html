@@ -921,10 +921,11 @@ table.frec-table tbody tr.draft>td,#iqc table.irec-table tbody tr.draft>td,
    —— 原来五张记录表的 hover 就是这个毛病，深色下越划越暗。--accent 是跟着
    主题翻的（深色下是浅蓝 #7ea6e8），拿它调和方向才对。 */
 table.frec-table tbody tr.cur,#iqc table.irec-table tbody tr.cur,
-#ipqc table.iprec-table tbody tr.cur,#oqc table.orec-table tbody tr.cur,
-#lab table.lrec tbody tr.cur{
+#ipqc table.iprec-table tbody tr.cur,#oqc table.orec-table tbody tr.cur{
   background:color-mix(in srgb,var(--accent) 20%,transparent);
 }
+/* 实验室那张不在上面这条里 —— 它的单元格自己带底色，高亮画在 tr 上会被 td 盖住。
+   见 #lab table.lrec 那一段里的 tr.cur>td / tr.hov>td。 */
 table.frec-table tbody tr.cur>td:first-child,#iqc table.irec-table tbody tr.cur>td:first-child,
 #ipqc table.iprec-table tbody tr.cur>td:first-child,#oqc table.orec-table tbody tr.cur>td:first-child,
 #lab table.lrec tbody tr.cur>td:first-child{
@@ -1743,9 +1744,27 @@ table.frec-table tbody tr.draft .frec-open:hover,
   color:var(--ink-2);vertical-align:middle}
 #lab .lrecbtn{font:inherit;font-size:11.5px;padding:5px 9px;border:1px solid var(--accent);
   border-radius:4px;background:var(--paper);color:var(--accent);cursor:pointer;white-space:nowrap}
-/* 鼠标划过的高亮条（整批三行一起）。写 :not(.cur) 是为了别把"当前这批"
-   那道更明显的标记冲淡 —— 这样跟两条规则谁写在前面无关。 */
-#lab table.lrec tbody tr.hov:not(.cur)>td{background:color-mix(in srgb,var(--accent) 15%,transparent)}
+/* ── 实验室的高亮条：画在 td 的 background-**image** 上 ────────────────
+   另外四张表的高亮画在 tr 上就行，这张不行 —— 它的单元格自己带底色（超差红底
+   td.over、操作列 td.act）。底色在 td、高亮在 tr，td 就把 tr 盖住了：三行的
+   高亮条会被超差格子切成一段一段（用户 2026-08-26 报的就是这个）。
+   反过来把高亮用 background 短写画到 td 上，又会把超差红底整个抹掉 —— 那是拿
+   "看不出哪一格超差"换"高亮连起来"，更亏。
+   background-image 是**叠在** background-color 上面的，两个都留得住：高亮浮在
+   红底之上，红底透过 20% / 15% 的半透明层仍然看得见。跟固定表头那条
+   linear-gradient(--accent-soft,--accent-soft),var(--card) 是同一个手法。
+   注意别写成 background 短写 —— 那会把 td.over 的 background-color 一起清掉。
+
+   写 :not(.cur) 是为了别把"当前这批"那道更明显的标记冲淡 —— 这样跟两条规则
+   谁写在前面无关。 */
+#lab table.lrec tbody tr.cur>td{
+  background-image:linear-gradient(color-mix(in srgb,var(--accent) 20%,transparent),
+                                   color-mix(in srgb,var(--accent) 20%,transparent));
+}
+#lab table.lrec tbody tr.hov:not(.cur)>td{
+  background-image:linear-gradient(color-mix(in srgb,var(--accent) 15%,transparent),
+                                   color-mix(in srgb,var(--accent) 15%,transparent));
+}
 #lab .lrecmark{font-size:10.5px;color:var(--ink-3);display:block;margin-top:3px}
 @media(prefers-color-scheme:dark){
   #lab table.lrec td.over{background:#2a1a19}
