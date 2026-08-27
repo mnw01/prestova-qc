@@ -1695,7 +1695,14 @@ table.frec-table tbody tr.draft .frec-open:hover,
 #lab table.lstdt td:first-child{text-align:left;font-weight:600}
 #lab table.lstdt input{font:inherit;font-size:13px;width:100%;min-width:52px;border:1px solid transparent;
   background:transparent;color:inherit;text-align:center;padding:2px;border-radius:3px}
-#lab table.lstdt input:focus{outline:0;border-color:var(--accent);background:var(--paper)}
+/* 焦点底色用 --field，不是 --paper。--paper 是"纸"，深色下仍然是浅色
+   （#f4f5f7），而这个 input 的字是上面那条的 color:inherit（深色下近白）——
+   一点开就是白底白字，格子里的数字看不见了。.lcard 和 .lsum select 各踩过
+   一次同一个坑（见上面那个 @media 补丁块的注释），这是第三次。
+   --field 声明在 #lab 的屏幕配色里、跟着主题翻（#ffffff / #151a20），
+   所以这里直接换 token 就行，不用再往那个补丁块里加一条 —— 那条块得排在
+   base 规则**后面**才生效，而这条 base 规则在它下面 30 行。 */
+#lab table.lstdt input:focus{outline:0;border-color:var(--accent);background:var(--field)}
 #lab table.lstdt .drv{color:var(--ink-3);font-variant-numeric:tabular-nums;font-size:12px}
 
 @media(max-width:760px){
