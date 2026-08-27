@@ -8895,6 +8895,27 @@ async function labOpenSheet(){
   await labLoadAll(true);
   labFillRecModels();
   labRenderRec();
+  labRecScrollToCur();
+}
+/* 回到记录表时把"当前这批"重新滚回视野。
+   只有这一屏需要 —— 另外四张记录表是从内存索引**一次性** innerHTML，只有一次
+   布局，浏览器把滚动偏移留住了。这一屏不一样：先把表清成「读取中…」（容器当场
+   变矮，scrollTop 被夹到 0），再 await 一次全量重读（1400+ 条逐条从 IndexedDB
+   取），等行回来位置早没了，所以每次返回都从第一条开始。
+
+   锚点用 .cur（= 当前载入的那批）而不是记 scrollTop：这中间可能刚同步进来几条
+   记录，行数一变像素偏移就对不上，而"我刚看的那批"永远是对的。
+
+   自己算 scrollTop，不用 cur.scrollIntoView()：后者会把所有可滚动祖先一起滚，
+   连带把整个页面也拽一下（labShow 刚 scrollTo(0,0) 过，看着像弹了一下）。
+   居中放，是为了别让它落在两行 sticky 表头底下。
+   列表空、或者当前这批被日期窗口筛掉了（开记录表时锚点跟着今天走），
+   都没有 .cur，这里就什么也不做，保持在顶部。 */
+function labRecScrollToCur(){
+  const wrap=$("#lrec-wrap"), cur=$("tbody tr.cur",$("#lrec-table"));
+  if(!wrap || !cur) return;
+  const off=cur.getBoundingClientRect().top - wrap.getBoundingClientRect().top;
+  wrap.scrollTop += off - Math.max(0,(wrap.clientHeight - cur.offsetHeight)/2);
 }
 /* 品号下拉：打开记录表时建一次，同步拉到新数据后再建一次（新品号要选得到）。
    保留当前选中项，重建不会把筛选条件冲掉。 */
