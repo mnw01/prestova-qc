@@ -872,7 +872,7 @@ table.frec-table th,table.frec-table td{border-bottom:1px solid var(--hairline);
   padding:7px 8px;text-align:left;white-space:nowrap}
 table.frec-table th{font-size:11px;color:var(--ink-3);letter-spacing:.03em;font-weight:600;
   border-bottom:0}
-table.frec-table tr:hover td{background:var(--accent-soft)}
+table.frec-table tr:hover td{background:color-mix(in srgb,var(--accent) 15%,transparent)}
 .frec-badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px}
 .frec-badge.ok{background:var(--okbg,#e7f5ec);color:var(--pass)}
 .frec-badge.no{background:var(--nobg,#fdecea);color:var(--fail)}
@@ -914,17 +914,28 @@ table.frec-table tbody tr.draft>td,#iqc table.irec-table tbody tr.draft>td,
   color:var(--ink-2);border:1px solid color-mix(in srgb,var(--accent) 32%,transparent);
 }
 /* 刚看过的那一行高亮 —— 从记录退回记录表时一眼能找到自己看到哪了。
-   左边一道竖杠 + 很淡的底色，不用整行大色块：这些表本身带着合格/不合格的
-   颜色，再铺一层会打架。 */
+   左边一道竖杠 + 底色。三档底色是**一套梯度**，不能各调各的：
+   hover 15% < 点选固定 20% < 固定那条又被划过 24%，越交互越深。
+   用 color-mix(var(--accent)) 而不是 --accent-soft：--accent-soft 只声明在
+   :root 那套"纸"的配色里，深色下仍是**深**蓝，铺在深色卡片上等于把行压得更暗
+   —— 原来五张记录表的 hover 就是这个毛病，深色下越划越暗。--accent 是跟着
+   主题翻的（深色下是浅蓝 #7ea6e8），拿它调和方向才对。 */
 table.frec-table tbody tr.cur,#iqc table.irec-table tbody tr.cur,
 #ipqc table.iprec-table tbody tr.cur,#oqc table.orec-table tbody tr.cur,
 #lab table.lrec tbody tr.cur{
-  background:color-mix(in srgb,var(--accent) 9%,transparent);
+  background:color-mix(in srgb,var(--accent) 20%,transparent);
 }
 table.frec-table tbody tr.cur>td:first-child,#iqc table.irec-table tbody tr.cur>td:first-child,
 #ipqc table.iprec-table tbody tr.cur>td:first-child,#oqc table.orec-table tbody tr.cur>td:first-child,
 #lab table.lrec tbody tr.cur>td:first-child{
   box-shadow:inset 3px 0 0 var(--accent);font-weight:700;
+}
+/* 固定住的那一行被鼠标划过：hover 画在 td 上、cur 画在 tr 上，td 会盖住 tr，
+   不单独给一档就是"划过反而变浅"。实验室不用管——它那条 hover 写了
+   :not(.cur)，本来就不碰 cur 行。 */
+table.frec-table tbody tr.cur:hover td,#iqc table.irec-table tbody tr.cur:hover td,
+#ipqc table.iprec-table tbody tr.cur:hover td,#oqc table.orec-table tbody tr.cur:hover td{
+  background:color-mix(in srgb,var(--accent) 24%,transparent);
 }
 .frec-open{font:inherit;font-size:12.5px;padding:4px 10px;border-radius:4px;
   border:1px solid var(--field-line);background:var(--field);color:var(--accent);cursor:pointer}
@@ -940,6 +951,40 @@ table.frec-table tbody tr.cur>td:first-child,#iqc table.irec-table tbody tr.cur>
 #oqc .orec-open:hover,
 #lab .lrecbtn:hover{
   background:#17458c;border-color:#17458c;color:#fff;
+}
+/* ── 「查看」按钮兼作锁状态：已提交实心蓝，未提交空心 ──────────────────
+   原来"已锁 / 未锁"全靠上面 .draft 那条 opacity:.6 —— 同一个颜色的深浅，
+   不是两个状态，车间光线下手机上认不出来。压暗保留不动（那条对比度是实测过
+   的，见 .draft 那段注释），锁的信号挪到按钮上：按钮本来就有实心/空心两个态，
+   不用往表里再塞新的视觉语言。
+   一律限定在记录表的 tbody 里：#lab .lrecbtn 同时是「出检验报告」(#lprt)，
+   那个按钮在表**外面**，写成裸的 .lrecbtn 会把它一起染成实心蓝。 */
+table.frec-table tbody tr:not(.draft) .frec-open,
+#iqc table.irec-table tbody tr:not(.draft) .irec-open,
+#ipqc table.iprec-table tbody tr:not(.draft) .iprec-open,
+#oqc table.orec-table tbody tr:not(.draft) .orec-open,
+#lab table.lrec tbody tr:not(.draft) .lrecbtn{
+  background:#17458c;border-color:#17458c;color:#fff;
+}
+/* 实心蓝原本就是按钮的 hover 色，现在被拿去表示"已锁"了，两个态各自再找一档。
+   **少了这两条，鼠标一划过未锁的按钮就变实心蓝、看着像"锁上了"**，
+   刚立起来的信号当场就废。已锁的则是 hover 跟常态同色、等于没有反馈。
+   填色照旧写死 #17458c / #0f3269，不用 var(--accent)：深色下 --accent 是浅蓝
+   #7ea6e8，配白字只有 2.3:1。 */
+table.frec-table tbody tr:not(.draft) .frec-open:hover,
+#iqc table.irec-table tbody tr:not(.draft) .irec-open:hover,
+#ipqc table.iprec-table tbody tr:not(.draft) .iprec-open:hover,
+#oqc table.orec-table tbody tr:not(.draft) .orec-open:hover,
+#lab table.lrec tbody tr:not(.draft) .lrecbtn:hover{
+  background:#0f3269;border-color:#0f3269;color:#fff;
+}
+table.frec-table tbody tr.draft .frec-open:hover,
+#iqc table.irec-table tbody tr.draft .irec-open:hover,
+#ipqc table.iprec-table tbody tr.draft .iprec-open:hover,
+#oqc table.orec-table tbody tr.draft .orec-open:hover,
+#lab table.lrec tbody tr.draft .lrecbtn:hover{
+  background:color-mix(in srgb,var(--accent) 16%,transparent);
+  border-color:var(--accent);color:var(--accent);
 }
 /* 标题旁边那行小字：现在看的是哪一段、几条。三个板块共用（实验室有自己的
    #lab .lhint，别去套它 —— 那是板块作用域下的类，出了 #lab 一点样式都没有）。 */
@@ -1105,7 +1150,7 @@ table.frec-table tbody tr.cur>td:first-child,#iqc table.irec-table tbody tr.cur>
   padding:7px 8px;text-align:left;white-space:nowrap}
 #iqc table.irec-table th{font-size:11px;color:var(--ink-3);letter-spacing:.03em;font-weight:600;
   border-bottom:0}
-#iqc table.irec-table tr:hover td{background:var(--accent-soft)}
+#iqc table.irec-table tr:hover td{background:color-mix(in srgb,var(--accent) 15%,transparent)}
 #iqc .irec-badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px}
 #iqc .irec-badge.ok{background:var(--okbg);color:var(--ok)}
 #iqc .irec-badge.no{background:var(--nobg);color:var(--no)}
@@ -1245,7 +1290,7 @@ table.frec-table tbody tr.cur>td:first-child,#iqc table.irec-table tbody tr.cur>
   padding:7px 8px;text-align:left;white-space:nowrap}
 #ipqc table.iprec-table th{font-size:11px;color:var(--ink-3);letter-spacing:.03em;font-weight:600;
   border-bottom:0}
-#ipqc table.iprec-table tr:hover td{background:var(--accent-soft)}
+#ipqc table.iprec-table tr:hover td{background:color-mix(in srgb,var(--accent) 15%,transparent)}
 #ipqc table.iprec-table th.num,#ipqc table.iprec-table td.num{text-align:right;
   font-variant-numeric:tabular-nums}
 #ipqc table.iprec-table td.warn{color:var(--no);font-weight:600}
@@ -1445,7 +1490,7 @@ table.frec-table tbody tr.cur>td:first-child,#iqc table.irec-table tbody tr.cur>
   padding:7px 8px;text-align:left;white-space:nowrap}
 #oqc table.orec-table th{font-size:11px;color:var(--ink-3);letter-spacing:.03em;font-weight:600;
   border-bottom:0}
-#oqc table.orec-table tr:hover td{background:var(--accent-soft)}
+#oqc table.orec-table tr:hover td{background:color-mix(in srgb,var(--accent) 15%,transparent)}
 #oqc .orec-badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px}
 #oqc .orec-badge.ok{background:var(--okbg);color:var(--ok)}
 #oqc .orec-badge.no{background:var(--nobg);color:var(--no)}
@@ -1700,7 +1745,7 @@ table.frec-table tbody tr.cur>td:first-child,#iqc table.irec-table tbody tr.cur>
   border-radius:4px;background:var(--paper);color:var(--accent);cursor:pointer;white-space:nowrap}
 /* 鼠标划过的高亮条（整批三行一起）。写 :not(.cur) 是为了别把"当前这批"
    那道更明显的标记冲淡 —— 这样跟两条规则谁写在前面无关。 */
-#lab table.lrec tbody tr.hov:not(.cur)>td{background:var(--accent-soft)}
+#lab table.lrec tbody tr.hov:not(.cur)>td{background:color-mix(in srgb,var(--accent) 15%,transparent)}
 #lab .lrecmark{font-size:10.5px;color:var(--ink-3);display:block;margin-top:3px}
 @media(prefers-color-scheme:dark){
   #lab table.lrec td.over{background:#2a1a19}
