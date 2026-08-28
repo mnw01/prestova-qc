@@ -1661,20 +1661,6 @@ table.frec-table tbody tr.draft .frec-open:hover,
    long the rest of the h2's buttons run — a "收起" text button at the end of
    a wrapping flex row reads as just another action; a ✕ in the corner reads
    as "close this", which is what it does */
-/* 数据分析那一屏的筛选控件是塞在 h2 里的（别的板块都有独立的筛选栏），而 h2 是
-   align-items:center —— 按钮就跟着 label+select 那一摞的**中线**对齐，看着不上
-   不下。全站其它筛选栏（.frec-bar / .irec-bar / .iqan-bar / .iprec-bar /
-   .lrecbar）一律 align-items:flex-end，这里把按钮单独拉到底边，跟它们一致。
-   只动按钮不动整个 h2：h2 里还有"数据分析"那几个字，整体压到底反而怪。 */
-#lab .lcard > h2 button.recbtn{align-self:flex-end}
-/* 同一个根因的第二个症状：h2 是 font-weight:700，而 .lfield 里的 input/select
-   写的是 `font:inherit` —— **简写会把 font-weight 一起继承过来**，于是这一屏的
-   「近 1 个月」「全部品号」是粗体，比别的板块的筛选框黑一大截（那些在普通 div
-   里，继承到的是 400）。连标签的 <span> 也一起变粗，因为它也没自己声明。
-   在 .lfield 上按回 400，select 的 font:inherit 就会跟着拿到 400。
-   只限定在这个 h2 里：#lab .lfield 同时给录入页和记录表用，那两处不在 h2
-   里面、本来就是正常粗细，不能动。 */
-#lab .lcard > h2 .lfield{font-weight:400}
 #lab .lcard > h2 button.plx{
   position:absolute;top:10px;right:10px;margin:0;
   border:0;background:transparent;padding:3px 7px;font-size:15px;font-weight:400}
@@ -2766,6 +2752,16 @@ table.frec-table tbody tr.draft .frec-open:hover,
   <div class="lwrap">
     <section class="lcard">
       <h2>数据分析
+        <button type="button" class="plx" id="ld-close" title="关闭">✕</button>
+      </h2>
+      <!-- 筛选自己一行，不再塞进 h2 —— 跟来料 (.iqan-bar) / 制程 (.iprec-bar) /
+           成品 (.frec-bar) 一致。复用 .lrecbar：实验室记录表那一屏的筛选栏就是它，
+           align-items:flex-end 现成的，实验室自己两屏也就统一了。
+           塞在 h2 里带来过两个毛病，挪出来这两个补丁就都不用了：h2 是
+           align-items:center，按钮跟输入框中线对齐、不上不下；h2 又是
+           font-weight:700，而 .lfield 的控件写 `font:inherit`，简写把粗细也
+           继承了过去，「近 1 个月」比别的板块黑一大截。 -->
+      <div class="lrecbar">
         <label class="lfield" style="flex:0 0 130px"><span>区间</span>
           <select id="ld-range">
             <option value="cur">当月</option>
@@ -2778,8 +2774,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
         <label class="lfield" style="flex:0 0 150px"><span>品号</span>
           <select id="ld-model"><option value="">全部品号</option></select></label>
         <button type="button" class="recbtn" id="ld-clear">清除筛选</button>
-        <button type="button" class="plx" id="ld-close" title="关闭">✕</button>
-      </h2>
+      </div>
       <div class="lkpis" id="ld-kpis"></div>
       <p class="lnote" id="ld-scope"></p>
     </section>
