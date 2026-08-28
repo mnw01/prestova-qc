@@ -2318,6 +2318,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
     <h2>本次检验</h2>
     <div class="iphead">
       <label class="ipfield"><span>日期</span><input type="date" id="ip-date"></label>
+      <label class="ipfield"><span>班次</span><select id="ip-shift"></select></label>
       <label class="ipfield"><span>车间</span><select id="ip-ws"></select></label>
       <label class="ipfield"><span>工序</span><select id="ip-proc"></select></label>
       <label class="ipfield"><span>检查数量（生产数量）</span><input id="ip-qty" inputmode="numeric"></label>
@@ -2347,6 +2348,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
   <div class="iprec-bar">
     <label class="iprec-field wide"><span>起始日期</span><input type="date" id="iprec-from"></label>
     <label class="iprec-field wide"><span>结束日期</span><input type="date" id="iprec-to"></label>
+    <label class="iprec-field"><span>班次</span><select id="iprec-shift"><option value="">全部</option></select></label>
     <label class="iprec-field"><span>车间</span><select id="iprec-ws"><option value="">全部</option></select></label>
     <label class="iprec-field"><span>工序</span><select id="iprec-proc"><option value="">全部</option></select></label>
     <label class="iprec-field"><span>检验员</span><input type="text" id="iprec-inspector" placeholder="全部"></label>
@@ -2366,6 +2368,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
       <div class="iprec-bar">
         <label class="iprec-field wide"><span>起始日期</span><input type="date" id="ipd-from"></label>
         <label class="iprec-field wide"><span>结束日期</span><input type="date" id="ipd-to"></label>
+        <label class="iprec-field"><span>班次</span><select id="ipd-shift"><option value="">全部</option></select></label>
         <label class="iprec-field"><span>车间</span><select id="ipd-ws"><option value="">全部</option></select></label>
         <label class="iprec-field"><span>工序</span><select id="ipd-proc"><option value="">全部</option></select></label>
       </div>
@@ -3061,6 +3064,7 @@ function metaOf(r){
      所以这几个数进索引；bad 是明细里 n 的合计，metaOf 顺手算一次。 */
   if(type==="ipqc"){
     m.date=(f.date||"").trim();
+    m.shift=(f.shift||"").trim();
     m.ws=(f.ws||"").trim();
     m.proc=(f.proc||"").trim();
     m.qty=(f.qty||"").trim();
@@ -3102,7 +3106,7 @@ const dbDelete = id => tx([STORE,META],"readwrite", t=>{
    **以后改 metaOf 里任何一处推导，就把 META_VER 加 1。** 开机对不上就整表
    重算一遍，不用再写一次性回填。重算只写索引、不碰记录本身，也不动
    updatedAt/syncedAt，所以不会引起任何同步。 */
-const META_VER = 3;   /* 3: meta 加了 locked（提交锁定） */
+const META_VER = 4;   /* 4: 制程检验的 meta 加了 shift（班次）／3: meta 加了 locked（提交锁定） */
 const META_VER_KEY = "qc-meta-ver";
 
 /* 只重写索引行，不重写记录 —— 记录里带着照片 Blob，1400 条全 put 一遍又慢
@@ -5562,12 +5566,28 @@ const IPQC_DEFECTS={
    「统计出现次数=1」的辅助列防止求和时重复计算（他们源表 N 列就是干这个的）。
    实测 2514 个 (日期,车间,工序) 分组里 2481 组的检查数量只有一个值，证实了
    这一点。这里把检查数量放回它该在的层级，辅助列和重复计算的风险一起消失。 */
+/* 班次。做成固定词表而不是自由输入框：它是拿来筛选和分组的字段，一旦能手打，
+   「白班 / 白 / A班」迟早同时存在。来料检验的「物料类别」就是自由输入，2026-08-26
+   实测下拉里出现了两个肉眼一模一样的「防火螺纹布(KainUlir)」—— 一个半角括号一个
+   全角括号，记录表筛不全、数据分析还拆成两行。
+   跟 IPQC_WS 一样 [中文, 印尼语]：存进记录的永远是中文 value，印尼语只是渲染层。 */
+const IPQC_SHIFTS=[["白班","Shift Siang"],["夜班","Shift Malam"]];
+/* 跟 tProc 同一个套路。查不到（旧记录是空的、或者哪天词表改了）就原样返回。 */
+function tShift(v){
+  if(LANG!=="id") return v||"";
+  const hit=IPQC_SHIFTS.find(s=>s[0]===v);
+  return (hit && hit[1]) || v || "";
+}
 function ipqcBlankDefect(){ return {model:"",spec:"",desc:"",n:"1"}; }
 function ipqcBlank(){
   const ws=IPQC_WS[0], p0=ws.procs[0][0];
   return {
+    /* 新记录默认白班 —— 跟车间/工序一样取词表第一项。**旧记录不补默认值**：
+       班次是今天才加的，8-26 之前那些记录本来就没有这个信息，填个"白班"进去
+       就是凭空造数据。它们的 shift 是空的，表里显示「—」，选班次筛的时候筛不到，
+       这是对的。 */
     id:uid(), type:"ipqc", updatedAt:Date.now(), syncedAt:0,
-    fields:{ date:today(), ws:ws.zh, proc:p0, qty:"", inspector:"",
+    fields:{ date:today(), shift:IPQC_SHIFTS[0][0], ws:ws.zh, proc:p0, qty:"", inspector:"",
              itemNo:ws.zh, po:p0 },
     ipqc:{ defects:[] },
     caps:{}, flags:{}, fits:{}, photos:{}, photoOps:{}, serverPhotos:{}
@@ -5653,8 +5673,20 @@ function ipqcFillWsProc(){
   $("#ip-proc").value=procs.some(p=>p[0]===cur)?cur:procs[0][0];
   PR.fields.proc=$("#ip-proc").value;
 }
+/* 班次下拉。旧记录（8-26 之前）没有这个字段，给它们额外补一个空选项 ——
+   不补的话 <select> 会自动落在第一项上，屏幕上写着「白班」而记录里其实是空的，
+   看着像已经填了。空选项只在当前值为空时出现，正常填过的记录看不到它。 */
+function ipqcFillShift(){
+  const s=$("#ip-shift"); if(!s) return;
+  const cur=PR.fields.shift||"";
+  s.innerHTML=(cur?"":'<option value="">—</option>')+
+    IPQC_SHIFTS.map(x=>'<option value="'+esc(x[0])+'">'+
+      esc(LANG==="id"?(x[1]||x[0]):x[0])+'</option>').join('');
+  s.value=cur;
+}
 function ipqcPaintHead(){
   $("#ip-date").value=toDateInput(PR.fields.date);
+  ipqcFillShift();
   ipqcFillWsProc();
   $("#ip-qty").value=PR.fields.qty||"";
   $("#ip-inspector").value=PR.fields.inspector||"";
@@ -5755,10 +5787,17 @@ $("#pback").addEventListener("click",()=>{
 });
 $("#psync").addEventListener("click",()=>{ SYNC.err=null; syncNow(); });
 $("#pnew").addEventListener("click",async()=>{
-  /* 同一个 QC 一天要录好几道工序，日期/车间/检验员照抄上一条，只改工序 */
-  const keep = PR ? {date:PR.fields.date, ws:PR.fields.ws, inspector:PR.fields.inspector} : null;
+  /* 同一个 QC 一天要录好几道工序，日期/班次/车间/检验员照抄上一条，只改工序。
+     班次尤其要带 —— ipqcBlank() 默认白班，夜班的人连录十条，漏选一次就静默
+     记成白班了，比留空更糟。 */
+  const keep = PR ? {date:PR.fields.date, shift:PR.fields.shift,
+                     ws:PR.fields.ws, inspector:PR.fields.inspector} : null;
   PR=ipqcBlank();
-  if(keep){ PR.fields.date=keep.date; PR.fields.ws=keep.ws; PR.fields.inspector=keep.inspector; }
+  if(keep){ PR.fields.date=keep.date;
+            /* 只在上一条真的有班次时才照抄：从一条 8-26 之前的旧记录（没有班次）
+               点＋新记录，应该拿到 ipqcBlank 的默认白班，而不是被空值覆盖成空 */
+            if(keep.shift) PR.fields.shift=keep.shift;
+            PR.fields.ws=keep.ws; PR.fields.inspector=keep.inspector; }
   ipqcPaintAll(); await dbPut(PR);
   ipqcShow("entry");
   toast("新记录已建");
@@ -5775,6 +5814,11 @@ $("#pdel").addEventListener("click",async()=>{
   toast("已删除");
 });
 $("#ip-date").addEventListener("change",e=>{ PR.fields.date=fromDateInput(e.target.value); ipqcSave(); });
+$("#ip-shift").addEventListener("change",e=>{
+  PR.fields.shift=e.target.value;
+  /* 旧记录第一次选上班次之后，那个「—」空选项就该消失了 */
+  ipqcFillShift(); ipqcSave();
+});
 $("#ip-ws").addEventListener("change",e=>{
   PR.fields.ws=e.target.value;
   /* 换车间要重挑工序（两个车间工序不一样），不良描述目录也跟着工序变 */
@@ -5879,8 +5923,16 @@ $("#ppl-close").addEventListener("click",()=>{ $("#ppicklist").hidden=true; });
 $("#ppicklist").addEventListener("click",e=>{ if(e.target.id==="ppicklist") $("#ppicklist").hidden=true; });
 window.addEventListener("resize",()=>{ if(!$("#ppicklist").hidden) ipqcPlacePick(); });
 
-/* 车间/工序筛选下拉（记录表 + 数据分析共用同一份） */
+/* 班次/车间/工序筛选下拉（记录表 + 数据分析共用同一份） */
 function ipqcFillFilters(){
+  /* 班次选项固定就那两个，不像类别那样要跟已有记录取并集 —— 词表是闭的，
+     表里出现的值一定在词表里（旧记录的空值不是一个可筛的选项，用「全部」就行）。 */
+  ["#iprec-shift","#ipd-shift"].forEach(id=>{
+    const s=$(id); if(!s) return; const cur=s.value;
+    s.innerHTML='<option value="">'+esc(tr("全部"))+'</option>'+IPQC_SHIFTS.map(x=>
+      '<option value="'+esc(x[0])+'">'+esc(LANG==="id"?(x[1]||x[0]):x[0])+'</option>').join('');
+    s.value=cur;
+  });
   ["#iprec-ws","#ipd-ws"].forEach(id=>{
     const s=$(id); if(!s) return; const cur=s.value;
     s.innerHTML='<option value="">'+esc(tr("全部"))+'</option>'+IPQC_WS.map(w=>
@@ -5900,12 +5952,14 @@ const iprecHas=(v,q)=>!q||String(v||"").toLowerCase().includes(q);
 async function iprecRows(){
   /* 区间跟数据分析一样是自选起止；两头都留空 = 全部 */
   const from=$("#iprec-from").value, to=$("#iprec-to").value;
+  const shift=$("#iprec-shift").value;
   const ws=$("#iprec-ws").value, proc=$("#iprec-proc").value;
   const insp=$("#iprec-inspector").value.trim().toLowerCase();
   let rows=[];
   try{ rows=(await metaAll()).filter(r=>r.type==="ipqc"); }catch(e){ return null; }
   if(from) rows=rows.filter(r=>toDateInput(r.date)>=from);
   if(to)   rows=rows.filter(r=>toDateInput(r.date)<=to);
+  if(shift) rows=rows.filter(r=>(r.shift||"")===shift);
   if(ws) rows=rows.filter(r=>(r.ws||"")===ws);
   if(proc) rows=rows.filter(r=>(r.proc||"")===proc);
   if(insp) rows=rows.filter(r=>iprecHas(r.inspector,insp));
@@ -5920,12 +5974,13 @@ async function iprecRender(){
   if(note) note.textContent=$("#iprec-from").value+" ~ "+$("#iprec-to").value+
     " · "+rows.length+" "+tr("条")+(total>rows.length?"（"+tr("共")+" "+total+" "+tr("条")+"）":"");
   $("#iprec-table").innerHTML = !rows.length
-    ? '<tbody><tr><td class="iprec-empty" colspan="7">没有记录。</td></tr></tbody>'
-    : '<thead><tr><th>日期</th><th>车间</th><th>工序</th><th class="num">检查数量</th><th class="num">不良数量</th><th class="num">不良率</th><th>检验员</th><th>操作</th></tr></thead>'+
+    ? '<tbody><tr><td class="iprec-empty" colspan="9">没有记录。</td></tr></tbody>'
+    : '<thead><tr><th>日期</th><th>班次</th><th>车间</th><th>工序</th><th class="num">检查数量</th><th class="num">不良数量</th><th class="num">不良率</th><th>检验员</th><th>操作</th></tr></thead>'+
       '<tbody>'+rows.map(r=>{
         const q=lnum(r.qty)||0, b=lnum(r.bad)||0, rate=q?pct(b,q):null;
         const cls=(PR&&r.id===PR.id?"cur ":"")+(r.locked?"":"draft");
         return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+'><td>'+esc(r.date||"—")+'</td>'+
+          '<td>'+esc(r.shift?tShift(r.shift):"—")+'</td>'+
           '<td>'+esc(r.ws?tr(r.ws):"—")+'</td><td>'+esc(r.proc?tProc(r.ws,r.proc):"—")+'</td>'+
           '<td class="num">'+(q?ipn(q):"—")+'</td>'+
           '<td class="num">'+ipn(b)+'</td>'+
@@ -5938,9 +5993,10 @@ $("#precbtn").addEventListener("click",()=>ipqcShow($("#iprec").hidden?"rec":"en
 $("#iprec-close").addEventListener("click",()=>ipqcShow("entry"));
 $("#iprec-inspector").addEventListener("input",iprecRender);
 ["#iprec-from","#iprec-to"].forEach(id=>$(id).addEventListener("change",()=>{ RANGE_TOUCHED[id]=true; iprecRender(); }));
-["#iprec-ws","#iprec-proc"].forEach(id=>$(id).addEventListener("change",iprecRender));
+["#iprec-shift","#iprec-ws","#iprec-proc"].forEach(id=>$(id).addEventListener("change",iprecRender));
 $("#iprec-clear").addEventListener("click",()=>{
   $("#iprec-inspector").value="";
+  $("#iprec-shift").value="";
   $("#iprec-ws").value=""; $("#iprec-proc").value="";
   rollMonthRange("#iprec-from","#iprec-to", true);   /* 回到默认窗口，不是清空 */
   iprecRender();
@@ -5951,7 +6007,10 @@ $("#iprec-clear").addEventListener("click",()=>{
    同一个数加好几遍），这样导出来能直接往现有工作簿里贴。
    没有不良的记录也要出一行，不然那天那道工序的检查数量在导出件里就没了，
    分母会凭空少一截。 */
-const IPQC_CSV_HEAD=["日期","型号","规格","单位","检查数量","不良数量","车间","工序","不良描述","检验员"];
+/* 班次接在**最后一列**，不是插在日期后面 —— 前十列是照他们那张累计报告的表头
+   排的，中间插一列会把后面所有列错位，粘回原模板就全乱了。追加在末尾对旧模板
+   无害。 */
+const IPQC_CSV_HEAD=["日期","型号","规格","单位","检查数量","不良数量","车间","工序","不良描述","检验员","班次"];
 const ipqcCsvDate = d => toDateInput(d) || (d||"");
 async function ipqcCsv(metas){
   const out=[IPQC_CSV_HEAD];
@@ -5965,13 +6024,13 @@ async function ipqcCsv(metas){
     used++;
     const dt=ipqcCsvDate(f.date);
     if(!ds.length){
-      out.push([dt,"","","个",qty,0,f.ws||"",f.proc||"","",f.inspector||""]);
+      out.push([dt,"","","个",qty,0,f.ws||"",f.proc||"","",f.inspector||"",f.shift||""]);
       lines++; continue;
     }
     ds.forEach((d,i)=>{
       out.push([dt, d.model||"", d.spec||"", "个",
                 i===0?qty:0, lnum(d.n)||0,
-                f.ws||"", f.proc||"", d.desc||"", f.inspector||""]);
+                f.ws||"", f.proc||"", d.desc||"", f.inspector||"", f.shift||""]);
       lines++;
     });
   }
@@ -5990,6 +6049,7 @@ $("#iprec-csv").addEventListener("click",async()=>{
   /* 文件名带上筛选条件，导好几份放一个文件夹里也分得清 */
   const from=$("#iprec-from").value, to=$("#iprec-to").value;
   const tag=[(from||to) ? (from||"最早")+"至"+(to||"最新") : "",
+             $("#iprec-shift").value,
              $("#iprec-ws").value, $("#iprec-proc").value,
              $("#iprec-inspector").value.trim()].filter(Boolean).join("-") || "全部";
   const a=el("a");
@@ -6027,10 +6087,12 @@ function ipqcDashDefaultRange(){ rollMonthRange("#ipd-from","#ipd-to"); }
 function iprecDefaultRange(){ rollMonthRange("#iprec-from","#iprec-to"); }
 async function ipqcDashAgg(){
   const from=$("#ipd-from").value, to=$("#ipd-to").value;
+  const shift=$("#ipd-shift").value;
   const ws=$("#ipd-ws").value, proc=$("#ipd-proc").value;
   let rows=(await metaAll()).filter(r=>r.type==="ipqc");
   if(from) rows=rows.filter(r=>toDateInput(r.date)>=from);
   if(to)   rows=rows.filter(r=>toDateInput(r.date)<=to);
+  if(shift) rows=rows.filter(r=>(r.shift||"")===shift);
   if(ws)   rows=rows.filter(r=>(r.ws||"")===ws);
   if(proc) rows=rows.filter(r=>(r.proc||"")===proc);
 
@@ -6107,7 +6169,7 @@ async function ipdashRender(){
 }
 $("#pdashbtn").addEventListener("click",()=>ipqcShow($("#ipdash").hidden?"dash":"entry"));
 $("#ipd-close").addEventListener("click",()=>ipqcShow("entry"));
-["#ipd-from","#ipd-to","#ipd-ws","#ipd-proc"].forEach(id=>$(id).addEventListener("change",ipdashRender));
+["#ipd-from","#ipd-to","#ipd-shift","#ipd-ws","#ipd-proc"].forEach(id=>$(id).addEventListener("change",ipdashRender));
 
 
 /* ── 装柜检验：常量 ───────────────────────────────────────────────────
@@ -8157,7 +8219,8 @@ const I18N_ID={
   "前 15 项": "15 teratas",
   "加照片": "Tambah Foto",
   "拍照": "Ambil Foto",
-  "相册": "Galeri",
+  "班次": "Shift",
+  "相册":"Galeri",
   "包装方式是否和工艺单一致？": "Apakah cara packing sesuai dengan lembar proses?",
   "包装材料是否和工艺单一致？": "Apakah material packing sesuai dengan lembar proses?",
   "区间": "Periode",
