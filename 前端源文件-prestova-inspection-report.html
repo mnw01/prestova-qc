@@ -1006,12 +1006,16 @@ table.frec-table tbody tr.draft .frec-open:hover,
 .fd-kpi .t{font-size:11.5px;color:var(--ink-3);margin-top:2px;letter-spacing:.02em}
 .fd-kpi.bad .n{color:var(--fail)}
 .fd-kpi.good .n{color:var(--pass)}
-/* 数据分析里的小标题。原来是 11px 的 --ink-3，比正文还小、还灰，压根不像标题。
-   规格照抄别的板块的区块标题（#iqc .iqcard > h2 / #ipqc .ipcard > h2）：
-   13px / 700 / --ink-2；后面那行小字照抄 .iphint：11.5px / 400 / --ink-3。
-   成品这一屏是**一张卡里分区**（别的板块是一区一张卡），所以自己带上边距。 */
-.fd-sec{font-size:13px;letter-spacing:.02em;color:var(--ink-2);font-weight:700;margin:20px 0 10px}
-.fd-sec .note{font-size:11.5px;color:var(--ink-3);font-weight:400;margin-left:8px;letter-spacing:0}
+/* 数据分析：**一个分析项一张卡**，跟来料 / 制程一致（原来是全部塞在一张卡里，
+   靠小标题分区，跟别的板块对不上）。.frec-card 自带 margin:18px auto，几张并排
+   堆着就有间距了，不用像 #ipqc 那样再包一层 .ipwrap。
+   每张卡自己的标题规格照抄 #iqc .iqcard > h2 / #ipqc .ipcard > h2：
+   13px / 700 / --ink-2；后面的小字照抄 .iphint。
+   写 `> h2` 是为了不碰到记录表那张卡 —— 它的 h2 在 .frec-head 里面，不是
+   .frec-card 的直接子元素。 */
+.frec-card > h2{font-size:13px;letter-spacing:.02em;color:var(--ink-2);font-weight:700;
+  margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.frec-card > h2 .note{font-size:11.5px;color:var(--ink-3);font-weight:400;letter-spacing:0}
 .fd-bars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
 .fd-bar{display:grid;grid-template-columns:64px 1fr 140px;gap:10px;align-items:center;font-size:12.5px}
 .fd-bar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
@@ -2157,11 +2161,20 @@ table.frec-table tbody tr.draft .frec-open:hover,
   </div>
   <div class="fd-kpis" id="fd-kpis"></div>
   <p class="frec-empty" id="fd-scope" style="text-align:left;padding:8px 2px"></p>
-  <h2 class="fd-sec">月度合格率</h2>
+</section>
+
+<section class="frec-card">
+  <h2>月度合格率</h2>
   <div class="fd-bars" id="fd-months"></div>
-  <h2 class="fd-sec">按床垫类型</h2>
+</section>
+
+<section class="frec-card">
+  <h2>按床垫类型</h2>
   <div class="fd-bars" id="fd-mattresses"></div>
-  <h2 class="fd-sec">按品名 <span class="note">不良最多的前 15 个</span></h2>
+</section>
+
+<section class="frec-card">
+  <h2>按品名 <span class="note">不良最多的前 15 个</span></h2>
   <div style="overflow-x:auto"><table class="frec-table" id="fd-descs"></table></div>
 </section>
 </div>
