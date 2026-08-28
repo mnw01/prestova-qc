@@ -1667,6 +1667,14 @@ table.frec-table tbody tr.draft .frec-open:hover,
    .lrecbar）一律 align-items:flex-end，这里把按钮单独拉到底边，跟它们一致。
    只动按钮不动整个 h2：h2 里还有"数据分析"那几个字，整体压到底反而怪。 */
 #lab .lcard > h2 button.recbtn{align-self:flex-end}
+/* 同一个根因的第二个症状：h2 是 font-weight:700，而 .lfield 里的 input/select
+   写的是 `font:inherit` —— **简写会把 font-weight 一起继承过来**，于是这一屏的
+   「近 1 个月」「全部品号」是粗体，比别的板块的筛选框黑一大截（那些在普通 div
+   里，继承到的是 400）。连标签的 <span> 也一起变粗，因为它也没自己声明。
+   在 .lfield 上按回 400，select 的 font:inherit 就会跟着拿到 400。
+   只限定在这个 h2 里：#lab .lfield 同时给录入页和记录表用，那两处不在 h2
+   里面、本来就是正常粗细，不能动。 */
+#lab .lcard > h2 .lfield{font-weight:400}
 #lab .lcard > h2 button.plx{
   position:absolute;top:10px;right:10px;margin:0;
   border:0;background:transparent;padding:3px 7px;font-size:15px;font-weight:400}
