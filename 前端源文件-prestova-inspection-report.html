@@ -873,6 +873,9 @@ table.frec-table th,table.frec-table td{border-bottom:1px solid var(--hairline);
 table.frec-table th{font-size:11px;color:var(--ink-3);letter-spacing:.03em;font-weight:600;
   border-bottom:0}
 table.frec-table tr:hover td{background:color-mix(in srgb,var(--accent) 15%,transparent)}
+/* 数据分析里那两张排行表的数字列右对齐 + 等宽数字，跟制程看板的表一个样子 */
+table.frec-table th.num,table.frec-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+table.frec-table td.warn{color:var(--fail);font-weight:600}
 .frec-badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px}
 .frec-badge.ok{background:var(--okbg,#e7f5ec);color:var(--pass)}
 .frec-badge.no{background:var(--nobg,#fdecea);color:var(--fail)}
@@ -2144,6 +2147,10 @@ table.frec-table tbody tr.draft .frec-open:hover,
   <p class="frec-empty" id="fd-scope" style="text-align:left;padding:8px 2px"></p>
   <p style="font-size:11px;color:var(--ink-3);letter-spacing:.03em;margin:14px 0 4px">月度不良率</p>
   <div class="fd-bars" id="fd-months"></div>
+  <p style="font-size:11px;color:var(--ink-3);letter-spacing:.03em;margin:18px 0 4px">按床垫类型</p>
+  <div style="overflow-x:auto"><table class="frec-table" id="fd-mattresses"></table></div>
+  <p style="font-size:11px;color:var(--ink-3);letter-spacing:.03em;margin:18px 0 4px">按品名　不良最多的前 15 个</p>
+  <div style="overflow-x:auto"><table class="frec-table" id="fd-descs"></table></div>
 </section>
 </div>
 
@@ -2680,6 +2687,12 @@ table.frec-table tbody tr.draft .frec-open:hover,
           <input type="date" id="lrec-date"></label>
         <label class="lfield" style="flex:0 0 160px"><span>品号</span>
           <select id="lrec-model"><option value="">全部品号</option></select></label>
+        <label class="lfield" style="flex:0 0 130px"><span>判定</span>
+          <select id="lrec-verdict">
+            <option value="">全部</option>
+            <option value="合格">合格</option>
+            <option value="不合格">不合格</option>
+          </select></label>
         <button type="button" class="recbtn" id="lrec-clear">清除筛选</button>
         <button type="button" class="recbtn" id="lcsv">导出数据</button>
         <button type="button" class="recbtn" id="ld-import">导入数据</button>
@@ -4067,7 +4080,18 @@ async function fqcDashAgg(range,item,mattress){
      所有 K01 开头/含 K01 的型号都算进来 */
   const q=String(item||"").trim().toLowerCase();
   let rows=(await metaAll()).filter(m=>m.type==="fqc");
-  const out={ n:0, badN:0, months:new Map(), from:null, to:null };
+  /* 床垫类型和品名本来就在筛选栏里，但那只能回答"我盯着的这一类怎么样"，
+     回答不了"哪一类问题最多" —— 得先猜一个再选一个，猜错了就看不见。
+     所以另外按这两个维度各出一张排行表，跟来料的「按类别 / 按供应商」、
+     制程的「按工序 / 按型号」一个思路。
+     两张表都跟着上面的筛选走（是在筛完的样本里排名，不是全量），否则
+     "筛了海绵床垫，下面的表还把弹簧的排进来"会让人以为筛选坏了。 */
+  const out={ n:0, badN:0, months:new Map(), byMattress:new Map(), byDesc:new Map(),
+              from:null, to:null };
+  const bump=(map,key,bad)=>{
+    let e=map.get(key); if(!e) map.set(key,e={k:key,n:0,bad:0});
+    e.n++; if(bad) e.bad++;
+  };
   for(const m of rows){
     const d=parseDMY(m.inspDate);
     if(!d || d.getTime()<cutoff || d.getTime()>=upto) continue;
@@ -4082,8 +4106,16 @@ async function fqcDashAgg(range,item,mattress){
     const ym=ymOf(d);
     let mo=out.months.get(ym); if(!mo) out.months.set(ym,mo={ym,n:0,bad:0});
     mo.n++; if(bad) mo.bad++;
+    bump(out.byMattress,(m.mattress||"").trim()||"（未填）",bad);
+    bump(out.byDesc,(m.desc||"").trim()||"（未填）",bad);
   }
   out.months=[...out.months.values()].sort((a,b)=>a.ym<b.ym?-1:1);
+  /* 床垫类型就两三个值，全给；品名可能上百个，只给不良最多的前 15 —— 跟制程
+     「按型号」一个口径。并列时用检查数量兜底，不然同为 0 不良的一堆品名顺序
+     每次刷新都在变。 */
+  const rank=(map)=>[...map.values()].sort((a,b)=>(b.bad-a.bad)||(b.n-a.n)||a.k.localeCompare(b.k,"zh"));
+  out.byMattress=[...out.byMattress.values()].sort((a,b)=>(b.n-a.n)||a.k.localeCompare(b.k,"zh"));
+  out.byDesc=rank(out.byDesc).slice(0,15);
   return out;
 }
 async function fqcDashRender(){
@@ -4111,6 +4143,22 @@ async function fqcDashRender(){
         '<i class="no" style="flex:1"></i></span>'+
       '<span class="num">'+m.bad+' / '+j+'　'+(j?pct(m.bad,j)+"%":"—")+'</span></div>';
   }).join("")||'<div class="frec-empty">没有数据。</div>';
+
+  /* 两张排行表共用一个渲染 —— 列一样，只有第一列的表头不同。
+     不良率超过 5% 标红，跟制程记录表那条阈值对齐。 */
+  const rankTable=(rows,head)=> !rows.length
+    ? '<tbody><tr><td class="frec-empty" colspan="4">没有数据。</td></tr></tbody>'
+    : '<thead><tr><th>'+esc(head)+'</th><th class="num">检查数量</th>'+
+      '<th class="num">不合格</th><th class="num">不良率</th></tr></thead><tbody>'+
+      rows.map(x=>{
+        const rate=x.n?pct(x.bad,x.n):null;
+        return '<tr><td>'+esc(tr(x.k))+'</td>'+
+          '<td class="num">'+x.n+'</td>'+
+          '<td class="num">'+x.bad+'</td>'+
+          '<td class="num'+(rate!=null&&rate>5?" warn":"")+'">'+(rate!=null?rate+"%":"—")+'</td></tr>';
+      }).join('')+'</tbody>';
+  $("#fd-mattresses").innerHTML=rankTable(a.byMattress,"床垫类型");
+  $("#fd-descs").innerHTML=rankTable(a.byDesc,"品名");
 }
 $("#fdashbtn").addEventListener("click",()=>{ fqcShow($("#fdash").hidden?"dash":"form"); });
 $("#fd-close").addEventListener("click",()=>fqcShow("form"));
@@ -8997,9 +9045,15 @@ function labBatchDate(r){
    draw, but an export asked for 全部 should hand over 全部. */
 function labRecRecords(full){
   const range=$("#lrec-range").value, model=$("#lrec-model").value;
+  const verdict=$("#lrec-verdict").value;
   const d=parseDMY(fromDateInput($("#lrec-date").value));
   let recs=(LAB_CACHE||[]).filter(r=>r.type==="lab"&&r.lab);
   if(model) recs=recs.filter(r=>r.lab.model===model);
+  /* **按批筛，不是按支。** 一批三支，判定可以不一样，而这张表的行是支、单元格
+     带着 rowspan=3 —— 抽掉其中一行会把 rowspan 撕开。用的是已有的 labVerdict()，
+     报告上的「综合判定」用的就是它，这里没有另立规则。
+     还没有结论的批（品号没标准、或者什么都没记）两个选项都不命中，留在「全部」里。 */
+  if(verdict) recs=recs.filter(r=>labVerdict(r)===verdict);
   /* Filed by the 批号 date only. A second date filter for 测试日期 was tried and
      removed: two date pickers side by side read as alternatives but AND together,
      so a batch cut on the 30th and tested on the 1st vanishes from both. The
@@ -9110,13 +9164,14 @@ function labRenderRec(){
    already does, with no JS and nothing to feel janky. */
 $("#lsheetbtn").addEventListener("click",labToggle("sheet",labOpenSheet));
 $("#lrec-close").addEventListener("click",()=>labShow("entry"));
-["lrec-range","lrec-model"].forEach(id=>$("#"+id).addEventListener("change",labRenderRec));
+["lrec-range","lrec-model","lrec-verdict"].forEach(id=>$("#"+id).addEventListener("change",labRenderRec));
 $("#lrec-date").addEventListener("change",()=>{ RANGE_TOUCHED["#lrec-date"]=true; labRenderRec(); });
 /* 清除筛选：回到打开记录表时的默认窗口（当月 + 今天 + 全部品号），不是清空 ——
    跟另外四张记录表一个口径。rangeToday 的第二个参数是 force：用户手改过日期
    之后 RANGE_TOUCHED 会一直挡着自动回今天，点了这个按钮就该连那个也一起复位。 */
 $("#lrec-clear").addEventListener("click",()=>{
   $("#lrec-model").value="";
+  $("#lrec-verdict").value="";
   $("#lrec-range").value="month";
   rangeToday("#lrec-date", true);
   labRenderRec();
