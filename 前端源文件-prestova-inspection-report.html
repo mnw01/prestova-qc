@@ -2138,6 +2138,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
         <option value="海绵床垫">海绵床垫</option>
       </select>
     </label>
+    <button type="button" class="recbtn" id="fd-clear">清除筛选</button>
   </div>
   <div class="fd-kpis" id="fd-kpis"></div>
   <p class="frec-empty" id="fd-scope" style="text-align:left;padding:8px 2px"></p>
@@ -2267,6 +2268,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
         <label class="iqan-field"><span>结束日期</span><input type="date" id="id-to"></label>
         <label class="iqan-field"><span>类别</span><select id="id-cat"><option value="">全部</option></select></label>
         <label class="iqan-field"><span>供应商</span><input type="text" id="id-supplier" placeholder="全部"></label>
+        <button type="button" class="recbtn" id="id-clear">清除筛选</button>
       </div>
       <div class="iqan-kpis" id="id-kpis"></div>
       <p class="iqhint" id="id-scope"></p>
@@ -2370,6 +2372,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
         <label class="iprec-field"><span>班次</span><select id="ipd-shift"><option value="">全部</option></select></label>
         <label class="iprec-field"><span>车间</span><select id="ipd-ws"><option value="">全部</option></select></label>
         <label class="iprec-field"><span>工序</span><select id="ipd-proc"><option value="">全部</option></select></label>
+        <button type="button" class="recbtn" id="ipd-clear">清除筛选</button>
       </div>
       <div class="ipan-kpis" id="ipd-kpis"></div>
       <p class="iphint" id="ipd-scope"></p>
@@ -2703,6 +2706,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
           </select></label>
         <label class="lfield" style="flex:0 0 150px"><span>品号</span>
           <select id="ld-model"><option value="">全部品号</option></select></label>
+        <button type="button" class="recbtn" id="ld-clear">清除筛选</button>
         <button type="button" class="plx" id="ld-close" title="关闭">✕</button>
       </h2>
       <div class="lkpis" id="ld-kpis"></div>
@@ -4111,6 +4115,15 @@ async function fqcDashRender(){
 $("#fdashbtn").addEventListener("click",()=>{ fqcShow($("#fdash").hidden?"dash":"form"); });
 $("#fd-close").addEventListener("click",()=>fqcShow("form"));
 ["#fd-range","#fd-mattress"].forEach(id=>$(id).addEventListener("change",fqcDashRender));
+/* ── 数据分析的「清除筛选」：四个板块各一个 ──────────────────────────
+   口径跟记录表那几个一致 —— **回到打开这一屏时的默认状态，不是清空**。
+   区间清空了等于"全部"，几万条一次摊开，那不是用户点这个按钮想要的。
+   各板块的默认不一样，所以没法抽成一个公共函数：成品/实验室是「近 1 个月」
+   （下拉的 selected 项），来料/制程是「最近 30 天」的起止日期。 */
+$("#fd-clear").addEventListener("click",()=>{
+  $("#fd-range").value="1"; $("#fd-item").value=""; $("#fd-mattress").value="";
+  fqcDashRender();
+});
 /* 品名是输入框了：边打边筛。防抖 250ms，不然一千条记录每敲一下都要重算一遍。
    pmpick 是从建议里选中，那一下要立刻算。 */
 let fdItemTimer=null;
@@ -4806,6 +4819,14 @@ $("#idashbtn").addEventListener("click",()=>{ iqcShow($("#idash").hidden?"dash":
 $("#id-close").addEventListener("click",()=>iqcShow("entry"));
 ["#id-from","#id-to","#id-cat"].forEach(id=>$(id).addEventListener("change",idashRender));
 $("#id-supplier").addEventListener("input",idashRender);
+$("#id-clear").addEventListener("click",()=>{
+  $("#id-cat").value=""; $("#id-supplier").value="";
+  /* 先清空再调 —— iqcDashDefaultRange() 只在框是空的时候才补默认值，
+     不清空的话它什么都不做，日期就留在用户上次选的那段上了 */
+  $("#id-from").value=""; $("#id-to").value="";
+  iqcDashDefaultRange();
+  idashRender();
+});
 
 /* ── 产品基础资料（制程检验 / 装柜检验 / 成品检验 三个板块共用） ─────
    一份型号清单，三个地方用：制程检验的不良明细「型号」、装柜检验货物明细的
@@ -6164,6 +6185,13 @@ async function ipdashRender(){
 $("#pdashbtn").addEventListener("click",()=>ipqcShow($("#ipdash").hidden?"dash":"entry"));
 $("#ipd-close").addEventListener("click",()=>ipqcShow("entry"));
 ["#ipd-from","#ipd-to","#ipd-shift","#ipd-ws","#ipd-proc"].forEach(id=>$(id).addEventListener("change",ipdashRender));
+$("#ipd-clear").addEventListener("click",()=>{
+  $("#ipd-shift").value=""; $("#ipd-ws").value=""; $("#ipd-proc").value="";
+  /* force：用户手改过起止日期之后 RANGE_TOUCHED 会一直挡着自动回默认窗口，
+     点了这个按钮就该连那个标记一起复位 */
+  rollMonthRange("#ipd-from","#ipd-to", true);
+  ipdashRender();
+});
 
 
 /* ── 装柜检验：常量 ───────────────────────────────────────────────────
@@ -9315,6 +9343,10 @@ $("#ldashbtn").addEventListener("click",labToggle("dash",labOpenDash));
 $("#ld-close").addEventListener("click",()=>labShow("entry"));
 $("#ld-range").addEventListener("change",labRenderDash);
 $("#ld-model").addEventListener("change",labRenderDash);
+$("#ld-clear").addEventListener("click",()=>{
+  $("#ld-range").value="1"; $("#ld-model").value="";
+  labRenderDash();
+});
 
 /* ── 读 .xlsx ──────────────────────────────────────────────────────
    An xlsx is a zip of XML. The browser already has DecompressionStream for the
