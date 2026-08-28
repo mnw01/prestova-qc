@@ -9163,8 +9163,13 @@ function labStickyHead(){
   if(!r1) return;
   $("#lrec-table").style.setProperty("--lrec-h1", Math.round(r1.getBoundingClientRect().height)+"px");
 }
-/* 列宽会随窗口变，折行与否跟着变，所以窗口一改也要重量 */
-window.addEventListener("resize",()=>{ if(!$("#lrec").hidden) labStickyHead(); });
+/* 列宽会随窗口变，折行与否跟着变，所以窗口一改也要重量。
+   这里原来写的是 $("#lrec") —— **没有这个 id**（记录屏的容器叫 #lsheetv，
+   #lrec-* 是它里面那几个控件）。$() 返回 null，读 .hidden 直接 TypeError，
+   于是每次 resize 这个 handler 都抛异常，重量表头从来没执行过：手机转屏、
+   软键盘弹出之后，第二行表头就贴错位置。2026-08-28 由构建新加的
+   「加载期 id 存在性检查」扫出来。 */
+window.addEventListener("resize",()=>{ if(!$("#lsheetv").hidden) labStickyHead(); });
 
 /* ── 看板：汇总 ────────────────────────────────────────────────────
    Kept as a pure function of an array of records so it can be exercised without

@@ -1,7 +1,16 @@
 /* 把看板的纯计算部分从 index.html 里抠出来，用真实历史数据跑，
-   不需要浏览器也不需要 IndexedDB。 */
+   不需要浏览器也不需要 IndexedDB。
+
+   **进不了 CI**：它依赖 参考资料/实验室历史数据-2026.json，而那份数据被
+   .gitignore 排除了（311KB 的真实生产数据，不进仓库），CI 上根本没有。
+   所以这是本机手动跑的工具，不是流水线关卡。
+
+   用法：node 参考资料/dashtest.js [index.html 的路径]
+   不给路径就用主仓库那份；在 worktree 里改东西时把路径传进来，
+   不然你验的是主仓库那份旧产物。 */
 const fs = require('fs');
-const src = fs.readFileSync('H:/我的云端硬盘/开发/荣升检查报告/index.html', 'utf8');
+const HTML = process.argv[2] || 'H:/我的云端硬盘/开发/荣升检查报告/index.html';
+const src = fs.readFileSync(HTML, 'utf8');
 
 const grab = (re, name) => {
   const m = src.match(re);
@@ -13,9 +22,20 @@ const parts = [
   grab(/const LAB_ITEMS=\[[\s\S]*?\n\];/, 'LAB_ITEMS'),
   grab(/const LAB_POS=\[[^\]]*\];/, 'LAB_POS'),
   grab(/const FAT_H_MAX=[^\n]*/, 'FAT'),
-  grab(/const lnum = [^\n]*/, 'lnum'),
+  /* lnum 后来从一行的箭头函数改成了多行的（带 null 判断和逗号小数点），
+     原来那条 [^\n]* 只吃一行，切出来是不闭合的 `const lnum = v => {`，
+     整段 eval 直接 SyntaxError: Unexpected end of input。
+     这个脚本靠正则从 600KB 的产物里切代码块，源文件一改格式就会这样 ——
+     跑不起来的时候先看是不是又有哪一块切歪了。 */
+  grab(/const lnum = [\s\S]*?\n\};/, 'lnum'),
   grab(/const r2   = [^\n]*/, 'r2'),
   grab(/function labStdOf[\s\S]*?\n\}/, 'labStdOf'),
+  /* 疲劳那三个助手是 2026-08-04 之后加的（阈值改成可以按品号覆盖），
+     labJudgeSample 现在依赖它们，不抠进来就是 ReferenceError */
+  /* FAT_IFD_MAX 不用单独抠 —— 它跟 FAT_H_MAX 声明在同一行，上面那条已经带上了 */
+  grab(/function fatIfdPct[\s\S]*?\n\}/, 'fatIfdPct'),
+  grab(/function fatHMaxOf[^\n]*/, 'fatHMaxOf'),
+  grab(/function fatIfdMaxOf[^\n]*/, 'fatIfdMaxOf'),
   grab(/function labBounds[\s\S]*?\n\}/, 'labBounds'),
   grab(/function judgeVal[\s\S]*?\n\}/, 'judgeVal'),
   grab(/function labJudgeSample[\s\S]*?\n\}/, 'labJudgeSample'),

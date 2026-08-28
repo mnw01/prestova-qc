@@ -37,15 +37,44 @@ qc-worker/
 node check-isolation.js && node build-standalone.js
 ```
 
-`build-standalone.js` 会先跑隔离检查再写 `index.html`。**隔离检查不过不会产出文件**
-—— 每个板块的 CSS 必须限定在自己的根节点下（`#lab` / `#iqc` / `#ipqc` / `#oqc`），
-历史上出过「实验室写了一条裸的 `.off` 把首页布局搞塌」这种事。
+`build-standalone.js` 在写 `index.html` **之前**跑四道检查，任何一道不过都
+`process.exit(1)`、不产出文件 —— 别在磁盘上留一份坏产物等着被部署：
+
+| 检查 | 拦什么 |
+|---|---|
+| 板块隔离 | 每个板块的 CSS 必须限定在自己的根节点下（`#lab` / `#iqc` / `#ipqc` / `#oqc`）。出过「实验室写了一条裸的 `.off` 把首页布局搞塌」 |
+| 品牌串 | 页面里找不到 `Prestova Home Living Indonesia` |
+| JS 语法 | 整段脚本解析不过 = 白屏 |
+| id 引用 | 脚本里 `"#foo"` 而 HTML 里没有 `id="foo"`。`$()` 返回 null，后面 `.addEventListener` / `.hidden` 一律 TypeError |
+
+后两道是 2026-08-28 加的。**它们只验"这份产物还能不能跑起来"，不验行为** ——
+这个仓库里唯一的自动化测试是 `qc-worker/test.mjs`，它测 `worker.js`，从头到尾
+不加载这个页面。加它们的直接起因：删制程检验的检验员筛选时漏了 `iprecRows()`
+里一行 `if(insp) …iprecHas(…)`，两个标识符都已删掉，一进制程记录表就
+ReferenceError —— 语法合法，靠人肉全文搜才发现。id 那道当场还扫出一个存量
+bug：`$("#lrec")` 根本没这个 id，实验室记录表的 sticky 表头每次 resize 都在抛
+异常（正确的是 `#lsheetv`）。
 
 ### 服务端测试
 
 ```bash
 cd qc-worker && node test.mjs
 ```
+
+### 看板计算对拍（本机，进不了 CI）
+
+```bash
+node 参考资料/dashtest.js [index.html 的路径]
+```
+
+把实验室看板的纯计算部分从产物里抠出来，拿 2026 年真实历史数据（1226 批 /
+3650 支）跑一遍，输出月度合格率、不合格构成、按品号，并跟旧表的判定做对照。
+**进不了 CI**：它依赖 `参考资料/实验室历史数据-2026.json`，那份数据在
+`.gitignore` 里，CI 上没有。
+
+它靠正则从 600KB 的产物里切代码块，源文件一改格式就会切歪 —— 跑不起来先看
+是不是又有哪一块没切全。（2026-08-28 修过两处漂移：`lnum` 从一行改成了多行，
+`labJudgeSample` 新依赖了 `fatIfdPct` / `fatHMaxOf` / `fatIfdMaxOf`。）
 
 ### 端到端 harness
 
