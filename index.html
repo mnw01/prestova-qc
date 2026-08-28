@@ -966,6 +966,21 @@ table.frec-table tbody tr.cur:hover td,#iqc table.irec-table tbody tr.cur:hover 
 #ipqc table.iprec-table tbody tr.cur:hover td,#oqc table.orec-table tbody tr.cur:hover td{
   background:color-mix(in srgb,var(--accent) 24%,transparent);
 }
+/* ── 数据分析屏的标题「数据分析」：四个板块统一 15px ──────────────────
+   成品的是 15px（它这一屏复用了记录表的 .frec-head，记录表标题各板块都是
+   15px），来料 / 制程 / 实验室是 13px —— 并排看就是成品明显大一号。按成品统一。
+
+   **不能直接改 #iqc .iqcard > h2 / #ipqc .ipcard > h2 / #lab .lcard > h2**：
+   那三条同时管着各自**录入页**每张卡的标题（基本信息、检查项…）和分析屏里
+   「按类别」「按工序」这些区块小标题，动了就全跟着变大。所以只给这一个屏标题
+   挂一个 .dtitle，区块小标题仍旧 13px —— 跟成品的层级完全一致（屏标题 15、
+   区块 13）。
+   选择器用 #idash/#ipdash/#ldash 起头，特异性 (1,2,1) 压过模块自己那条
+   (1,1,1)，跟写在文件哪个位置无关。 */
+#idash .iqcard > h2.dtitle,
+#ipdash .ipcard > h2.dtitle,
+#ldash .lcard > h2.dtitle{font-size:15px}
+
 /* ── 筛选栏里的输入控件：全站一个规格 ─────────────────────────────────
    九条筛选栏（成品记录/分析、来料记录/分析、制程记录/分析、装柜记录、
    实验室记录/分析）原来各写各的。实测：七条是 13px / padding 5px 8px，实验室
@@ -2345,7 +2360,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
 <div id="idash" hidden>
   <div class="iqwrap">
     <section class="iqcard">
-      <h2>数据分析
+      <h2 class="dtitle">数据分析
         <button type="button" class="plx" id="id-close" title="关闭">✕</button>
       </h2>
       <div class="iqan-bar">
@@ -2448,7 +2463,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
 <div id="ipdash" hidden>
   <div class="ipwrap">
     <section class="ipcard">
-      <h2>数据分析
+      <h2 class="dtitle">数据分析
         <button type="button" class="plx" id="ipd-close" title="关闭">✕</button>
       </h2>
       <div class="iprec-bar">
@@ -2785,7 +2800,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
 <div id="ldash" hidden>
   <div class="lwrap">
     <section class="lcard">
-      <h2>数据分析
+      <h2 class="dtitle">数据分析
         <button type="button" class="plx" id="ld-close" title="关闭">✕</button>
       </h2>
       <!-- 筛选自己一行，不再塞进 h2 —— 跟来料 (.iqan-bar) / 制程 (.iprec-bar) /
