@@ -2351,7 +2351,6 @@ table.frec-table tbody tr.draft .frec-open:hover,
     <label class="iprec-field"><span>班次</span><select id="iprec-shift"><option value="">全部</option></select></label>
     <label class="iprec-field"><span>车间</span><select id="iprec-ws"><option value="">全部</option></select></label>
     <label class="iprec-field"><span>工序</span><select id="iprec-proc"><option value="">全部</option></select></label>
-    <label class="iprec-field"><span>检验员</span><input type="text" id="iprec-inspector" placeholder="全部"></label>
     <button type="button" class="recbtn" id="iprec-clear">清除筛选</button>
     <button type="button" class="recbtn" id="iprec-csv">导出明细</button>
   </div>
@@ -2678,6 +2677,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
           <input type="date" id="lrec-date"></label>
         <label class="lfield" style="flex:0 0 160px"><span>品号</span>
           <select id="lrec-model"><option value="">全部品号</option></select></label>
+        <button type="button" class="recbtn" id="lrec-clear">清除筛选</button>
         <button type="button" class="recbtn" id="lcsv">导出数据</button>
         <button type="button" class="recbtn" id="ld-import">导入数据</button>
       </div>
@@ -5948,13 +5948,11 @@ function ipqcFillFilters(){
 }
 
 /* ── 记录表 ─────────────────────────────────────────────────────────── */
-const iprecHas=(v,q)=>!q||String(v||"").toLowerCase().includes(q);
 async function iprecRows(){
   /* 区间跟数据分析一样是自选起止；两头都留空 = 全部 */
   const from=$("#iprec-from").value, to=$("#iprec-to").value;
   const shift=$("#iprec-shift").value;
   const ws=$("#iprec-ws").value, proc=$("#iprec-proc").value;
-  const insp=$("#iprec-inspector").value.trim().toLowerCase();
   let rows=[];
   try{ rows=(await metaAll()).filter(r=>r.type==="ipqc"); }catch(e){ return null; }
   if(from) rows=rows.filter(r=>toDateInput(r.date)>=from);
@@ -5962,7 +5960,6 @@ async function iprecRows(){
   if(shift) rows=rows.filter(r=>(r.shift||"")===shift);
   if(ws) rows=rows.filter(r=>(r.ws||"")===ws);
   if(proc) rows=rows.filter(r=>(r.proc||"")===proc);
-  if(insp) rows=rows.filter(r=>iprecHas(r.inspector,insp));
   recSort(rows, r=>r.date);
   return rows;
 }
@@ -5991,11 +5988,9 @@ async function iprecRender(){
 }
 $("#precbtn").addEventListener("click",()=>ipqcShow($("#iprec").hidden?"rec":"entry"));
 $("#iprec-close").addEventListener("click",()=>ipqcShow("entry"));
-$("#iprec-inspector").addEventListener("input",iprecRender);
 ["#iprec-from","#iprec-to"].forEach(id=>$(id).addEventListener("change",()=>{ RANGE_TOUCHED[id]=true; iprecRender(); }));
 ["#iprec-shift","#iprec-ws","#iprec-proc"].forEach(id=>$(id).addEventListener("change",iprecRender));
 $("#iprec-clear").addEventListener("click",()=>{
-  $("#iprec-inspector").value="";
   $("#iprec-shift").value="";
   $("#iprec-ws").value=""; $("#iprec-proc").value="";
   rollMonthRange("#iprec-from","#iprec-to", true);   /* 回到默认窗口，不是清空 */
@@ -6050,8 +6045,7 @@ $("#iprec-csv").addEventListener("click",async()=>{
   const from=$("#iprec-from").value, to=$("#iprec-to").value;
   const tag=[(from||to) ? (from||"最早")+"至"+(to||"最新") : "",
              $("#iprec-shift").value,
-             $("#iprec-ws").value, $("#iprec-proc").value,
-             $("#iprec-inspector").value.trim()].filter(Boolean).join("-") || "全部";
+             $("#iprec-ws").value, $("#iprec-proc").value].filter(Boolean).join("-") || "全部";
   const a=el("a");
   a.href=URL.createObjectURL(new Blob([text],{type:"text/csv;charset=utf-8"}));
   a.download="制程检验明细-"+tag+".csv";
@@ -9090,6 +9084,15 @@ $("#lsheetbtn").addEventListener("click",labToggle("sheet",labOpenSheet));
 $("#lrec-close").addEventListener("click",()=>labShow("entry"));
 ["lrec-range","lrec-model"].forEach(id=>$("#"+id).addEventListener("change",labRenderRec));
 $("#lrec-date").addEventListener("change",()=>{ RANGE_TOUCHED["#lrec-date"]=true; labRenderRec(); });
+/* 清除筛选：回到打开记录表时的默认窗口（当月 + 今天 + 全部品号），不是清空 ——
+   跟另外四张记录表一个口径。rangeToday 的第二个参数是 force：用户手改过日期
+   之后 RANGE_TOUCHED 会一直挡着自动回今天，点了这个按钮就该连那个也一起复位。 */
+$("#lrec-clear").addEventListener("click",()=>{
+  $("#lrec-model").value="";
+  $("#lrec-range").value="month";
+  rangeToday("#lrec-date", true);
+  labRenderRec();
+});
 /* 查看：载入这一批 → 回录入页。跟成品检验/来料检验记录表的「查看」保持一致，
    点进去看到的是这一批的录入内容，不再直接跳到打印报告表单——要出报告在录入页
    底下还有「出检验报告」按钮，那才是出报告的入口。 */
