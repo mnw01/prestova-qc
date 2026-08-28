@@ -900,7 +900,10 @@ table.frec-table th{font-size:11px;color:var(--ink-3);letter-spacing:.03em;font-
 table.frec-table tr:hover td{background:color-mix(in srgb,var(--accent) 15%,transparent)}
 /* 数据分析里那两张排行表的数字列右对齐 + 等宽数字，跟制程看板的表一个样子 */
 table.frec-table th.num,table.frec-table td.num{text-align:right;font-variant-numeric:tabular-nums}
-table.frec-table td.warn{color:var(--fail);font-weight:600}
+/* 用 --no 不用 --fail：--fail 只声明在 :root 那套"纸"的配色里、深色下**不翻面**
+   （一直是 #b32d23 深红），铺在深色卡片 #1c2027 上对比度只有 2.4:1。--no 在屏幕
+   配色块里，深色下是 #e88b81。制程/来料的同名规则用的就是 --no，这里原来写错了。 */
+table.frec-table td.warn{color:var(--no);font-weight:600}
 .frec-badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px}
 .frec-badge.ok{background:var(--okbg,#e7f5ec);color:var(--pass)}
 .frec-badge.no{background:var(--nobg,#fdecea);color:var(--fail)}
