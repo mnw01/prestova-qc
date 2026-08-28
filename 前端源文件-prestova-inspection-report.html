@@ -1006,6 +1006,12 @@ table.frec-table tbody tr.draft .frec-open:hover,
 .fd-kpi .t{font-size:11.5px;color:var(--ink-3);margin-top:2px;letter-spacing:.02em}
 .fd-kpi.bad .n{color:var(--fail)}
 .fd-kpi.good .n{color:var(--pass)}
+/* 数据分析里的小标题。原来是 11px 的 --ink-3，比正文还小、还灰，压根不像标题。
+   规格照抄别的板块的区块标题（#iqc .iqcard > h2 / #ipqc .ipcard > h2）：
+   13px / 700 / --ink-2；后面那行小字照抄 .iphint：11.5px / 400 / --ink-3。
+   成品这一屏是**一张卡里分区**（别的板块是一区一张卡），所以自己带上边距。 */
+.fd-sec{font-size:13px;letter-spacing:.02em;color:var(--ink-2);font-weight:700;margin:20px 0 10px}
+.fd-sec .note{font-size:11.5px;color:var(--ink-3);font-weight:400;margin-left:8px;letter-spacing:0}
 .fd-bars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
 .fd-bar{display:grid;grid-template-columns:64px 1fr 140px;gap:10px;align-items:center;font-size:12.5px}
 .fd-bar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
@@ -1626,6 +1632,12 @@ table.frec-table tbody tr.draft .frec-open:hover,
    long the rest of the h2's buttons run — a "收起" text button at the end of
    a wrapping flex row reads as just another action; a ✕ in the corner reads
    as "close this", which is what it does */
+/* 数据分析那一屏的筛选控件是塞在 h2 里的（别的板块都有独立的筛选栏），而 h2 是
+   align-items:center —— 按钮就跟着 label+select 那一摞的**中线**对齐，看着不上
+   不下。全站其它筛选栏（.frec-bar / .irec-bar / .iqan-bar / .iprec-bar /
+   .lrecbar）一律 align-items:flex-end，这里把按钮单独拉到底边，跟它们一致。
+   只动按钮不动整个 h2：h2 里还有"数据分析"那几个字，整体压到底反而怪。 */
+#lab .lcard > h2 button.recbtn{align-self:flex-end}
 #lab .lcard > h2 button.plx{
   position:absolute;top:10px;right:10px;margin:0;
   border:0;background:transparent;padding:3px 7px;font-size:15px;font-weight:400}
@@ -2145,11 +2157,11 @@ table.frec-table tbody tr.draft .frec-open:hover,
   </div>
   <div class="fd-kpis" id="fd-kpis"></div>
   <p class="frec-empty" id="fd-scope" style="text-align:left;padding:8px 2px"></p>
-  <p style="font-size:11px;color:var(--ink-3);letter-spacing:.03em;margin:14px 0 4px">月度不良率</p>
+  <h2 class="fd-sec">月度合格率</h2>
   <div class="fd-bars" id="fd-months"></div>
-  <p style="font-size:11px;color:var(--ink-3);letter-spacing:.03em;margin:18px 0 4px">按床垫类型</p>
-  <div style="overflow-x:auto"><table class="frec-table" id="fd-mattresses"></table></div>
-  <p style="font-size:11px;color:var(--ink-3);letter-spacing:.03em;margin:18px 0 4px">按品名　不良最多的前 15 个</p>
+  <h2 class="fd-sec">按床垫类型</h2>
+  <div class="fd-bars" id="fd-mattresses"></div>
+  <h2 class="fd-sec">按品名 <span class="note">不良最多的前 15 个</span></h2>
   <div style="overflow-x:auto"><table class="frec-table" id="fd-descs"></table></div>
 </section>
 </div>
@@ -4141,24 +4153,35 @@ async function fqcDashRender(){
       '<span class="track" style="width:'+w.toFixed(1)+'%">'+
         '<i class="ok" style="width:'+pct(okN,j||1)+'%"></i>'+
         '<i class="no" style="flex:1"></i></span>'+
-      '<span class="num">'+m.bad+' / '+j+'　'+(j?pct(m.bad,j)+"%":"—")+'</span></div>';
+      '<span class="num">'+okN+' / '+j+'　'+(j?pct(okN,j)+"%":"—")+'</span></div>';
   }).join("")||'<div class="frec-empty">没有数据。</div>';
 
-  /* 两张排行表共用一个渲染 —— 列一样，只有第一列的表头不同。
-     不良率超过 5% 标红，跟制程记录表那条阈值对齐。 */
-  const rankTable=(rows,head)=> !rows.length
+  /* 按床垫类型用条形图而不是表格：只有两三个值，柱子比一张三行的表好读，
+     而且跟上面的月度用同一套视觉（绿=合格 红=不合格，右边是数字）。
+     柱子的**总长**按检查数量占最大那一类的比例，绿红是这一类内部的构成 ——
+     跟月度那张的读法完全一致，不用换脑子。 */
+  const maxM=Math.max(1,...a.byMattress.map(x=>x.n));
+  $("#fd-mattresses").innerHTML=a.byMattress.map(x=>{
+    const j=x.n, okN=j-x.bad, w=j/maxM*100;
+    return '<div class="fd-bar"><span class="lab">'+esc(tr(x.k))+'</span>'+
+      '<span class="track" style="width:'+w.toFixed(1)+'%">'+
+        '<i class="ok" style="width:'+pct(okN,j||1)+'%"></i>'+
+        '<i class="no" style="flex:1"></i></span>'+
+      '<span class="num">'+okN+' / '+j+'　'+(j?pct(okN,j)+"%":"—")+'</span></div>';
+  }).join("")||'<div class="frec-empty">没有数据。</div>';
+
+  /* 品名可能上百个，条形图铺不下，仍旧用表 */
+  $("#fd-descs").innerHTML = !a.byDesc.length
     ? '<tbody><tr><td class="frec-empty" colspan="4">没有数据。</td></tr></tbody>'
-    : '<thead><tr><th>'+esc(head)+'</th><th class="num">检查数量</th>'+
+    : '<thead><tr><th>品名</th><th class="num">检查数量</th>'+
       '<th class="num">不合格</th><th class="num">不良率</th></tr></thead><tbody>'+
-      rows.map(x=>{
+      a.byDesc.map(x=>{
         const rate=x.n?pct(x.bad,x.n):null;
-        return '<tr><td>'+esc(tr(x.k))+'</td>'+
+        return '<tr><td>'+esc(x.k)+'</td>'+
           '<td class="num">'+x.n+'</td>'+
           '<td class="num">'+x.bad+'</td>'+
           '<td class="num'+(rate!=null&&rate>5?" warn":"")+'">'+(rate!=null?rate+"%":"—")+'</td></tr>';
       }).join('')+'</tbody>';
-  $("#fd-mattresses").innerHTML=rankTable(a.byMattress,"床垫类型");
-  $("#fd-descs").innerHTML=rankTable(a.byDesc,"品名");
 }
 $("#fdashbtn").addEventListener("click",()=>{ fqcShow($("#fdash").hidden?"dash":"form"); });
 $("#fd-close").addEventListener("click",()=>fqcShow("form"));
@@ -8241,6 +8264,7 @@ const I18N_ID={
   "不良描述排行": "Peringkat Remarks NG",
   "不良数量": "Jumlah NG",
   "不良明细": "Detail NG",
+  "不良最多的前 15 个": "15 teratas dengan NG terbanyak",
   "不良最多的前 15 个型号": "15 model dengan NG terbanyak",
   "不良率": "Persen NG",
   "中": "Tengah",
@@ -8427,9 +8451,11 @@ const I18N_ID={
   "拉链是否顺滑？": "Apakah resleting lancar?",
   "拒绝": "Tolak",
   "按供应商": "Per Supplier",
+  "按品名": "Per Nama Barang",
   "按品号": "Per Kode Barang",
   "按型号": "Per Model",
   "按工序": "Per Section",
+  "按床垫类型": "Per Jenis Kasur",
   "按支计 · 绿=合格 红=不合格": "Per sampel · hijau = OK, merah = NG",
   "按检查项每一行算，同一批可能同时几项都超": "Dihitung per baris item; satu batch bisa NG di beberapa item sekaligus",
   "按类别": "Per Kategori",
