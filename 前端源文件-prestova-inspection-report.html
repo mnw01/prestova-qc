@@ -941,6 +941,40 @@ table.frec-table tbody tr.cur:hover td,#iqc table.irec-table tbody tr.cur:hover 
 #ipqc table.iprec-table tbody tr.cur:hover td,#oqc table.orec-table tbody tr.cur:hover td{
   background:color-mix(in srgb,var(--accent) 24%,transparent);
 }
+/* ── 筛选栏里的输入控件：全站一个规格 ─────────────────────────────────
+   九条筛选栏（成品记录/分析、来料记录/分析、制程记录/分析、装柜记录、
+   实验室记录/分析）原来各写各的。实测：七条是 13px / padding 5px 8px，实验室
+   那两条是 14px / 7px 9px —— 因为 .lfield 是跟**录入页**共用的，录入页的格子
+   本来就该大一点，筛选栏跟着一起大了。标签那一行 <span> 九处倒是早就统一
+   （11px / --ink-3），不用动。
+
+   **光把字号和 padding 对齐还不够。** 同样的字号和 padding，<select> 和
+   <input type="date"> 在 Chrome 里算出来的高度也不一样 —— 日期框内部那个原生
+   日历按钮自带一套盒模型，把行盒撑高。并排放就是一高一低（用户 2026-08-28
+   截图报的就是这个）。所以这里**显式钉死高度**，纵向 padding 归零交给高度去
+   管，text / date / select 三种才会严丝合缝。box-sizing:border-box 是全局的，
+   32px 就是含边框的最终高度。
+
+   选择器带上各自的 **bar**（而不是只写字段类）有两个用处：
+   1. 特异性高过各模块自己那条，放在文件哪儿都赢，不用操心先后顺序；
+   2. 把实验室的**录入页**挡在外面 —— #lab .lfield 全文 26 处，录入页那些不能
+      跟着缩，只有 .lrecbar 里的两条筛选栏该统一。 */
+.frec-bar .frec-field :is(input,select),
+#iqc :is(.irec-bar .irec-field,.iqan-bar .iqan-field) :is(input,select),
+#ipqc .iprec-bar .iprec-field :is(input,select),
+#oqc .orec-bar .orec-field :is(input,select),
+#lab .lrecbar .lfield :is(input,select){
+  font-size:13px;height:32px;padding:0 8px;line-height:1.25;
+}
+/* 同一行上的按钮（清除筛选 / 导出明细 / 导出数据 / 导入数据）也钉到 32px ——
+   .recbtn 原来靠 padding 撑高，算出来约 29.6px，跟旁边的框差两三个像素，
+   flex-end 底对齐之后顶上就参差不齐。只给高度不动 padding：按钮是内容居中的，
+   宽度也就不会变。 */
+.frec-bar > .recbtn,
+#iqc :is(.irec-bar,.iqan-bar) > .recbtn,
+#ipqc .iprec-bar > .recbtn,
+#oqc .orec-bar > .recbtn,
+#lab .lrecbar > .recbtn{height:32px}
 .frec-open{font:inherit;font-size:12.5px;padding:4px 10px;border-radius:4px;
   border:1px solid var(--field-line);background:var(--field);color:var(--accent);cursor:pointer}
 /* ── 记录表「查看」的 hover：五个板块统一 ─────────────────────────────
