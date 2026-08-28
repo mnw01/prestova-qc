@@ -1091,6 +1091,11 @@ table.frec-table tbody tr.draft .frec-open:hover,
 .frec-card > h2{font-size:13px;letter-spacing:.02em;color:var(--ink-2);font-weight:700;
   margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .frec-card > h2 .note{font-size:11.5px;color:var(--ink-3);font-weight:400;letter-spacing:0}
+/* 「区间内 N 份，实际数据在 …」这行小字。原来借用的是 .frec-empty（那是表格
+   空状态用的：居中、没设字号，于是继承正文的 14~15px），比别的板块大一圈，还
+   得靠 inline style 把居中掰回左对齐。规格照抄 #lab .lnote / #ipqc .iphint /
+   #iqc .iqhint —— 那三处早就统一在 11.5px / --ink-3 / 400。 */
+.fd-note{font-size:11.5px;color:var(--ink-3);font-weight:400;line-height:1.5;margin-top:8px}
 .fd-bars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
 .fd-bar{display:grid;grid-template-columns:64px 1fr 140px;gap:10px;align-items:center;font-size:12.5px}
 .fd-bar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
@@ -2229,7 +2234,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
     <button type="button" class="recbtn" id="fd-clear">清除筛选</button>
   </div>
   <div class="fd-kpis" id="fd-kpis"></div>
-  <p class="frec-empty" id="fd-scope" style="text-align:left;padding:8px 2px"></p>
+  <p class="fd-note" id="fd-scope"></p>
 </section>
 
 <section class="frec-card">
