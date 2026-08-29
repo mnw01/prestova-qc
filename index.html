@@ -4098,19 +4098,45 @@ function lockGate(rootSel, isLocked){
    用的还是渲染时那个 .cur：表格重画时它落在"当前载入的那条"上，
    手点会把它临时挪走（下次重画又回到当前记录，这是有意的，不另存状态）。
    实验室一批三行，按 data-row 把同一批的都标上。 */
-function wireRowMark(sel){
+function wireRowMark(sel, loadRec){
   const tbl=$(sel); if(!tbl) return;
-  tbl.addEventListener("click",e=>{
+  let want=null, busy=false;
+  tbl.addEventListener("click",async e=>{
     /* 「查看」和任何表单控件自己有事做，不抢 */
     if(e.target.closest("button,a,input,select,textarea,label")) return;
     const tr=e.target.closest("tbody tr"); if(!tr) return;
     const id=tr.dataset.row||"";
+    /* 高亮先挪过去 —— 同步的，点下去立刻有反应，不等载入 */
     tbl.querySelectorAll("tbody tr.cur").forEach(x=>x.classList.remove("cur"));
     if(id) tbl.querySelectorAll("tbody tr").forEach(x=>{ if(x.dataset.row===id) x.classList.add("cur"); });
     else tr.classList.add("cur");
+    if(!id || !loadRec) return;
+    /* 连着点两行时，慢的那次可能后返回，把「当前记录」落在上一行上、跟高亮
+       对不上 —— 而工具栏那个标签和「删除」都认当前记录，对不上就是删错批次。
+       所以不并发：一次只跑一个，跑完再追最新点的那条，直到追上为止。 */
+    want=id;
+    if(busy) return;
+    busy=true;
+    try{ let done=null; while(want!==done){ const t=want; await loadRec(t); done=t; } }
+    catch(err){ /* 载入失败就保持原样，高亮已经挪了，用户再点一次即可 */ }
+    finally{ busy=false; }
   });
 }
-["#frec-table","#irec-table","#iprec-table","#orec-table","#lrec-table"].forEach(wireRowMark);
+/* 点一行 = 把它变成「当前这一批」：高亮挪过去，记录也真的载入，于是工具栏上那个
+   标签、「删除」、录入页看到的，全都是这一行。**不切屏** —— 你是在列表里挑，
+   被弹到录入页就没法接着往下看了；要进录入页仍旧点「查看」。
+
+   原来这里只挪高亮、不载入，是当"看到哪了"的书签用。但那样工具栏标签指着 A、
+   高亮停在 B，而「删除」删的是 A —— 标签就在删除键旁边，误删只差一下。
+   用户 2026-08-29 要求两者同步，顺带把这个隐患一起消掉。
+
+   载入函数包一层箭头而不是直接传引用：这行在它们定义之前执行，包起来就等到
+   点击那一刻再取，不用管声明顺序。 */
+wireRowMark("#frec-table",  id=>load(id));
+wireRowMark("#irec-table",  id=>iqcLoad(id));
+wireRowMark("#iprec-table", id=>ipqcLoad(id));
+wireRowMark("#orec-table",  id=>oqcLoad(id));
+wireRowMark("#lrec-table",  id=>labLoad(id));
 
 /* 鼠标划过时整批一起亮。只有实验室要走 JS：**它一批三行**，纯 CSS 的
    `tr:hover` 只会亮鼠标底下那一条，三行里亮中间一条看着像错位。
