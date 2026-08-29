@@ -875,6 +875,18 @@ table.frec-table th{font-size:11px;color:var(--ink-3);letter-spacing:.03em;font-
 table.frec-table tr:hover td{background:color-mix(in srgb,var(--accent) 15%,transparent)}
 /* 数据分析里那两张排行表的数字列右对齐 + 等宽数字，跟制程看板的表一个样子 */
 table.frec-table th.num,table.frec-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+/* ── 记录表最左边的序号列 ─────────────────────────────────────────────
+   实验室那张表本来就有，另外四个没有，报位置时只能数行。加上之后五个板块一致。
+   灰一档 + 等宽数字 + width:1% 把列收到内容宽 —— 它是给人指位置用的（"第 12 条"），
+   不是数据，别跟正文抢注意力，更不能吃掉真数据的横向空间。
+   序号是**当前这一屏显示顺序**的 1..N，不是记录 id：表是按日期倒序的，而且
+   范围筛选/rangeCap 会截断，写死的编号在这里没有意义。 */
+table.frec-table :is(th,td).seq,
+#iqc table.irec-table :is(th,td).seq,
+#ipqc table.iprec-table :is(th,td).seq,
+#oqc table.orec-table :is(th,td).seq{
+  color:var(--ink-3);font-variant-numeric:tabular-nums;width:1%;text-align:right;
+}
 /* 用 --no 不用 --fail：--fail 只声明在 :root 那套"纸"的配色里、深色下**不翻面**
    （一直是 #b32d23 深红），铺在深色卡片 #1c2027 上对比度只有 2.4:1。--no 在屏幕
    配色块里，深色下是 #e88b81。制程/来料的同名规则用的就是 --no，这里原来写错了。 */
@@ -1794,7 +1806,12 @@ table.frec-table tbody tr.draft .frec-open:hover,
    three rows to a batch, standard and reading side by side. The last cell spans
    the batch's three rows and issues its report. */
 #lab .lrecbar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px}
-#lab .lrecwrap{overflow:auto;max-height:var(--recmaxh);min-height:300px}
+/* 加外框跟另外四个板块的记录表滚动框一致（.frec-wrap / .irec-wrap /
+   .iprec-wrap / .orec-wrap 都是 1px --hairline）。这张表的单元格自带全格线，
+   本来就有一圈边，但那圈边是**跟着内容横向滚走**的 —— 表 min-width 1000px，
+   滚起来左右两边就没有框了。画在滚动容器上的这一道是钉住的。 */
+#lab .lrecwrap{overflow:auto;max-height:var(--recmaxh);min-height:300px;
+  border:1px solid var(--hairline)}
 #lab table.lrec{border-collapse:collapse;font-size:12px;min-width:1000px;width:100%}
 #lab table.lrec th,#lab table.lrec td{border:1px solid var(--hairline);padding:4px 6px;
   text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -1822,6 +1839,16 @@ table.frec-table tbody tr.draft .frec-open:hover,
   color:var(--ink-2);vertical-align:middle}
 #lab .lrecbtn{font:inherit;font-size:11.5px;padding:5px 9px;border:1px solid var(--accent);
   border-radius:4px;background:var(--paper);color:var(--accent);cursor:pointer;white-space:nowrap}
+/* 记录表里的「查看」按钮跟另外四个板块统一：12.5px / padding 4px 10px /
+   --field-line 描边 / --field 底（.frec-open 及其三个同族的规格）。原来是
+   11.5px / 5px 9px / --accent 描边，同一个按钮五个板块两套长相。
+   限定在 table.lrec 里 —— .lrecbtn 同时是录入页那个「出检验报告」(#lprt)，
+   那是另一个位置的主操作按钮，不该跟着变。
+   用 --field 而不是 --paper，深色下就不用再补一条覆盖（--paper 是"纸"，深色下
+   仍是浅色）。已提交那行的实心蓝规则特异性更高，不受影响。 */
+#lab table.lrec .lrecbtn{
+  font-size:12.5px;padding:4px 10px;border-color:var(--field-line);background:var(--field);
+}
 /* ── 实验室的高亮条：画在 td 的 background-**image** 上 ────────────────
    另外四张表的高亮画在 tr 上就行，这张不行 —— 它的单元格自己带底色（超差红底
    td.over、操作列 td.act）。底色在 td、高亮在 tr，td 就把 tr 盖住了：三行的
@@ -1857,7 +1884,9 @@ table.frec-table tbody tr.draft .frec-open:hover,
 #lab .ldrow{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 #lab .lkpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:4px}
 #lab .lkpi{background:var(--accent-soft);border-radius:6px;padding:11px 13px}
-#lab .lkpi .n{font-size:23px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+/* 22px：另外三个板块的 KPI 数字都是 22（.fd-kpi .n / .iqan-kpi .n / .ipan-kpi .n），
+   这里原来是 23，四张看板并排看差一档 */
+#lab .lkpi .n{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
 #lab .lkpi .t{font-size:11.5px;color:var(--ink-3);margin-top:2px;letter-spacing:.02em}
 #lab .lkpi.bad .n{color:var(--no)}
 #lab .lkpi.good .n{color:var(--ok)}
@@ -4104,14 +4133,16 @@ async function frecRender(){
   rows = rangeCap(rows);
   rangeNote("#frec-scope","#frec-range","#frec-date",rows.length,total);
   $("#frec-table").innerHTML = !rows.length
-    ? '<tbody><tr><td class="frec-empty" colspan="8">没有记录。</td></tr></tbody>'
-    : '<thead><tr><th>项目编号</th><th>品名</th><th>床垫类型</th><th>PO</th><th>检查日期</th><th>检验员</th><th>判定</th><th>操作</th></tr></thead>'+
-      '<tbody>'+rows.map(r=>{
+    ? '<tbody><tr><td class="frec-empty" colspan="9">没有记录。</td></tr></tbody>'
+    : '<thead><tr><th class="seq">序号</th><th>项目编号</th><th>品名</th><th>床垫类型</th><th>PO</th><th>检查日期</th><th>检验员</th><th>判定</th><th>操作</th></tr></thead>'+
+      '<tbody>'+rows.map((r,i)=>{
         const bad = r.verdict==="reject";
         /* 未提交的是草稿，压暗；已提交的正常。r.locked 来自轻量索引，
            不用为了上个色去读全量记录。 */
         const cls=(R&&r.id===R.id?"cur ":"")+(r.locked?"":"draft");
-        return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+'><td>'+esc(r.itemNo||"（未填）")+'</td>'+
+        return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+
+          '><td class="seq">'+(i+1)+'</td>'+
+          '<td>'+esc(r.itemNo||"（未填）")+'</td>'+
           '<td>'+esc(r.desc||"—")+'</td>'+
           '<td>'+esc(r.mattress||"—")+'</td>'+
           '<td>'+esc(r.po||"—")+'</td>'+
@@ -4810,13 +4841,15 @@ async function irecRender(){
   rows = rangeCap(rows);
   rangeNote("#irec-scope","#irec-range","#irec-date",rows.length,total);
   $("#irec-table").innerHTML = !rows.length
-    ? '<tbody><tr><td class="irec-empty" colspan="7">没有记录。</td></tr></tbody>'
-    : '<thead><tr><th>品号</th><th>类别</th><th>供应商</th><th>进料日期</th><th>检验员</th><th>判定</th><th>操作</th></tr></thead>'+
-      '<tbody>'+rows.map(r=>{
+    ? '<tbody><tr><td class="irec-empty" colspan="8">没有记录。</td></tr></tbody>'
+    : '<thead><tr><th class="seq">序号</th><th>品号</th><th>类别</th><th>供应商</th><th>进料日期</th><th>检验员</th><th>判定</th><th>操作</th></tr></thead>'+
+      '<tbody>'+rows.map((r,i)=>{
         const bad=r.verdict==="reject", pend=!r.verdict;
         /* 未提交的是草稿，压暗；已提交的正常。r.locked 来自轻量索引 */
         const cls=(IR&&r.id===IR.id?"cur ":"")+(r.locked?"":"draft");
-        return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+'><td>'+esc(r.itemNo||"（未填）")+'</td>'+
+        return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+
+          '><td class="seq">'+(i+1)+'</td>'+
+          '<td>'+esc(r.itemNo||"（未填）")+'</td>'+
           '<td>'+esc(r.cat||"—")+'</td>'+
           '<td>'+esc(r.po||"—")+'</td>'+
           '<td>'+esc(r.date||"—")+'</td>'+
@@ -6137,12 +6170,14 @@ async function iprecRender(){
   if(note) note.textContent=$("#iprec-from").value+" ~ "+$("#iprec-to").value+
     " · "+rows.length+" "+tr("条")+(total>rows.length?"（"+tr("共")+" "+total+" "+tr("条")+"）":"");
   $("#iprec-table").innerHTML = !rows.length
-    ? '<tbody><tr><td class="iprec-empty" colspan="9">没有记录。</td></tr></tbody>'
-    : '<thead><tr><th>日期</th><th>班次</th><th>车间</th><th>工序</th><th class="num">检查数量</th><th class="num">不良数量</th><th class="num">不良率</th><th>检验员</th><th>操作</th></tr></thead>'+
-      '<tbody>'+rows.map(r=>{
+    ? '<tbody><tr><td class="iprec-empty" colspan="10">没有记录。</td></tr></tbody>'
+    : '<thead><tr><th class="seq">序号</th><th>日期</th><th>班次</th><th>车间</th><th>工序</th><th class="num">检查数量</th><th class="num">不良数量</th><th class="num">不良率</th><th>检验员</th><th>操作</th></tr></thead>'+
+      '<tbody>'+rows.map((r,i)=>{
         const q=lnum(r.qty)||0, b=lnum(r.bad)||0, rate=q?pct(b,q):null;
         const cls=(PR&&r.id===PR.id?"cur ":"")+(r.locked?"":"draft");
-        return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+'><td>'+esc(r.date||"—")+'</td>'+
+        return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+
+          '><td class="seq">'+(i+1)+'</td>'+
+          '<td>'+esc(r.date||"—")+'</td>'+
           '<td>'+esc(r.shift?tShift(r.shift):"—")+'</td>'+
           '<td>'+esc(r.ws?tr(r.ws):"—")+'</td><td>'+esc(r.proc?tProc(r.ws,r.proc):"—")+'</td>'+
           '<td class="num">'+(q?ipn(q):"—")+'</td>'+
@@ -6888,12 +6923,14 @@ async function orecRender(){
   rows = rangeCap(rows);
   rangeNote("#orec-scope","#orec-range","#orec-date",rows.length,total);
   $("#orec-table").innerHTML = !rows.length
-    ? '<tbody><tr><td class="orec-empty" colspan="7">没有记录。</td></tr></tbody>'
-    : '<thead><tr><th>PO/DI</th><th>柜号</th><th>封条号</th><th>装柜日期</th><th>检验员</th><th>判定</th><th>操作</th></tr></thead>'+
-      '<tbody>'+rows.map(r=>{
+    ? '<tbody><tr><td class="orec-empty" colspan="8">没有记录。</td></tr></tbody>'
+    : '<thead><tr><th class="seq">序号</th><th>PO/DI</th><th>柜号</th><th>封条号</th><th>装柜日期</th><th>检验员</th><th>判定</th><th>操作</th></tr></thead>'+
+      '<tbody>'+rows.map((r,i)=>{
         const bad=r.verdict==="reject", pend=!r.verdict;
         const cls=(OR&&r.id===OR.id?"cur ":"")+(r.locked?"":"draft");
-        return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+'><td>'+esc(r.podi||"—")+'</td>'+
+        return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+
+          '><td class="seq">'+(i+1)+'</td>'+
+          '<td>'+esc(r.podi||"—")+'</td>'+
           '<td>'+esc(r.container||"（未填）")+'</td>'+
           '<td>'+esc(r.seal||"—")+'</td>'+
           '<td>'+esc(r.date||"—")+'</td>'+
