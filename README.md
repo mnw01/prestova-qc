@@ -1,176 +1,319 @@
 # 印尼荣升 · 在线质检报告系统
 
-PT. Prestova Home Living Indonesia 的现场质检系统。**一个 HTML 文件 + 一个
-Cloudflare Worker**，离线优先，QC 用手机在车间录入，断网照常干活，有网自动同步。
+PT. Prestova Home Living Indonesia 的现场质检系统。QC 用手机在车间录入，
+**断网照常干活，有网自动同步**；管理端出 A4 检验报告。
 
-线上：`https://qc.prestova.workers.dev`
+线上 `https://qc.prestova.workers.dev`（口令进入，见 [角色与口令](#角色与口令)）
 
-## 五个板块
+技术上就两样东西：**一个 HTML 文件**（前端全部，600 KB，无框架无依赖）+
+**一个 Cloudflare Worker**（认证 / 同步 API / 照片直传 R2）。
 
-| 板块 | 干什么 |
-|---|---|
-| 实验室 `lab` | 海绵物性测试，每批上/中/下三支，出 A4 检验报告 |
-| 来料检验 `iqc` | 面布、海绵、弹簧等来料到货抽检，8 个检查项 |
-| 制程检验 `ipqc` | 各车间工序不良记录，现场录入 |
-| 成品检验 `fqc` | 每柜成品抽检，出 A4 两页报告（含 12~15 张照片） |
-| 装柜检验 `oqc` | 装柜过程检查 + 货物明细核对 |
+---
 
 ## 目录
 
-```
-前端源文件-prestova-inspection-report.html   ← 唯一的源文件，改这个
-index.html                                   ← 构建产物，部署的就是它
-build-standalone.js                          ← 构建：套 <head> 外壳 + 校验
-check-isolation.js                           ← 板块隔离检查，不过就中断构建
-qc-worker/
-  src/worker.js       后端（认证、同步 API、照片直传 R2）
-  migrations/         D1 表结构，唯一真相源（wrangler d1 migrations）
-  load-schema.mjs     拼接 migrations/，供测试库和本地后端建表
-  test.mjs            服务端单元测试（真实 worker + 内存 SQLite）
-  wrangler.toml       Worker 配置
-参考资料/            开发期的工具脚本（构建 demo、跑 harness、扫配色、灌词典）
-```
+- [快速开始](#快速开始) · [五个板块](#五个板块) · [仓库结构](#仓库结构)
+- [构建](#构建) · [测试](#测试) · [部署](#部署)
+- [数据库与迁移](#数据库与迁移) · [角色与口令](#角色与口令)
+- [设计要点](#设计要点) · [线上现状与成本](#线上现状与成本) · [踩过的坑](#踩过的坑)
 
-## 开发
+---
+
+## 快速开始
+
+**前置**：Node **≥ 22.5**（`test.mjs` 用 `node:sqlite`，22.5 以下跑不起来；
+开发机上是 24）。除此之外**不需要 `npm install`** —— 构建脚本和测试只用 Node
+内置模块，`devDependencies` 里那个 wrangler 只有部署和迁移才用得上。
 
 ```bash
-node check-isolation.js && node build-standalone.js
+node build-standalone.js        # 改完前端：构建（含四道检查）
+node qc-worker/test.mjs         # 服务端 84 项测试
 ```
 
-`build-standalone.js` 在写 `index.html` **之前**跑四道检查，任何一道不过都
-`process.exit(1)`、不产出文件 —— 别在磁盘上留一份坏产物等着被部署：
+改前端只改 `前端源文件-prestova-inspection-report.html` 这一个文件，
+`index.html` 是构建产物。
+
+---
+
+## 五个板块
+
+| 板块 | id | 干什么 |
+|---|---|---|
+| 实验室 | `lab` | 海绵物性测试，每批上/中/下三支，出 A4 检验报告 |
+| 来料检验 | `iqc` | 面布、海绵、弹簧等来料到货抽检，8 个检查项 |
+| 制程检验 | `ipqc` | 各车间工序不良记录，现场录入 |
+| 成品检验 | `fqc` | 每柜成品抽检，出 A4 两页报告（含 12~15 张照片） |
+| 装柜检验 | `oqc` | 装柜过程检查 + 货物明细核对 |
+
+每个板块三屏：**录入页 / 记录表 / 数据分析**（装柜没有数据分析）。
+进板块默认落在**记录表**，不是录入页 —— 直接掉进一张可编辑表单，容易被当成
+空白表填，把几天前做完的报告覆盖掉。
+
+---
+
+## 仓库结构
+
+```
+前端源文件-prestova-inspection-report.html   ← 唯一的源文件，改这个
+index.html                                   ← 构建产物，跟着提交，部署的就是它
+build-standalone.js                          ← 构建：四道检查 + 套 <head> 外壳
+check-isolation.js                           ← 板块 CSS 隔离检查（被构建调用）
+qc-worker/
+  src/worker.js       后端：认证、/api/index、/api/report、/api/photo
+  migrations/         D1 表结构，唯一真相源
+  load-schema.mjs     拼接 migrations/，供测试库和本地后端建表
+  test.mjs            服务端测试（真实 worker + 内存 SQLite，84 项）
+  wrangler.toml       Worker 配置（D1 / R2 绑定、assets）
+参考资料/            开发期工具：dashtest、serve-test、配色扫描、词典等
+```
+
+---
+
+## 构建
+
+```bash
+node build-standalone.js
+```
+
+把源文件套上 `<head>` 外壳，**同时写出两份产物**：`index.html`（进仓库）和
+`qc-worker/public/index.html`（部署用，不进仓库，CI 上现生成）。
+
+写文件**之前**跑四道检查，任何一道不过都 `exit 1` 且不产出文件 ——
+别在磁盘上留一份坏产物等着被部署：
 
 | 检查 | 拦什么 |
 |---|---|
-| 板块隔离 | 每个板块的 CSS 必须限定在自己的根节点下（`#lab` / `#iqc` / `#ipqc` / `#oqc`）。出过「实验室写了一条裸的 `.off` 把首页布局搞塌」 |
+| 板块隔离 | 每个板块的 CSS 必须限定在自己的根节点下（`#lab` / `#iqc` / `#ipqc` / `#oqc`） |
 | 品牌串 | 页面里找不到 `Prestova Home Living Indonesia` |
 | JS 语法 | 整段脚本解析不过 = 白屏 |
-| id 引用 | 脚本里 `"#foo"` 而 HTML 里没有 `id="foo"`。`$()` 返回 null，后面 `.addEventListener` / `.hidden` 一律 TypeError |
+| id 引用 | 脚本里写了 `"#foo"` 而 HTML 里没有 `id="foo"`（`$()` 返回 null，后面一律 TypeError） |
 
-后两道是 2026-08-28 加的。**它们只验"这份产物还能不能跑起来"，不验行为** ——
-这个仓库里唯一的自动化测试是 `qc-worker/test.mjs`，它测 `worker.js`，从头到尾
-不加载这个页面。加它们的直接起因：删制程检验的检验员筛选时漏了 `iprecRows()`
-里一行 `if(insp) …iprecHas(…)`，两个标识符都已删掉，一进制程记录表就
-ReferenceError —— 语法合法，靠人肉全文搜才发现。id 那道当场还扫出一个存量
-bug：`$("#lrec")` 根本没这个 id，实验室记录表的 sticky 表头每次 resize 都在抛
-异常（正确的是 `#lsheetv`）。
+**这四道只验"这份产物还能不能跑起来"，不验行为。** 按钮点下去对不对、
+筛选筛得准不准，没有任何自动化覆盖 —— 那部分只能人工点。
 
-### 服务端测试
+---
+
+## 测试
+
+### 服务端（唯一进 CI 的测试）
 
 ```bash
-cd qc-worker && node test.mjs
+node qc-worker/test.mjs      # 84 项
 ```
 
-### 看板计算对拍（本机，进不了 CI）
+用真实的 `worker.js` + 内存 SQLite（`node:sqlite`）跑路由、鉴权、
+last-write-wins、锁定。**它不加载前端页面** —— 前端改错了它一项都不会红。
+
+### 看板计算对拍（本机限定）
 
 ```bash
 node 参考资料/dashtest.js [index.html 的路径]
 ```
 
-把实验室看板的纯计算部分从产物里抠出来，拿 2026 年真实历史数据（1226 批 /
-3650 支）跑一遍，输出月度合格率、不合格构成、按品号，并跟旧表的判定做对照。
-**进不了 CI**：它依赖 `参考资料/实验室历史数据-2026.json`，那份数据在
-`.gitignore` 里，CI 上没有。
+把实验室看板的纯计算部分从产物里抠出来，拿真实历史数据（1226 批 / 3650 支）
+跑一遍，输出月度合格率、不合格构成、按品号，并跟旧表判定做对照。
 
-它靠正则从 600KB 的产物里切代码块，源文件一改格式就会切歪 —— 跑不起来先看
-是不是又有哪一块没切全。（2026-08-28 修过两处漂移：`lnum` 从一行改成了多行，
-`labJudgeSample` 新依赖了 `fatIfdPct` / `fatHMaxOf` / `fatIfdMaxOf`。）
+**进不了 CI**：依赖 `参考资料/实验室历史数据-2026.json`，那份在 `.gitignore` 里。
+它靠正则从 600 KB 产物里切代码块，**源文件一改格式就会切歪** —— 跑不起来先看
+是不是哪一块没切全。
 
 ### 端到端 harness
-
-用真实的 `worker.js` + 内存 SQLite 起一个本地后端，页面用指定的 HTML：
 
 ```bash
 node 参考资料/serve-test.mjs 8801 index.html <driver.js>
 ```
 
-口令：`test1234`（QC）/ `boss9999`（管理员）。driver 注入页面里跑，
-结果写 `window.__OUT`。
+真实 `worker.js` + 内存 SQLite 起本地后端，driver 注入页面里跑，结果写
+`window.__OUT`。口令 `test1234`（QC）/ `boss9999`（管理员）。
 
-**注意**：cookie 按 host 存、不分端口，换端口重开 harness 不会换掉登录身份，
-每次重跑前先 `POST /api/logout`。
+> cookie 按 host 存、**不分端口**，换端口重开 harness 不会换掉登录身份 ——
+> 每次重跑前先 `POST /api/logout`。
+
+---
 
 ## 部署
 
+**push 到 `main` 就自动部署**（Cloudflare Workers Builds，实测 43~52 秒）。
+链路是 `构建 → 产物漂移检查 → npm test → wrangler deploy`，`&&` 短路，
+**任何一道不过都不部署**。
+
+> 部署失败是**静默**的：线上继续服务旧版本，页面看着一切正常。改完刷新没变化时，
+> 先确认是不是浏览器没重载，再去 Cloudflare 面板看构建是不是红的。
+
+手动部署：
+
 ```bash
-node build-standalone.js            # 隔离检查 + 同时写出两份产物
+node build-standalone.js
 cd qc-worker && npx wrangler deploy
 ```
 
-原来这里还有一步 `cp index.html qc-worker/public/index.html`，现在构建脚本自己写
-两份了。那一步**忘了不会报错** —— wrangler 照样部署成功，现场跑的却还是旧页面。
+### Workers Builds 面板配置
 
-### Workers Builds（GitHub 自动部署）
-
-面板里 `qc` → Settings → Build，必须按这三项配，否则构建失败或部署出空壳：
+`qc` → Settings → Build，这三项必须对，否则构建失败或部署出空壳：
 
 | 项 | 值 |
 |---|---|
 | Root directory | `qc-worker` |
 | Build command | `cd .. && node build-standalone.js` |
-| Deploy command | `npx wrangler deploy`（默认值） |
+| Deploy command | `npx wrangler deploy` |
 
-Root 必须是 `qc-worker` —— 面板上的 Worker 名要跟该目录下 `wrangler.toml` 的
-`name` 对上。build 要 `cd ..` 是因为构建脚本在仓库根目录，而 `public/` 不进仓库，
-得在 CI 上现生成。Worker secret 不受部署影响，不用重设。
+Root 必须是 `qc-worker`：面板上的 Worker 名要跟该目录 `wrangler.toml` 的 `name`
+对上。build 要 `cd ..` 是因为构建脚本在仓库根目录。Worker secret 不受部署影响。
 
-回滚：`npx wrangler rollback --name qc`（每次部署的版本都留着）。
-数据回滚：D1 Time Travel，可回到 30 天内任意时间点。
+### 回滚
 
-### 必须配的 Worker secret
+```bash
+npx wrangler rollback --name qc      # 代码：每次部署的版本都留着
+```
 
-仓库里**没有**任何真实口令，跑起来前要自己设：
+数据回滚走 D1 Time Travel，可回到 30 天内任意时间点。
+
+**不需要 GitHub Releases。** 这是网页应用，用户打开网址就是最新版，没有文件要
+分发；"版本"就是 Cloudflare 那边的部署历史，回滚一条命令。发 tag 不影响线上
+任何行为。
+
+---
+
+## 数据库与迁移
+
+三张表：`reports`（记录，payload 是 JSON）、`photos`（照片索引，实体在 R2）、
+`d1_migrations`。
+
+表结构的**唯一真相源**是 `qc-worker/migrations/`。`0001_baseline.sql` 逐列抄自
+2026-08-24 的生产库，全部 `IF NOT EXISTS`，对已有库执行是空操作。测试库和本地
+后端也从这里建表（`load-schema.mjs`），所以三处结构一致。
+
+```bash
+cd qc-worker
+npm run migrate:list             # 看有没有未应用的迁移
+npm run migrate                  # 应用到线上
+npm run migrate:new -- 加XX列    # 新建迁移文件
+```
+
+> **顺序不能反：先迁移，确认无误，再 git push。**
+> push 会立刻触发部署，新代码读写的列还没加到线上库，这中间就是线上 500。
+> 反过来先迁移是安全的 —— 多一个还没人用的列不影响旧代码。
+
+> **不要手工 `ALTER TABLE`。** 手工改动不进 `d1_migrations`，重建库时会丢，
+> 线上结构和 `migrations/` 就此分家。
+
+---
+
+## 角色与口令
+
+两个口令对应两个角色，服务端把角色写进 HMAC 签名的 cookie：
+
+| | QC（现场检验员） | admin（管理员） |
+|---|---|---|
+| 录入、提交锁定 | ✅ | ✅ |
+| 改已锁定的记录 | ❌ | ✅ |
+| 删除记录 | ❌ | ✅ |
+| 导入基础资料 / 标准表 | ❌ | ✅ |
+
+前端另有一份**可读的** `qc_role` cookie，只用来决定显示哪些按钮 ——
+**它不是权限**，改了它最多多看见几个按钮，点下去服务端照样 403。
+
+仓库里没有任何真实口令，跑起来前要自己设：
 
 ```bash
 npx wrangler secret put QC_PASSCODE         # 现场检验员
 npx wrangler secret put QC_ADMIN_PASSCODE   # 管理员
-npx wrangler secret put QC_COOKIE_SECRET    # 会话签名用，随机长字符串
+npx wrangler secret put QC_COOKIE_SECRET    # 会话签名，随机长字符串
 ```
 
-没配 `QC_ADMIN_PASSCODE` 时，`QC_PASSCODE` 仍然给 admin 角色（向后兼容）。
+没配 `QC_ADMIN_PASSCODE` 时，`QC_PASSCODE` 仍然给 admin（向后兼容）。
 
-### 表结构与迁移
+---
 
-表结构的唯一真相源是 `qc-worker/migrations/`，走 wrangler 的 D1 迁移机制。
-`0001_baseline.sql` 是 2026-08-24 时生产库的实际结构，全部 `IF NOT EXISTS`，
-对已有库执行是空操作，对空库执行则建出与生产一致的结构。测试库和本地后端
-也从这里建表（`load-schema.mjs`），所以它们跑的结构和线上一致。
+## 设计要点
 
-```bash
-cd qc-worker
-npm run migrate:list           # 看有没有未应用的迁移
-npm run migrate                # 应用到线上
-npm run migrate:new -- 加XX列  # 新建一个迁移文件
-```
-
-**顺序不能反：先迁移，确认无误，再 git push。**
-
-push 会立刻触发 CI 部署（实测 43~52 秒）。要是新代码读写的列还没加到线上库，
-这中间就是线上 500。反过来先迁移是安全的 —— 多一个还没人用的列不影响旧代码。
-
-**不要再手工 `ALTER TABLE`。** 手工改动不进 `d1_migrations`，重建库时会丢，
-线上结构和 `migrations/` 也就此分家。`locked` 列当初正是这么跑偏的：线上被
-ALTER 追加到了末尾，而 schema.sql 里写在 payload 之前，两边不一致，直到这次
-逐列比对才发现。
-
-## 几个绕不开的设计
-
-**离线优先。** 数据先落 IndexedDB（`prestova-ir`），后台每 180 秒推拉一次
-（只在页面可见时）。冲突用 last-write-wins，输掉的一方会拉服务端那份覆盖本地
-**并弹提示告诉用户**。照片单独走 R2，不进 payload，同步覆盖时显式保留。
+**离线优先。** 数据先落 IndexedDB（`prestova-ir`），后台每 **180 秒**推拉一次，
+**只在页面可见时**（一台没人用但开着的电脑整夜轮询，能吃掉可观的配额）。
+冲突用 last-write-wins，输掉的一方拉服务端那份覆盖本地**并弹提示告诉用户**。
+照片单独走 R2，不进 payload，同步覆盖时显式保留。
 
 **两个 store。** `reports` 存完整记录（含照片 Blob），`meta` 存轻量索引。
 列表、筛选、同步判断全走 `meta`，只有真要打开一条时才读 `reports`。
-**改了 `metaOf()` 里任何一处推导就要把 `META_VER` 加 1**，开机对不上会整表重算。
+
+> **改了 `metaOf()` 里任何一处推导，就把 `META_VER` 加 1**（当前 `4`）。
+> 开机对不上会整表重算索引。不加的话，新字段在老设备的索引行上永远是
+> `undefined` —— 出过"同一条记录电脑上显示不合格、手机上显示合格"。
 
 **提交并锁定。** 记录上的 `locked` 是提交时刻的时间戳，跟着 payload 同步，
-所以离线也能提交。服务端有对应的列，已锁的记录只有 admin 能 PUT ——
-这不是安全加固，是功能必需：少了它，一台还没同步到锁状态的设备照样能改，
+所以离线也能提交。服务端有对应的列，已锁记录只有 admin 能 PUT ——
+这不是安全加固，是**功能必需**：少了它，一台还没同步到锁状态的设备照样能改，
 last-write-wins 会让它赢，把锁冲掉。
 
-**记录表默认只看当月。** 三万条数据时不限量渲染会撑出 12 万个 DOM 节点，
-进板块 1 秒、筛选框敲一下 4~5 秒（桌面，手机再乘 3~5）。
-按月切 + 封顶 200 行之后回到几百个节点。
+**记录表默认只看当月、封顶 200 行。** 三万条数据不限量渲染会撑出 12 万个 DOM
+节点，进板块 1 秒、筛选框敲一下 4~5 秒（桌面，手机再乘 3~5）。
+
+**点记录表的一行 = 把它变成"当前这一批"**（高亮 + 真载入），但**不切屏**。
+要进录入页点「查看」。工具栏那个标签和「删除」认的都是当前记录，
+所以标签必须跟高亮同步 —— 不然标签指着 A、高亮停在 B，而删除删的是 A。
+
+---
+
+## 线上现状与成本
+
+> 2026-08-28 实测，会变，用前复核。
+
+| | 数值 |
+|---|---|
+| `reports` | 2,395 行（含 509 条删除墓碑） |
+| `photos` | 2,943 行（成品 2,874 / 装柜 69） |
+| D1 库大小 | 3.06 MB |
+| **D1 读行数** | **1,912 万 / 天** |
+| D1 写行数 | 8,029 / 天 |
+
+**这套架构会先撞墙的只有一样：D1 的读行数。** 不是存储、不是请求数、不是 R2。
+
+- Workers **免费版** 5 M 行/天 —— 现状已经超 3.8 倍
+- Workers **付费版**（$5/月）250 亿行/月 —— 现状只占 2.3%，50 人同时在线约
+  4,300 万/天 = 5.2%，不会产生超额账单
+
+读行数几乎全来自同步轮询拉的 `/api/index`，它是**全表扫描**，代价 =
+`轮询次数 × 表行数`，两个因子都在长，所以是乘法级恶化。
+
+> **一个已知的浪费**：`/api/index` 里 `photos` 表是不过滤的全表扫。它已经 2,943 行、
+> 比 `reports` 那半边还大，而其中 2,874 行属于成品检验 —— 一个只做制程检验的 QC
+> 每次轮询都要读这 2,943 行，**全是废读**。按 type 筛掉是最便宜的一处优化。
+> 结构性的解法是 `/api/index?since=`（`WHERE updated_at > ?`），
+> 让每次轮询的代价与表多大、写多密都无关。
+
+R2 永远不会是成本问题：存到 100 GB 也才 $1.35/月，**出口流量免费**。
+
+---
+
+## 踩过的坑
+
+按类型收在这里，免得把上面的操作说明冲散。
+
+**配色 token 分两套，别串。** `:root` 那套是**纸**的配色（`--paper` / `--ink` /
+`--fail` / `--pass` / `--accent-soft`），深色模式下**不翻面**，因为 A4 报告必须
+永远白纸黑字。屏幕组件要用屏幕那套（`--card` / `--field` / `--no` / `--ok`）。
+串用了就是深色下白底白字或者看不见的红字 —— 这类事故发生过至少四次
+（`.lcard`、`.lsum select`、标准表的 `input:focus`、成品记录表的 `td.warn`）。
+
+**删字段要全文搜残留引用。** 删制程检验的检验员筛选时，输入框和 `iprecHas()`
+都删了，却漏了 `iprecRows()` 里一行 `if(insp) …iprecHas(…)` —— 两个标识符都已
+不存在，一进制程记录表就 ReferenceError。**语法完全合法，解析检查抓不到。**
+构建里的「id 引用」那道就是为这类问题加的，它当场还扫出一个存量 bug：
+`$("#lrec")` 根本没这个 id（正确的是 `#lsheetv`），实验室记录表的 sticky 表头
+每次窗口 resize 都在抛异常。
+
+**自由输入的字段迟早会分裂。** 来料检验的「物料类别」是自由输入框，结果下拉里
+出现了两个肉眼一模一样的「防火螺纹布(KainUlir)」—— 一个半角括号一个全角括号，
+记录表筛不全、数据分析还拆成两行。凡是要拿来筛选或分组的字段，一律做成固定
+词表（制程的「班次」就是照这个教训做的）。
+
+**基础资料改了 xlsx 不等于改了应用。** 应用读的是 IndexedDB / D1 里那份快照，
+只有点工具栏「物料基础资料」重新导入才会更新。云盘同步文件跟应用之间没有通道。
+
+**`git diff --exit-code index.html` 这道守卫防的是另一种漂移**：仓库里的
+`index.html` 是构建产物，线上部署的却是 CI 现建的 `public/index.html`。
+改了源文件不重新构建就 push，线上是对的，仓库里那份悄悄过期，而谁都不会发现。
+
+---
 
 ## 不进仓库的东西
 
