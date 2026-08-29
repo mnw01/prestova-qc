@@ -982,6 +982,42 @@ table.frec-table tbody tr.cur:hover td,#iqc table.irec-table tbody tr.cur:hover 
 #ldash .lcard > h2.dtitle,
 #lsheetv .lcard > h2.dtitle{font-size:15px}
 
+/* ── <input type="date"> 的溢出守卫：全站所有日期框 ────────────────────
+   手机上 <input type=date> 会把日期渲染成**跟着系统语言走的长格式**
+   （iPhone 中文是「2026年8月29日」，比桌面的 2026/08/29 宽一截），而且它有一个
+   CSS width:100% 压不住的**固有最小宽度** —— 输入框的边框盒本身就画得比所在的
+   格子宽，右边框跑进隔壁字段里，看起来就是"两个框叠在一起 / 日期框没有右边框"。
+   安卓看着没事只是因为它那边的格式短一些，本质是同一个问题。
+
+   （试过给父元素加 overflow:hidden：父元素裁掉的是子元素超出的部分，连输入框
+   自己的右边框一起裁没了，反而更糟。）
+
+   正确做法是把限制加在输入框**自己**身上：max-width 把边框盒钉死在格子宽度内，
+   min-width:0 让它在 flex 里能缩到内容以下，overflow:hidden 只裁它自己内部溢出
+   的日期文字 —— 边框是它自身的一部分，不会被自己的 overflow 裁掉。最坏情况是
+   日期文字被裁掉一点点，不会再压到隔壁字段。
+
+   **但上面那套在 iPhone 上不管用** —— 来料检验早就有这条规则，用户 2026-08-29
+   反馈 iPhone 上照样重叠。原因是 iOS Safari 把日期框当**原生控件**渲染：它的
+   尺寸由内部 shadow 内容决定，`max-width` 压不住它，所以同一条规则安卓有效、
+   iPhone 无效。
+   写成裸的元素+属性选择器是有意的 —— 这是**每一个**日期框都要的兜底，不是某个
+   板块的样式。原来只挂在 #iqc 的两个字段上，另外 12 个全裸着。 */
+input[type="date"]{max-width:100%;min-width:0;overflow:hidden}
+
+/* iOS 专用：去掉原生外观，日期框才会退化成普通盒子、开始听 max-width。
+   点击仍然唤起系统日期选择器 —— 那个由 type=date 决定，跟外观无关。
+   text-align 也要等去掉原生外观才生效（iPhone 上日期默认是居中的，跟安卓、
+   桌面以及旁边所有别的输入框都不一样）。
+
+   **必须锁在 iOS 里**：appearance:none 在桌面 Chrome 上会连带影响日期框的原生
+   渲染（右边那个日历图标），而桌面本来是好的 —— 不能为了修 iPhone 把它弄坏。
+   @supports (-webkit-touch-callout:none) 是 iOS 的可靠判据：只有 WebKit 的触摸
+   平台支持这个属性，桌面 Chrome / Firefox / 安卓 Chrome 都不会命中。 */
+@supports (-webkit-touch-callout:none){
+  input[type="date"]{-webkit-appearance:none;appearance:none;text-align:left}
+}
+
 /* ── 筛选栏里的输入控件：全站一个规格 ─────────────────────────────────
    九条筛选栏（成品记录/分析、来料记录/分析、制程记录/分析、装柜记录、
    实验室记录/分析）原来各写各的。实测：七条是 13px / padding 5px 8px，实验室
@@ -1145,17 +1181,9 @@ table.frec-table tbody tr.draft .frec-open:hover,
 /* 批次选择器的空态。外壳（.plbox/.plday/.plrow…）走 check-isolation 的 SHARED
    白名单，跟成品检验/实验室共用，只有这一条空态文字是本板块自己的 */
 #iqc .iqempty{padding:14px 12px;font-size:12.5px;color:var(--ink-3);text-align:center}
-/* 手机 Chrome 上 <input type=date> 会把日期渲染成本地化长格式（"2026年8月8日"，
-   比桌面的 2026/08/08 宽不少），而且它有一个 CSS width:100% 压不住的固有最小
-   宽度——输入框的**边框盒**本身就画得比所在的格子宽，右边框跑到隔壁字段的框
-   里去了，看起来就是"两个框叠在一起 / 日期框没有右边框"。
-   （前面试过给父元素 .iqfield 加 overflow:hidden：父元素裁掉的是子元素超出的
-   部分，连输入框自己的右边框一起裁没了，反而更糟。）
-   正确做法是把限制加在输入框**自己**身上：max-width 把边框盒钉死在格子宽度内，
-   overflow:hidden 只裁它自己内部溢出的日期文字——边框是它自身的一部分，不会被
-   自己的 overflow 裁掉。最坏情况是日期文字被裁掉一点点，不会再压到隔壁字段。 */
-#iqc .iqfield input[type="date"],#iqc .irec-field input[type="date"]{
-  max-width:100%;min-width:0;overflow:hidden}
+/* 日期框的溢出守卫见文件前面那条全局 input[type="date"] 规则 —— 原来只挂在
+   来料检验这两个字段上，2026-08-29 发现另外 12 个日期框（制程录入、各板块的
+   起止日期、装柜、实验室…）全裸着，在 iPhone 上照样压隔壁，改成全局了。 */
 
 /* 品号 autocomplete — a filtered dropdown instead of a native <select>/<datalist>,
    since the material master runs to several thousand rows (see IQC_MAT) */
