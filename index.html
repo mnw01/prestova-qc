@@ -1901,6 +1901,15 @@ table.frec-table tbody tr.draft .frec-open:hover,
   background-image:linear-gradient(color-mix(in srgb,var(--accent) 20%,transparent),
                                    color-mix(in srgb,var(--accent) 20%,transparent));
 }
+/* 固定住的那一批**又被划过**：24%，跟另外四张表的 tr.cur:hover 那一档对齐。
+   当初以为实验室不用管 —— 因为下面那条 hover 写了 :not(.cur)，不会去冲淡固定行。
+   但那只保证了"不会变浅"，**结果是划过固定行毫无反应**，停在 20%，而另外四张
+   会加深到 24%。三档梯度（15 < 20 < 24）少了最后一档，看着就像固定和悬停一个色。
+   写在 :not(.cur) 那条之前也行 —— 两者互斥，跟顺序无关。 */
+#lab table.lrec tbody tr.cur.hov>td{
+  background-image:linear-gradient(color-mix(in srgb,var(--accent) 24%,transparent),
+                                   color-mix(in srgb,var(--accent) 24%,transparent));
+}
 #lab table.lrec tbody tr.hov:not(.cur)>td{
   background-image:linear-gradient(color-mix(in srgb,var(--accent) 15%,transparent),
                                    color-mix(in srgb,var(--accent) 15%,transparent));
