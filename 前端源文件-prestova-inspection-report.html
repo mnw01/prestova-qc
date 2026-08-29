@@ -887,6 +887,16 @@ table.frec-table :is(th,td).seq,
 #oqc table.orec-table :is(th,td).seq{
   color:var(--ink-3);font-variant-numeric:tabular-nums;width:1%;text-align:left;
 }
+/* 内容和纵向滚动条之间的那道竖线。实验室那张表的单元格自带全格线，最后一列的
+   右边框正好落在滚动条左边，所以它有；另外四张只画横线，滚动条直接贴着内容，
+   看着就像少了一边（用户 2026-08-28 对比截图报的）。
+   画在 <table> 上而不是最后一个单元格上：表是 width:100%，右边框正好钉在滚动条
+   左侧，也不用去操心哪一列是最后一列（各表列数不同、还会随筛选变）。
+   滚动容器 .frec-wrap 那圈 border 在滚动条**外面**，补不了这个位置。 */
+table.frec-table,
+#iqc table.irec-table,
+#ipqc table.iprec-table,
+#oqc table.orec-table{border-right:1px solid var(--hairline)}
 /* 用 --no 不用 --fail：--fail 只声明在 :root 那套"纸"的配色里、深色下**不翻面**
    （一直是 #b32d23 深红），铺在深色卡片 #1c2027 上对比度只有 2.4:1。--no 在屏幕
    配色块里，深色下是 #e88b81。制程/来料的同名规则用的就是 --no，这里原来写错了。 */
