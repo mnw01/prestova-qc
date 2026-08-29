@@ -3856,7 +3856,7 @@ function placePick(){
 }
 window.addEventListener("resize",()=>{ if(!$("#picklist").hidden) placePick(); });
 function closePick(){ $("#picklist").hidden=true; }
-async function load(id){
+async function load(id, skipPhotos){
   const r=await dbGet(id); if(!r) return;
   Object.keys(urls).forEach(k=>setURL(k,null));
   R=Object.assign(blank(),r);
@@ -3871,8 +3871,12 @@ async function load(id){
      各个调用点上 —— 记录表的「查看」、工具栏的选择器、进板块自动载入，
      全都经过这里。原来只有 enterModule 那两处调，于是从记录表点进去的记录
      照片一直是空的（而进板块默认就落在记录表）。
-     不 await：表单先画出来，照片到一张 paintSlot 补一张。 */
-  hydratePhotos(id);
+     不 await：表单先画出来，照片到一张 paintSlot 补一张。
+
+     skipPhotos：记录表里**点一行**也会走 load()（点行 = 把它变成当前这一批），
+     一行行点过去就会连着从 R2 拉一串图。点行只是在挑，不是要看图，所以跳过；
+     真要看图走「查看」，或者切到录入页时 fqcShow() 会补拉。 */
+  if(!skipPhotos) hydratePhotos(id);
 }
 
 /* ── toolbar wiring ───────────────────────────────────────────────── */
@@ -4106,11 +4110,15 @@ function wireRowMark(sel, loadRec){
    用户 2026-08-29 要求两者同步，顺带把这个隐患一起消掉。
 
    载入函数包一层箭头而不是直接传引用：这行在它们定义之前执行，包起来就等到
-   点击那一刻再取，不用管声明顺序。 */
-wireRowMark("#frec-table",  id=>load(id));
+   点击那一刻再取，不用管声明顺序。
+
+   成品和装柜的记录带照片，载入时会从 R2 拉图。点行只是在挑、不是要看图，一行行
+   点过去会连着拉一串，所以第二个参数传 true 跳过（真要看图点「查看」，或者切到
+   录入页时 fqcShow/oqcShow 会补拉）。另外三个板块没有照片，不用这个参数。 */
+wireRowMark("#frec-table",  id=>load(id, true));
 wireRowMark("#irec-table",  id=>iqcLoad(id));
 wireRowMark("#iprec-table", id=>ipqcLoad(id));
-wireRowMark("#orec-table",  id=>oqcLoad(id));
+wireRowMark("#orec-table",  id=>oqcLoad(id, true));
 wireRowMark("#lrec-table",  id=>labLoad(id));
 
 /* 鼠标划过时整批一起亮。只有实验室要走 JS：**它一批三行**，纯 CSS 的
@@ -4146,6 +4154,10 @@ function fqcShow(view){
   statFor("#stat",  view==="form");
   if(view==="rec"){ rangeToday("#frec-date"); frecRender(); }
   if(view==="dash"){ fqcDashDefaultRange(); fqcDashRender(); }
+  /* 补拉照片：记录表里点一行是 load(id,true)，跳过了照片。要是接着从这里切回
+     录入页（而不是走「查看」），格子会一直空着 —— 这里补上。
+     hydratePhotos 自己会先看有没有缺的，不缺就一次 dbGet 直接返回，白调不亏。 */
+  if(view==="form" && R && R.id) hydratePhotos(R.id);
 }
 function frecShow(open){ fqcShow(open?"rec":"form"); }
 /* text filters match anywhere in the field, case-insensitive — an exact match
@@ -6664,15 +6676,23 @@ $("#olockbtn").addEventListener("click",async()=>{
   oqcSave();
   paintLockUI(OR, "#oqcv", "#olockbtn", "#olockbar");
 });
-async function oqcLoad(id){
+/* 照片是打开记录之后才从 R2 拉的，拉回来要重画一次，不然格子一直是空的。
+   抽成函数是因为现在有两个调用点：oqcLoad()，以及 oqcShow() 切回录入页时补拉
+   （记录表里点一行走的是 skipPhotos，没拉过）。 */
+function oqcHydrate(id){
+  if(!SYNC.enabled || !id) return;
+  hydratePhotos(id).then(async()=>{
+    if(OR && OR.id===id){ const fresh=await dbGet(id); if(fresh){ OR=oqcNorm(fresh); oqcPaintPhotos(); } }
+  });
+}
+async function oqcLoad(id, skipPhotos){
   const rec=await dbGet(id);
   Object.keys(OQ_URLS).forEach(k=>oqSetURL(k,null));
   OR=oqcNorm(rec||oqcBlank());
   oqcPaintAll();
-  if(SYNC.enabled) hydratePhotos(id).then(async()=>{
-    /* 照片是打开记录之后才从 R2 拉的，拉回来要重画一次，不然格子一直是空的 */
-    if(OR && OR.id===id){ const fresh=await dbGet(id); if(fresh){ OR=oqcNorm(fresh); oqcPaintPhotos(); } }
-  });
+  /* skipPhotos 的理由见成品 load() 里同名参数那段：记录表点一行也走这里，
+     一行行点过去会连着从 R2 拉一串图，而点行只是在挑、不是要看图。 */
+  if(!skipPhotos) oqcHydrate(id);
 }
 function oqcShow(view){
   $("#oqcv").hidden = view!=="entry";
@@ -6684,6 +6704,8 @@ function oqcShow(view){
   statFor("#ostat", view==="entry");
   $("#olockbtn").hidden = view!=="entry";
   if(view==="rec"){ rangeToday("#orec-date"); orecRender(); }
+  /* 跟成品 fqcShow 同一个理由：记录表点一行跳过了照片，从这里切回录入页要补拉 */
+  if(view==="entry" && OR && OR.id) oqcHydrate(OR.id);
 }
 async function enterOqc(recordId){
   CURRENT="oqc";
