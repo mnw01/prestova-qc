@@ -10,6 +10,21 @@ import { createServer } from "node:http";
 import worker from "./src/worker.js";
 import { schemaSQL } from "./load-schema.mjs";
 
+/* 一个响应里有两张 cookie（qc_session + qc_role），而遍历 Headers 会把同名的
+   set-cookie 折叠成一条，res.setHeader 再逐个覆盖 —— 结果 HttpOnly 的
+   qc_session 丢了，登录看着成功、下一个请求就 401。getSetCookie() 才拿得全。
+   （加角色 cookie 之前只有一张，所以老代码一直没暴露这个问题。） */
+function forwardHeaders(r, res, skip) {
+  for (const [k, v] of r.headers) {
+    if (k === "set-cookie") continue;
+    if (skip && k === skip) continue;
+    res.setHeader(k, v);
+  }
+  const cookies =
+    typeof r.headers.getSetCookie === "function" ? r.headers.getSetCookie() : [];
+  if (cookies.length) res.setHeader("set-cookie", cookies);
+}
+
 const PORT = Number(process.argv[2] || 8799);
 const PAGE = readFileSync("./public/index.html");
 
@@ -76,11 +91,11 @@ createServer(async (req, res) => {
     html = html.replace(/<\/body>/i, '<script src="/__test.js"></script></body>');
     if (!html.includes("__test.js")) html += '<script src="/__test.js"></script>';
     res.statusCode = r.status;
-    for (const [k, v] of r.headers) if (k !== "content-length") res.setHeader(k, v);
+    forwardHeaders(r, res, "content-length");
     return res.end(html);
   }
 
   res.statusCode = r.status;
-  for (const [k, v] of r.headers) res.setHeader(k, v);
+  forwardHeaders(r, res);
   res.end(Buffer.from(await r.arrayBuffer()));
 }).listen(PORT, "127.0.0.1", () => console.log("harness listening on " + PORT));

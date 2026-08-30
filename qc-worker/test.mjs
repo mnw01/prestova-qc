@@ -146,6 +146,16 @@ console.log("\n— photos —");
   const idx = await (await hit("/api/index", auth())).json();
   ok("index lists the photo with size", idx.photos.length === 1 && idx.photos[0].size === bytes.length && idx.photos[0].slot === "packing");
 
+  /* 上面那条是老客户端走的路（不带 v），下面是新客户端。两条一起跑，保证升级
+     期间新旧并存都对。最后一条是这次改动成立的前提：/api/report/:id 本来就
+     带着同一份照片行，所以 /api/index 里那份是可以不发的。 */
+  const idxV2 = await (await hit("/api/index?v=2", auth())).json();
+  ok("v=2 不返回照片索引", Array.isArray(idxV2.photos) && idxV2.photos.length === 0);
+  ok("v=2 仍然返回 reports", (idxV2.reports || []).length > 0);
+  const repA = await (await hit("/api/report/rep-A", auth())).json();
+  ok("/api/report 自带该记录的照片行",
+     (repA.photos || []).some((p) => p.slot === "packing" && p.size === bytes.length));
+
   const del = await hit("/api/photo/rep-A/packing", { method: "DELETE", ...auth() });
   ok("DELETE photo → ok", del.status === 200);
   const gone = await hit("/api/photo/rep-A/packing", auth());

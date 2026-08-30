@@ -3389,7 +3389,8 @@ function blank(){
     locked:0,          /* 「提交并锁定」的时间戳，0 = 还是草稿 */
     syncedAt:0,        /* the updatedAt value the server has confirmed */
     photoOps:{},       /* slot -> "put" | "del", cleared once the server has it */
-    serverPhotos:{}    /* slot -> {updatedAt,size} the server holds but we may not */
+    serverPhotos:{},   /* slot -> {updatedAt,size} the server holds but we may not */
+    photosChecked:false /* 问过服务端「这条有哪些照片」了没有 —— 见 hydratePhotos */
   };
 }
 let R = blank();
@@ -7613,10 +7614,14 @@ function markModUsed(id){
   const o=modsMap(); o[id]=Date.now();          /* 每次进都续期 */
   try{ localStorage.setItem(MODS_KEY,JSON.stringify(o)); }catch(e){}
 }
-/* 管理员：不带参数 = 全量 = 跟这个改动之前逐字节一致 */
+/* 两个参数各管一件事：
+     types= —— 只同步这台设备近 7 天进过的板块（管理员不带，要跨板块看全局）
+     v=2    —— 「照片索引不用发了」。每条记录的照片行由 /api/report/:id 自带，
+               那条查询本来就在跑，所以 /api/index 里那份全库快照是白读的。
+   不带 v=2 的老客户端拿到的还是完整索引，所以升级期间新旧并存没有窗口。 */
 function indexUrl(){
-  if(isAdmin()) return "/api/index";
-  return "/api/index?types="+usedMods().concat(CFG_TYPES).join(",");
+  if(isAdmin()) return "/api/index?v=2";
+  return "/api/index?types="+usedMods().concat(CFG_TYPES).join(",")+"&v=2";
 }
 try{ window.__SYNC = SYNC; }catch(e){}   /* read-only handle for diagnostics */
 
@@ -7751,16 +7756,21 @@ async function pushOne(rec){
   }
 }
 
+/* /api/report/:id 返回的 photos 行 → serverPhotos 的形状。墓碑（deleted）跳过：
+   本地不该去拉一张已经从 R2 删掉的图。 */
+const photosOf = rows => {
+  const sp={};
+  (rows||[]).forEach(p=>{ if(!p.deleted) sp[p.slot]={updatedAt:p.updated_at,size:p.size}; });
+  return sp;
+};
+
 async function pullAll(){
   const idx = await (await api(indexUrl())).json();
   const local = {};
   (await metaAll()).forEach(m=>{ local[m.id]=m; });
 
-  const serverPhotos = {};
-  (idx.photos||[]).forEach(p=>{
-    (serverPhotos[p.report_id] = serverPhotos[p.report_id] || {});
-    if(!p.deleted) serverPhotos[p.report_id][p.slot]={updatedAt:p.updated_at,size:p.size};
-  });
+  /* 照片索引不再从 /api/index 拿（带 v=2 之后服务端就不发了）——
+     每条记录的照片行由下面 /api/report/:id 的响应自带，同一份数据，而且更新鲜。 */
 
   /* deletions are local-only (no network round trip), so they stay a plain
      loop; only the "go fetch this report's full body" half benefits from
@@ -7791,7 +7801,7 @@ async function pullAll(){
       id: row.id, type: full.type||"fqc", updatedAt: full.updatedAt,
       syncedAt: full.updatedAt, photoOps: existing.photoOps||{},
       photos: existing.photos||{},
-      serverPhotos: serverPhotos[row.id]||{}
+      serverPhotos: photosOf(full.photos), photosChecked: true
     }, payloadOf(full.payload||{}));
     rec.checks = Object.assign(defaultChecks(), (full.payload||{}).checks||{});
     /* Object.assign copies `undefined` too, so an older payload without these
@@ -7844,6 +7854,22 @@ async function pullAll(){
 async function hydratePhotos(id){
   if(!SYNC.enabled) return;
   const rec = await dbGet(id); if(!rec) return;
+  /* serverPhotos 只在「这条记录被同步拉下来」的那一刻写。那一次没写成的话
+     （升级窗口里老客户端拿到空索引、或者那轮同步半路断了），它会一直是空的，
+     照片就永远不显示 —— 因为记录已经不 stale，再也不会进 toFetch。
+     所以这里补一次：没问过就直接跟服务端要这条的照片清单。
+
+     photosChecked 是为了别让「本来就没照片」的记录白问 —— 实验室 1,495 条、
+     制程 361 条一张照片都没有，少了这个标记它们每次打开都要多一次请求。
+     失败时**不置**标记，留到下次打开再试（离线时就是这条路）。 */
+  if(!rec.photosChecked){
+    try{
+      const full = await (await api("/api/report/"+encodeURIComponent(id))).json();
+      rec.serverPhotos = photosOf(full.photos);
+      rec.photosChecked = true;
+      await persistQuiet(rec);
+    }catch(e){ /* 离线 / 服务端出错：下次打开再补 */ }
+  }
   const want = Object.keys(rec.serverPhotos||{}).filter(s=>!rec.photos[s] && !rec.photoOps[s]);
   if(!want.length) return;
   let got=0;

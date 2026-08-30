@@ -179,7 +179,7 @@ function parseTypes(url) {
   return out.length ? out : null;
 }
 
-async function apiIndex(env, types) {
+async function apiIndex(env, types, wantPhotos) {
   const reports = types
     ? await env.DB.prepare(
         `SELECT id,type,item_no,po,updated_at,deleted,locked FROM reports
@@ -188,8 +188,17 @@ async function apiIndex(env, types) {
     : await env.DB.prepare(
         "SELECT id,type,item_no,po,updated_at,deleted,locked FROM reports"
       ).all();
-  /* photos 暂时不过滤：现在一共 13 行，加个 JOIN 反而多读。
-     哪天照片真用起来了（几千行），这里要按 report 的 type 一起筛。 */
+  /* v=2 的客户端不要这份照片索引：它改成从 /api/report/:id 的 photos 现拿，
+     而那个接口本来就在跑同一条 WHERE report_id=? 查询，所以这里读出来是纯浪费
+     —— 客户端只在「正在重拉这条记录」时才用得上它。
+
+     实测 2026-08-30：这条无 WHERE 的全表扫描一天读 1,252 万行，占整库读行数的
+     81.7%；而 reports 那几条有 types 过滤 + idx_reports_type_updated 兜着，
+     一次才 484~990 行。（上一版注释写的「一共 13 行，加 JOIN 反而多读」是照片
+     还没铺开时的事，别照着它判断 —— 先跑 wrangler d1 insights 再说。）
+
+     不带 v=2 的老客户端照旧拿完整索引，所以升级期间新旧并存不会有窗口。 */
+  if (!wantPhotos) return json({ reports: reports.results || [], photos: [] });
   const photos = await env.DB.prepare(
     "SELECT report_id,slot,updated_at,size,deleted FROM photos"
   ).all();
@@ -376,7 +385,8 @@ export default {
       const seg = p.split("/").filter(Boolean); // ["api", ...]
       const m = request.method;
 
-      if (seg[1] === "index" && m === "GET") return apiIndex(env, parseTypes(url));
+      if (seg[1] === "index" && m === "GET")
+        return apiIndex(env, parseTypes(url), url.searchParams.get("v") !== "2");
 
       if (seg[1] === "report" && seg[2]) {
         const id = decodeURIComponent(seg[2]);
