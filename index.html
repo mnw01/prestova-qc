@@ -9049,12 +9049,16 @@ $("#lback").addEventListener("click",()=>{
 });
 $("#lsync").addEventListener("click",()=>{ SYNC.err=null; syncNow(); });
 $("#lnew").addEventListener("click",async()=>{
-  const keep = LR ? {ymd:LR.lab.ymd, line:LR.lab.line, model:LR.lab.model,
+  /* 品号**不带过来** —— 一批一个品号，抄上一批的话下拉里已经填着 2570，
+     人扫一眼以为选过了就往下做，错的品号会一路带到判定和报告上。留空让它
+     显示「— 选品名 —」，逼一次主动选择。批号那几段（日期/线别/流水号）照带，
+     那是同一天顺着做下来的上下文。 */
+  const keep = LR ? {ymd:LR.lab.ymd, line:LR.lab.line,
                      date:LR.fields.testDate, seq:LR.lab.seq} : null;
   LR=labBlank();
   /* a day is worked through in order, so carry the context and bump the serial */
   if(keep){
-    LR.lab.ymd=keep.ymd; LR.lab.line=keep.line; LR.lab.model=keep.model;
+    LR.lab.ymd=keep.ymd; LR.lab.line=keep.line;
     LR.fields.testDate=keep.date;
     LR.lab.seq=String(Math.min(99,(parseInt(keep.seq,10)||0)+1)).padStart(2,"0");
   }
