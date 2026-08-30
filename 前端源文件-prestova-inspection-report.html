@@ -9066,10 +9066,14 @@ $("#ldel").addEventListener("click",async()=>{
   const mine=(await metaAll()).filter(m=>m.type==="lab")
     .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   if(mine.length) await labLoad(mine[0].id);
-  else { LR=labBlank(); labPaintAll(); await dbPut(LR); await labRefreshList(); }
+  else { LR=labBlank(); labPaintAll(); await dbPut(LR); }
+  await labRefreshList();
   /* 在哪删就留在哪 —— 原来无条件 labShow("entry")，从记录表点删除会被踢进
-     录入页，跟另外四个板块都不一样。记录表这一屏重画一下就行。 */
-  if(!$("#lsheetv").hidden) labRenderRec();
+     录入页，跟另外四个板块都不一样。
+     记录表**不能只重画** —— labRecRecords() 读的是 LAB_CACHE，那份全量缓存
+     只在打开记录表时装一次，不 labLoadAll(true) 作废掉，画出来的还是含被删
+     那条的旧数据。品号下拉一并重建。跟同步里 labChanged 那段是同一套动作。 */
+  if(!$("#lsheetv").hidden){ await labLoadAll(true); labFillRecModels(); labRenderRec(); }
   else labShow("entry");
   toast("已删除");
 });
