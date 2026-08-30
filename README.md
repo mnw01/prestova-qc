@@ -227,8 +227,11 @@ npx wrangler secret put QC_COOKIE_SECRET    # 会话签名，随机长字符串
 
 ## 设计要点
 
-**离线优先。** 数据先落 IndexedDB（`prestova-ir`），后台每 **180 秒**推拉一次，
+**离线优先。** 数据先落 IndexedDB（`prestova-ir`），后台每 **60 秒**推拉一次，
 **只在页面可见时**（一台没人用但开着的电脑整夜轮询，能吃掉可观的配额）。
+每次轮询只读 `reports` 的索引行，而且按这台设备近 7 天进过的板块过滤
+（`/api/index?types=…`）；照片索引不随轮询下发，改从 `/api/report/:id` 现拿
+（`&v=2`）—— 那条查询本来就在跑。
 冲突用 last-write-wins，输掉的一方拉服务端那份覆盖本地**并弹提示告诉用户**。
 照片单独走 R2，不进 payload，同步覆盖时显式保留。
 
