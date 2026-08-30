@@ -237,7 +237,7 @@ html[lang="id"] .hhead h1 .cn{display:none}
 :root[data-theme="dark"] .bar,:root[data-theme="dark"] .bar .brand{color:#e7eaef}
 :root[data-theme="light"] .bar,:root[data-theme="light"] .bar .brand{color:var(--ink)}
 .bar .sp{flex:1 1 auto}
-.bar select,.bar button{
+.bar select,.bar button,.prtfoot > button{
   border:1px solid color-mix(in srgb,currentColor 26%,transparent);
   background:transparent;border-radius:4px;padding:5px 10px;
   font-size:12.5px;cursor:pointer;
@@ -245,7 +245,7 @@ html[lang="id"] .hhead h1 .cn{display:none}
 .bar select{max-width:min(38vw,300px)}
 .bar button:hover{background:color-mix(in srgb,currentColor 9%,transparent)}
 /* ── 主操作按钮（蓝底白字）：全站就这三个，统一在这里 ────────────────
-     · #prt        成品工具栏「打印 / 存 PDF」
+     · #prt        成品报告末尾左下角的「打印 / 存 PDF」
      · #lrpt-print 实验室报告卡片头上的「打印」
      · #oprt       装柜「打印 / 存 PDF」
    以前三处各写各的：实验室那个 hover 会整个变白（通用的
@@ -255,21 +255,25 @@ html[lang="id"] .hhead h1 .cn{display:none}
    实验室那条选择器带 `:not(.recbtn)` 是为了抬到 (1,4,2) 压过通用 hover，
    这样跟它写在文件哪一段无关。 */
 .bar button.key,
+.prtfoot > button.key,
 #oqc .oqprt,
 #lab .lcard > h2 button.key:not(.recbtn){
   background:#17458c;border-color:#17458c;color:#fff;font-weight:600;
 }
 .bar button.key:hover,
+.prtfoot > button.key:hover,
 #oqc .oqprt:hover,
 #lab .lcard > h2 button.key:not(.recbtn):hover{
   background:#17458c;color:#fff;filter:brightness(1.22);
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]) .bar button.key,
+  :root:not([data-theme="light"]) .prtfoot > button.key,
   :root:not([data-theme="light"]) #oqc .oqprt,
   :root:not([data-theme="light"]) #lab .lcard > h2 button.key:not(.recbtn){border-color:#2d5fa8}
 }
 :root[data-theme="dark"] .bar button.key,
+:root[data-theme="dark"] .prtfoot > button.key,
 :root[data-theme="dark"] #oqc .oqprt,
 :root[data-theme="dark"] #lab .lcard > h2 button.key:not(.recbtn){border-color:#2d5fa8}
 /* Delete sits with the record it acts on — next to the picker and "new" — which
@@ -368,6 +372,9 @@ html[lang="id"] .hhead h1 .cn{display:none}
   width:210mm;max-width:100%;background:var(--paper);color:var(--ink);
   padding:10mm;box-shadow:var(--shadow);
 }
+/* 报告末尾那条打印按钮：宽度必须跟 .sheet 一模一样（下面 900px 断点里也有一份），
+   否则在 .wrap 的居中里两者左边缘对不齐。 */
+.prtfoot{width:210mm;max-width:100%}
 .head{text-align:center;margin-bottom:5mm}
 .head h1{
   font-family:var(--serif);font-weight:700;font-size:16.5pt;margin:0;
@@ -653,6 +660,7 @@ body.dropping::after{
   body{font-size:15px;overflow-x:hidden}
   .wrap{padding:12px 8px 60px}
   .sheet{padding:14px 10px;width:100%}
+  .prtfoot{width:100%}
   .head h1{font-size:13pt}
   .head h2{font-size:10.5pt}
   #info{grid-template-columns:30mm minmax(0,1fr)}
@@ -749,7 +757,7 @@ body.dropping::after{
   :root{--paper:#fff;--ink:#000;--accent-soft:transparent}
   html,body{background:#fff;color:#000}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .bar,#toast,.padd,.pcam,.pdel,.pflag,.pfit,.tol,#lockbar,#ilockbar,#plockbar,#olockbar,#llockbar,#picksheet,#lightbox,#picklist,#frec,#iqc,#ipqc,#fdash,#pmpop{display:none!important}
+  .bar,.prtfoot,#toast,.padd,.pcam,.pdel,.pflag,.pfit,.tol,#lockbar,#ilockbar,#plockbar,#olockbar,#llockbar,#picksheet,#lightbox,#picklist,#frec,#iqc,#ipqc,#fdash,#pmpop{display:none!important}
   /* 日期：纸上不要浏览器区域格式，换成存的那份 DD/MM/YYYY */
   .val > input[type="date"]{display:none!important}
   .val > .dpr{display:block;padding:1.4mm 1.8mm;font-size:9.6pt;
@@ -928,7 +936,7 @@ table.frec-table tbody tr.draft>td,#iqc table.irec-table tbody tr.draft>td,
 /* 其余四个板块同理。这里只关输入控件和按钮 —— 照片仍然要能点开看大图，
    所以不是整块 pointer-events:none。真正兜底的是 JS 那道捕获闸 lockGate()。 */
 /* [data-lockok] 是"只读动作"的口子 —— 出报告 / 打印 / 关闭报告浮层。
-   实验室和装柜的打印按钮就在录入容器里面（成品的在工具栏上），不放行的话
+   五个板块的打印按钮都在录入容器里面（成品的 #prt 在报告末尾），不放行的话
    锁了就出不了报告。报告里那些会写回记录的输入框和 ▲▼ 不打这个标记。 */
 :is(#iqcv,#ipqcv,#oqcv,#labv).locked :is(input,textarea,select,button):not([data-lockok]){
   pointer-events:none;cursor:default;
@@ -2103,7 +2111,6 @@ table.frec-table tbody tr.draft .frec-open:hover,
     <button type="button" id="frecbtn">记录表</button>
     <button type="button" id="fdashbtn">数据分析</button>
     <button type="button" id="lockbtn">提交并锁定</button>
-    <button type="button" id="prt" class="key">打印 / 存 PDF</button>
   </span>
 </div>
 
@@ -2224,6 +2231,12 @@ table.frec-table tbody tr.draft .frec-open:hover,
   </div>
   <div class="sheetnum">Page 2 / 2</div>
 </section>
+
+<!-- 打印按钮在报告末尾、左边缘跟纸对齐。.wrap 是 align-items:center 的列 flex，
+     所以 .prtfoot 必须跟 .sheet 用同一组宽度规则（含 900px 断点那份）才对得齐。
+     data-lockok：锁定后 lockGate 会拦掉 .wrap 里的 click，这个口子让已锁的报告
+     照样能打印 —— 跟装柜 #oprt、实验室 #lrpt-print 一个道理。 -->
+<div class="prtfoot"><button type="button" id="prt" class="key" data-lockok>打印 / 存 PDF</button></div>
 
 </div>
 
@@ -4184,8 +4197,8 @@ function fqcShow(view){
   $("#fdash").hidden = view!=="dash";
   $("#frecbtn").classList.toggle("cur", view==="rec");
   $("#fdashbtn").classList.toggle("cur", view==="dash");
-  /* 打印和提交都是针对"当前打开的那份"，记录表/数据分析这两屏跟屏幕内容对不上 */
-  $("#prt").hidden = view!=="form";
+  /* 提交是针对"当前打开的那份"，记录表/数据分析这两屏跟屏幕内容对不上。
+     打印按钮不用管 —— 它已经挪进 .wrap 里，跟着 .wrap 一起显示/隐藏。 */
   $("#lockbtn").hidden = view!=="form";
   backLevel("#back", view==="rec");
   statFor("#stat",  view==="form");
