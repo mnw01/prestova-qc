@@ -3850,6 +3850,13 @@ const dayKey = ts => { const d=new Date(ts||Date.now()), p=n=>String(n).padStart
 const fqcDayKey = m => dayKey(parseDMY(m.inspDate) || m.updatedAt);
 /* year included: a report from 7/31 last year must not read the same as today's */
 const dayLabel = k => { const [y,m,d]=k.split("-"); return y+"/"+Number(m)+"/"+Number(d); };
+/* 选择器每一行右边那个「最后改动」时刻。五个板块共用一份 —— 原来只有成品
+   写了（内联在 renderPickList 里），另外四个只有名字，看不出哪条是刚动过的。
+   选择器本来就按天分组，所以只到分钟就够，不用带日期。 */
+function pickTime(ms){
+  const d=new Date(ms||Date.now()), p=n=>String(n).padStart(2,"0");
+  return '<span class="pltime">'+p(d.getHours())+":"+p(d.getMinutes())+'</span>';
+}
 function pickLabel(r){
   const f=r.fields||r;
   /* 制程检验把 车间/工序 映射进了 itemNo/po；工序的印尼语跟车间有关，
@@ -3882,7 +3889,6 @@ function renderPickList(){
     groups.get(k).push(r);
   });
   const keys=[...groups.keys()].sort().reverse();
-  const p=n=>String(n).padStart(2,"0");
 
   keys.forEach((k,i)=>{
     const rows=groups.get(k);
@@ -3901,9 +3907,7 @@ function renderPickList(){
     rows.forEach(r=>{
       const b=el("button","plrow"+(r.id===R.id?" cur":""));
       b.type="button";
-      const d=new Date(r.updatedAt||Date.now());
-      b.innerHTML='<span class="plnm">'+esc(pickLabel(r))+'</span>'+
-                  '<span class="pltime">'+p(d.getHours())+":"+p(d.getMinutes())+'</span>';
+      b.innerHTML='<span class="plnm">'+esc(pickLabel(r))+'</span>'+pickTime(r.updatedAt);
       b.addEventListener("click",async()=>{
         closePick();
         if(r.id!==R.id) await load(r.id);
@@ -4832,7 +4836,7 @@ async function iqcRenderPick(){
     if(!open) return;
     list.forEach(m=>{
       const b=el("button","plrow"+(IR&&m.id===IR.id?" cur":"")); b.type="button";
-      b.innerHTML='<span class="plnm">'+esc(iqcPickLabel(m))+'</span>';
+      b.innerHTML='<span class="plnm">'+esc(iqcPickLabel(m))+'</span>'+pickTime(m.updatedAt);
       b.addEventListener("click",async()=>{
         /* 选了一批就是要看它，自己负责把屏幕切回录入页——不能假设点的时候
            就在录入页上（成品检验那边踩过这个坑） */
@@ -5906,15 +5910,19 @@ function tShift(v){
 }
 function ipqcBlankDefect(){ return {model:"",spec:"",desc:"",n:"1"}; }
 function ipqcBlank(){
-  const ws=IPQC_WS[0], p0=ws.procs[0][0];
   return {
-    /* 新记录默认白班 —— 跟车间/工序一样取词表第一项。**旧记录不补默认值**：
-       班次是今天才加的，8-26 之前那些记录本来就没有这个信息，填个"白班"进去
-       就是凭空造数据。它们的 shift 是空的，表里显示「—」，选班次筛的时候筛不到，
-       这是对的。 */
+    /* 新记录**只带今天的日期**，班次/车间/工序/检验员一律留空（2026-08-30 改）。
+
+       原来这几格取词表第一项（白班 / 弹簧床垫车间 / 围边）。两个毛病：
+         · 夜班的人点「+新记录」拿到的是白班，漏改一次就静默记成白班 ——
+           跟"旧记录不补默认值"那条理由是同一个：默认值会凭空造数据。
+         · 有默认值就没法用"这几格填了没"判断这条记录有没有人在用，
+           空记录自动清理因此对制程完全失效（实测攒到 17 条空壳）。
+       留空之后两个问题一起没了：屏幕上是「—」，填了就是人填的。
+       三个下拉在当前值为空时各自补一个空选项，见 ipqcFillShift / ipqcFillWsProc。 */
     id:uid(), type:"ipqc", updatedAt:Date.now(), syncedAt:0,
-    fields:{ date:today(), shift:IPQC_SHIFTS[0][0], ws:ws.zh, proc:p0, qty:"", inspector:"",
-             itemNo:ws.zh, po:p0 },
+    fields:{ date:today(), shift:"", ws:"", proc:"", qty:"", inspector:"",
+             itemNo:"", po:"" },
     ipqc:{ defects:[] },
     caps:{}, flags:{}, fits:{}, photos:{}, photoOps:{}, serverPhotos:{}
   };
@@ -5988,15 +5996,22 @@ function ipqcMarkSaved(){
 function ipqcFillWsProc(){
   /* option 的 value 永远是中文原值，显示文字才跟着语言走 —— 存进记录的是
      value，所以换语言不会让同一道工序变成两个不同的值 */
-  const ws=$("#ip-ws");
-  ws.innerHTML=IPQC_WS.map(w=>
-    '<option value="'+esc(w.zh)+'">'+esc(LANG==="id"?(w.id||w.zh):w.zh)+'</option>').join('');
-  ws.value=PR.fields.ws||IPQC_WS[0].zh;
-  const procs=ipqcProcsOf(ws.value);
-  const cur=PR.fields.proc;
-  $("#ip-proc").innerHTML=procs.map(p=>
-    '<option value="'+esc(p[0])+'">'+esc(LANG==="id"?(p[1]||p[0]):p[0])+'</option>').join('');
-  $("#ip-proc").value=procs.some(p=>p[0]===cur)?cur:procs[0][0];
+  /* 空选项跟班次那边同一个道理（见 ipqcFillShift）：新记录这两格是空的，
+     不补空选项的话 <select> 会自动落在第一项上，屏幕写着「弹簧床垫车间」而
+     记录里其实是空的，看着像已经填了。空选项只在当前值为空时出现。
+     **而且原来还会把那个落点写回 PR.fields.proc** —— 等于替人做了选择。 */
+  const ws=$("#ip-ws"), curWs=PR.fields.ws||"";
+  ws.innerHTML=(curWs?"":'<option value="">—</option>')+
+    IPQC_WS.map(w=>
+      '<option value="'+esc(w.zh)+'">'+esc(LANG==="id"?(w.id||w.zh):w.zh)+'</option>').join('');
+  ws.value=curWs;
+  /* 车间还没选，工序就无从谈起 —— 只给一个空选项，等选了车间再级联出来 */
+  const procs=curWs?ipqcProcsOf(curWs):[];
+  const cur=PR.fields.proc||"";
+  $("#ip-proc").innerHTML=(cur&&procs.some(p=>p[0]===cur)?"":'<option value="">—</option>')+
+    procs.map(p=>
+      '<option value="'+esc(p[0])+'">'+esc(LANG==="id"?(p[1]||p[0]):p[0])+'</option>').join('');
+  $("#ip-proc").value=procs.some(p=>p[0]===cur)?cur:"";
   PR.fields.proc=$("#ip-proc").value;
 }
 /* 班次下拉。旧记录（8-26 之前）没有这个字段，给它们额外补一个空选项 ——
@@ -6113,17 +6128,19 @@ $("#pback").addEventListener("click",()=>{
 });
 $("#psync").addEventListener("click",()=>{ SYNC.err=null; syncNow(); });
 $("#pnew").addEventListener("click",async()=>{
-  /* 同一个 QC 一天要录好几道工序，日期/班次/车间/检验员照抄上一条，只改工序。
-     班次尤其要带 —— ipqcBlank() 默认白班，夜班的人连录十条，漏选一次就静默
-     记成白班了，比留空更糟。 */
-  const keep = PR ? {date:PR.fields.date, shift:PR.fields.shift,
-                     ws:PR.fields.ws, inspector:PR.fields.inspector} : null;
+  /* 新记录**只带今天的日期**，别的什么都不带 —— 不从上一条抄，也不取词表
+     默认值（2026-08-31 改）。班次/车间/工序/检验员全是空的，见 ipqcBlank()。
+
+     原来抄日期/班次/车间/检验员，是为了「同一个 QC 一天录好几道工序，只改工序」。
+     代价是上一条要是没日期，空值会被照抄过来，而空日期的记录在记录表里筛不出来
+     （"" >= from 恒为 false），只在选择器里按最后改动时间飘着 —— 于是选择器某天
+     那组写 33、记录表筛出来只有 24。一条空的还会顺着这个按钮一直生下去，
+     实测攒到过 22 条。
+
+     不抄之后 date 一定是 today()，那个洞就没了；而四格留空又让 isBlankReport()
+     能直接拿「这几格填了没」判断有没有人在用这条记录 —— 有默认值的时候它判不了，
+     制程的空记录清理因此一直是失效的。 */
   PR=ipqcBlank();
-  if(keep){ PR.fields.date=keep.date;
-            /* 只在上一条真的有班次时才照抄：从一条 8-26 之前的旧记录（没有班次）
-               点＋新记录，应该拿到 ipqcBlank 的默认白班，而不是被空值覆盖成空 */
-            if(keep.shift) PR.fields.shift=keep.shift;
-            PR.fields.ws=keep.ws; PR.fields.inspector=keep.inspector; }
   ipqcPaintAll(); await dbPut(PR);
   ipqcShow("entry");
   toast("新记录已建");
@@ -6229,7 +6246,7 @@ async function ipqcRenderPick(){
     if(!open) return;
     list.forEach(m=>{
       const b=el("button","plrow"+(PR&&m.id===PR.id?" cur":"")); b.type="button";
-      b.innerHTML='<span class="plnm">'+esc(tr(m.ws||"")+" · "+tProc(m.ws,m.proc))+'</span>';
+      b.innerHTML='<span class="plnm">'+esc(tr(m.ws||"")+" · "+tProc(m.ws,m.proc))+'</span>'+pickTime(m.updatedAt);
       b.addEventListener("click",async()=>{
         $("#ppicklist").hidden=true; await ipqcLoad(m.id); ipqcShow("entry");
       });
@@ -7023,7 +7040,7 @@ async function oqcRenderPick(){
     if(!open) return;
     list.forEach(m=>{
       const b=el("button","plrow"+(OR&&m.id===OR.id?" cur":"")); b.type="button";
-      b.innerHTML='<span class="plnm">'+esc(oqcPickLabel(m))+'</span>';
+      b.innerHTML='<span class="plnm">'+esc(oqcPickLabel(m))+'</span>'+pickTime(m.updatedAt);
       b.addEventListener("click",async()=>{
         $("#opicklist").hidden=true; await oqcLoad(m.id); oqcShow("entry");
       });
@@ -7321,8 +7338,31 @@ function isBlankReport(rec){
      an iqc batch carries 供应商/CONTAINER/检验员 forward the same way — see
      the "+ 新批次" handler — so itemNo/po (mirrored from 品号/供应商 in
      iqcSave()) prove nothing either; the checklist below is what protects it */
-  const auto = rec.type==="lab" ? ["testDate","itemNo","po"]
-             : rec.type==="iqc" ? ["date","itemNo","po"] : ["inspDate"];
+  /* 建记录那一刻自动填上的字段 —— 它们有值证明不了"人真的用过这条"。
+
+     **按 type 全部列出，不留兜底。** 原来写成
+         lab ? [...] : iqc ? [...] : ["inspDate"]
+     fqc 的字段名当了兜底，于是后加的 ipqc / oqc 全掉进去 —— 它们的日期字段叫
+     date 不叫 inspDate，永远匹配不上，下面那个循环就把 ipqcBlank() 默认填的
+     白班/车间/工序当成"有内容"，一律 return false。结果这两个板块的废弃草稿
+     一条都清理不掉，而下面专门为它们写的判据（检查数量 / 不良明细 / 勾选项）
+     根本执行不到。2026-08-30 实测：制程 110 条有效记录里 17 条是这种空壳。
+
+     加新板块时在这张表里补一行。认不出的 type 拿到空列表 —— 任何字段有值都
+     保护住，宁可不清也不误删。 */
+  const AUTO_FIELDS = {
+    fqc:  ["inspDate"],
+    lab:  ["testDate","itemNo","po"],
+    iqc:  ["date","itemNo","po"],
+    /* 这四格由下面那段单独判（要跟默认值比，不是有值就算），所以先从通用
+       循环里放行。date 是建记录时填的今天，itemNo/po 是 ws/proc 的镜像。 */
+    ipqc: ["date","shift","ws","proc","inspector","itemNo","po"],
+    /* oqcBlank() 只自动填日期。柜号/封条号**故意不进这张表** —— 它们是导入
+       计划表填的，导完还没验的柜子要留着，别被清理端走。判据是下面的勾选项、
+       实际数量、备注。 */
+    oqc:  ["date"],
+  };
+  const auto = AUTO_FIELDS[rec.type] || [];
   for(const k of Object.keys(f)){
     if(auto.includes(k)) continue;                 /* auto-filled at creation */
     if(String(f[k]==null?"":f[k]).trim()) return false;
@@ -7339,6 +7379,15 @@ function isBlankReport(rec){
   /* 制程检验：检查数量或任意一条不良明细，都说明这条记录真的被用过 */
   const pq=(rec.ipqc||{});
   if(String((rec.fields||{}).qty||"").trim()) return false;
+  /* 班次 / 车间 / 工序 / 检验员：有值就是人填的。
+     ipqcBlank() 现在这四格一律留空、「+新记录」也不从上一条照抄，所以里面
+     出现任何值都只可能是人自己选的 —— 不需要跟默认值比。 */
+  if(rec.type==="ipqc"){
+    const pf=rec.fields||{};
+    for(const k of ["shift","ws","proc","inspector"]){
+      if(String(pf[k]==null?"":pf[k]).trim()) return false;
+    }
+  }
   if((pq.defects||[]).some(d=>String(d.model||"").trim()||String(d.desc||"").trim()||
                               (lnum(d.n)||0)>0)) return false;
   /* an oqc container: the goods list comes from the imported plan (not typed),
@@ -9134,7 +9183,7 @@ function labRenderPick(){
     rows.sort((a,b)=>(a.po||"").localeCompare(b.po||""));   /* 批号顺序，和当天开工顺序一致 */
     rows.forEach(m=>{
       const b=el("button","plrow"+(LR&&m.id===LR.id?" cur":"")); b.type="button";
-      b.innerHTML='<span class="plnm">'+esc(labLabel(m))+'</span>';
+      b.innerHTML='<span class="plnm">'+esc(labLabel(m))+'</span>'+pickTime(m.updatedAt);
       b.addEventListener("click",async()=>{
         $("#lpicklist").hidden=true; await labLoad(m.id); labShow("entry");
       });
