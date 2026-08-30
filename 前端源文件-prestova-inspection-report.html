@@ -3956,6 +3956,9 @@ $("#del").addEventListener("click",async()=>{
   const mine=ofModule(await metaAll(),CURRENT);
   if(mine.length){ await load(mine[0].id); }
   else { resetToBlank(); await dbPut(R); await refreshList(); }
+  /* 留在记录表上删的话得把表重画，不然删掉那行还杵在那儿，要刷新页面才没。
+     来料/制程/装柜三个板块本来就有这一行，成品漏了。 */
+  if(!$("#frec").hidden) await frecRender();
   toast("Deleted");
 });
 $("#back").addEventListener("click",()=>{
@@ -9026,16 +9029,26 @@ $("#lsync").addEventListener("click",()=>{ SYNC.err=null; syncNow(); });
 $("#lnew").addEventListener("click",async()=>{
   /* 品号**不带过来** —— 一批一个品号，抄上一批的话下拉里已经填着 2570，
      人扫一眼以为选过了就往下做，错的品号会一路带到判定和报告上。留空让它
-     显示「— 选品名 —」，逼一次主动选择。批号那几段（日期/线别/流水号）照带，
-     那是同一天顺着做下来的上下文。 */
-  const keep = LR ? {ymd:LR.lab.ymd, line:LR.lab.line,
-                     date:LR.fields.testDate, seq:LR.lab.seq} : null;
+     显示「— 选品名 —」，逼一次主动选择。
+
+     测试日期一律是今天（labBlank() 给的），不再抄上一批 —— 昨天没做完今天
+     接着点「+新批次」，抄过来的话新批次会挂在昨天名下。
+
+     跨天就重来：上一批的测试日期不是今天，说明换天了，批号日期段和流水号都
+     用 labBlank() 的默认（昨天 / 01），不带 —— 流水号是某个批号日期段之下的
+     序号（批号 = ymd+seq+line），换了天还接着 +1 就串号了。
+     同一天之内才带 ymd 和 seq：ymd 可能被人手动改过（海绵前一天裁、第二天测，
+     默认是昨天但不总是对），带过去省得每条都改一遍；seq 顺次 +1。
+     线别跟日期无关，一直带。 */
+  const sameDay = !!(LR && LR.fields.testDate === today());
+  const keep = LR ? {ymd:LR.lab.ymd, line:LR.lab.line, seq:LR.lab.seq} : null;
   LR=labBlank();
-  /* a day is worked through in order, so carry the context and bump the serial */
   if(keep){
-    LR.lab.ymd=keep.ymd; LR.lab.line=keep.line;
-    LR.fields.testDate=keep.date;
-    LR.lab.seq=String(Math.min(99,(parseInt(keep.seq,10)||0)+1)).padStart(2,"0");
+    LR.lab.line=keep.line;
+    if(sameDay){
+      LR.lab.ymd=keep.ymd;
+      LR.lab.seq=String(Math.min(99,(parseInt(keep.seq,10)||0)+1)).padStart(2,"0");
+    }
   }
   labPaintAll(); await dbPut(LR); await labRefreshList();
   labShow("entry");        /* these act on the open batch, so show it */
@@ -9049,7 +9062,10 @@ $("#ldel").addEventListener("click",async()=>{
     .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   if(mine.length) await labLoad(mine[0].id);
   else { LR=labBlank(); labPaintAll(); await dbPut(LR); await labRefreshList(); }
-  labShow("entry");
+  /* 在哪删就留在哪 —— 原来无条件 labShow("entry")，从记录表点删除会被踢进
+     录入页，跟另外四个板块都不一样。记录表这一屏重画一下就行。 */
+  if(!$("#lsheetv").hidden) labRenderRec();
+  else labShow("entry");
   toast("已删除");
 });
 
