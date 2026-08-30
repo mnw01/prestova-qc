@@ -7328,11 +7328,12 @@ function isBlankReport(rec){
     if(Object.keys(rec[bag]||{}).length) return false;
   }
   const f=rec.fields||{};
-  /* a lab batch inherits model + serial from the previous one, so itemNo/po are
-     carried over rather than typed and say nothing about whether it was used.
-     an iqc batch carries 供应商/CONTAINER/检验员 forward the same way — see
-     the "+ 新批次" handler — so itemNo/po (mirrored from 品号/供应商 in
-     iqcSave()) prove nothing either; the checklist below is what protects it */
+  /* itemNo/po 在好几个板块里是**镜像**，不是人直接打进去的：实验室的
+     itemNo=品号、po=批号（labSave），来料的 itemNo=品号、po=供应商（iqcSave），
+     制程的 itemNo=车间、po=工序（ipqcSave）。所以它们进 auto 表，判据要看
+     被镜像的那个源字段，或者下面各板块自己的那几条（读数 / 勾选项 / 不良明细）。
+     （2026-08-31：五个板块的「+新增」都不再从上一条照抄了，只有实验室还带
+     批号的 ymd/line/seq —— 所以 po 在实验室仍然"证明不了什么"，这条还成立。） */
   /* 建记录那一刻自动填上的字段 —— 它们有值证明不了"人真的用过这条"。
 
      **按 type 全部列出，不留兜底。** 原来写成
@@ -7349,9 +7350,11 @@ function isBlankReport(rec){
     fqc:  ["inspDate"],
     lab:  ["testDate","itemNo","po"],
     iqc:  ["date","itemNo","po"],
-    /* 这四格由下面那段单独判（要跟默认值比，不是有值就算），所以先从通用
-       循环里放行。date 是建记录时填的今天，itemNo/po 是 ws/proc 的镜像。 */
-    ipqc: ["date","shift","ws","proc","inspector","itemNo","po"],
+    /* 只有 date 是建记录时自动填的（今天）；itemNo/po 是 ws/proc 的镜像
+       （见 ipqcSave），本身不是人填的。班次/车间/工序/检验员**不在这里** ——
+       ipqcBlank() 现在留空、「+新记录」也不照抄，所以它们有值就是人填的，
+       让下面那个通用循环直接判就行。形状跟 iqc 那行一样。 */
+    ipqc: ["date","itemNo","po"],
     /* oqcBlank() 只自动填日期。柜号/封条号**故意不进这张表** —— 它们是导入
        计划表填的，导完还没验的柜子要留着，别被清理端走。判据是下面的勾选项、
        实际数量、备注。 */
@@ -7374,15 +7377,6 @@ function isBlankReport(rec){
   /* 制程检验：检查数量或任意一条不良明细，都说明这条记录真的被用过 */
   const pq=(rec.ipqc||{});
   if(String((rec.fields||{}).qty||"").trim()) return false;
-  /* 班次 / 车间 / 工序 / 检验员：有值就是人填的。
-     ipqcBlank() 现在这四格一律留空、「+新记录」也不从上一条照抄，所以里面
-     出现任何值都只可能是人自己选的 —— 不需要跟默认值比。 */
-  if(rec.type==="ipqc"){
-    const pf=rec.fields||{};
-    for(const k of ["shift","ws","proc","inspector"]){
-      if(String(pf[k]==null?"":pf[k]).trim()) return false;
-    }
-  }
   if((pq.defects||[]).some(d=>String(d.model||"").trim()||String(d.desc||"").trim()||
                               (lnum(d.n)||0)>0)) return false;
   /* an oqc container: the goods list comes from the imported plan (not typed),
@@ -8187,9 +8181,9 @@ function ymdToday(){
 }
 /* a fresh batch's 批号 defaults to the day before 测试日期 (today) — foam is
    cut one day and tested the next, so a brand-new batch on 8/2 is dated 8/1
-   by default, not 8/2. Only the very first blank batch of a session uses
-   this; "+ 新批次" carries the previous batch's own ymd forward instead
-   (see its handler), so a manually-corrected date isn't fought every time. */
+   by default, not 8/2.
+   "+ 新批次" 只在**同一天之内**把上一批的 ymd 带过去（见它的处理器），这样
+   手动改过的日期不用每条都改一遍；跨天就回到这里的默认值，流水号也一并归 01。 */
 function ymdYesterday(){
   const d=new Date(); d.setDate(d.getDate()-1);
   const p=n=>String(n).padStart(2,"0");
