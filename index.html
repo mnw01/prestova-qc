@@ -3852,10 +3852,15 @@ const fqcDayKey = m => dayKey(parseDMY(m.inspDate) || m.updatedAt);
 const dayLabel = k => { const [y,m,d]=k.split("-"); return y+"/"+Number(m)+"/"+Number(d); };
 /* 选择器每一行右边那个「最后改动」时刻。五个板块共用一份 —— 原来只有成品
    写了（内联在 renderPickList 里），另外四个只有名字，看不出哪条是刚动过的。
-   选择器本来就按天分组，所以只到分钟就够，不用带日期。 */
+
+   **带日期，不能只给 HH:MM。** 分组用的是记录自己的日期（dayKey），而这里显示
+   的是最后改动时刻，两者可以不在同一天 —— 8/27 那批半夜 23:47 改过一次，就会
+   在「8/27」那一组里显示 23:47，看着像当天深夜，其实是别的日子。带上日期才读得准。
+   格式跟全站一致：DD/MM。年份组标题上有，不重复。 */
 function pickTime(ms){
   const d=new Date(ms||Date.now()), p=n=>String(n).padStart(2,"0");
-  return '<span class="pltime">'+p(d.getHours())+":"+p(d.getMinutes())+'</span>';
+  return '<span class="pltime">'+p(d.getDate())+"/"+p(d.getMonth()+1)+" "+
+         p(d.getHours())+":"+p(d.getMinutes())+'</span>';
 }
 function pickLabel(r){
   const f=r.fields||r;
