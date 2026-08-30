@@ -270,7 +270,8 @@ html[lang="id"] .hhead h1 .cn{display:none}
 .bar select{max-width:min(38vw,300px)}
 .bar button:hover{background:color-mix(in srgb,currentColor 9%,transparent)}
 /* ── 主操作按钮（蓝底白字）：全站就这三个，统一在这里 ────────────────
-     · #prt        成品报告末尾左下角的「打印 / 存 PDF」
+     · #prt        成品报告第二页、纸上左下角的「打印 / 存 PDF」
+       它长在永远是白底的 .sheet 上，所以**不进**下面那两条深色边框规则
      · #lrpt-print 实验室报告卡片头上的「打印」
      · #oprt       装柜「打印 / 存 PDF」
    以前三处各写各的：实验室那个 hover 会整个变白（通用的
@@ -293,12 +294,10 @@ html[lang="id"] .hhead h1 .cn{display:none}
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]) .bar button.key,
-  :root:not([data-theme="light"]) .prtfoot > button.key,
   :root:not([data-theme="light"]) #oqc .oqprt,
   :root:not([data-theme="light"]) #lab .lcard > h2 button.key:not(.recbtn){border-color:#2d5fa8}
 }
 :root[data-theme="dark"] .bar button.key,
-:root[data-theme="dark"] .prtfoot > button.key,
 :root[data-theme="dark"] #oqc .oqprt,
 :root[data-theme="dark"] #lab .lcard > h2 button.key:not(.recbtn){border-color:#2d5fa8}
 /* Delete sits with the record it acts on — next to the picker and "new" — which
@@ -397,9 +396,8 @@ html[lang="id"] .hhead h1 .cn{display:none}
   width:210mm;max-width:100%;background:var(--paper);color:var(--ink);
   padding:10mm;box-shadow:var(--shadow);
 }
-/* 报告末尾那条打印按钮：宽度必须跟 .sheet 一模一样（下面 900px 断点里也有一份），
-   否则在 .wrap 的居中里两者左边缘对不齐。 */
-.prtfoot{width:210mm;max-width:100%}
+/* 打印按钮在纸里面，左边缘跟着 .sheet 的内边距走，不用自己算宽度。 */
+.prtfoot{margin-top:3mm}
 .head{text-align:center;margin-bottom:5mm}
 .head h1{
   font-family:var(--serif);font-weight:700;font-size:16.5pt;margin:0;
@@ -685,7 +683,6 @@ body.dropping::after{
   body{font-size:15px;overflow-x:hidden}
   .wrap{padding:12px 8px 60px}
   .sheet{padding:14px 10px;width:100%}
-  .prtfoot{width:100%}
   .head h1{font-size:13pt}
   .head h2{font-size:10.5pt}
   #info{grid-template-columns:30mm minmax(0,1fr)}
@@ -2255,13 +2252,15 @@ table.frec-table tbody tr.draft .frec-open:hover,
     </div>
   </div>
   <div class="sheetnum">Page 2 / 2</div>
+  <!-- 打印按钮就放在纸上、第二页左下角那块空白里。它不是单据的一部分：
+       @media print 里 .prtfoot 是 display:none，所以既不占那 274mm 的版面，
+       也不会被印出来。
+       它在 .sheet 里面，而 .sheet 在 I18N_SKIP_SEL 里 —— 翻译那边专门为
+       .prtfoot 开了个口子，不然印尼语下这个按钮会一直是中文。
+       data-lockok：锁定后 lockGate 会拦掉 .wrap 里的 click，这个口子让已锁的
+       报告照样能打印 —— 跟装柜 #oprt、实验室 #lrpt-print 一个道理。 -->
+  <div class="prtfoot"><button type="button" id="prt" class="key" data-lockok>打印 / 存 PDF</button></div>
 </section>
-
-<!-- 打印按钮在报告末尾、左边缘跟纸对齐。.wrap 是 align-items:center 的列 flex，
-     所以 .prtfoot 必须跟 .sheet 用同一组宽度规则（含 900px 断点那份）才对得齐。
-     data-lockok：锁定后 lockGate 会拦掉 .wrap 里的 click，这个口子让已锁的报告
-     照样能打印 —— 跟装柜 #oprt、实验室 #lrpt-print 一个道理。 -->
-<div class="prtfoot"><button type="button" id="prt" class="key" data-lockok>打印 / 存 PDF</button></div>
 
 </div>
 
@@ -3119,7 +3118,11 @@ const tr = zh => {
    把中文那半换成印尼语会破坏他们盖章存档的格式。要翻再单独说。 */
 const I18N_SKIP_TAG={SCRIPT:1,STYLE:1,TEXTAREA:1,NOSCRIPT:1};
 const I18N_SKIP_SEL=".sheet,.oqsheet,.lsheet,.labsheet,.lrsheet";
-const i18nSkip = el => !!(el && el.closest && el.closest(I18N_SKIP_SEL));
+/* .prtfoot 是唯一的例外：打印按钮虽然长在 .sheet 那张纸上，但它是界面元素、
+   不是单据内容（打印时 display:none），所以照常翻。不开这个口子，印尼语下
+   它会一直显示「打印 / 存 PDF」。 */
+const i18nSkip = el => !!(el && el.closest &&
+  el.closest(I18N_SKIP_SEL) && !el.closest(".prtfoot"));
 const I18N_ATTRS=["placeholder","title","aria-label"];
 let I18N_BUSY=false;
 function i18nEl(el){
