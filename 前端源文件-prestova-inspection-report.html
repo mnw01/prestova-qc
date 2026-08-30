@@ -4754,10 +4754,17 @@ $("#iback").addEventListener("click",()=>{
 });
 $("#isync").addEventListener("click",()=>{ SYNC.err=null; syncNow(); });
 $("#inew").addEventListener("click",async()=>{
-  /* 同一批柜通常连着录好几个品号，供应商/柜号/检验员照抄上一条更省事 */
-  const keep = IR ? {supplier:IR.fields.supplier, container:IR.fields.container, inspector:IR.fields.inspector} : null;
+  /* 新批次**只带今天的进料日期**（iqcBlank() 给的），别的一格都不带
+     （2026-08-31 改，五个板块统一成这个规矩）。
+
+     原来照抄供应商/柜号/检验员，理由是"同一批柜连着录好几个品号更省事"。
+     省下的那几秒不值：抄过来的值看着像已经填好了，人扫一眼就往下走 ——
+     换了柜还顶着上一柜的柜号、换了供应商还顶着上一家，错了也不容易发现。
+     留空则一眼就知道还没填。
+
+     另一半好处在 isBlankReport()：这几格现在有值就一定是人填的，空批次
+     清理才判得准。 */
   IR=iqcBlank();
-  if(keep){ IR.fields.supplier=keep.supplier; IR.fields.container=keep.container; IR.fields.inspector=keep.inspector; }
   iqcPaintAll(); await dbPut(IR);
   irecShow(false);        /* 新建就是要填它，直接进录入页 */
   toast("新批次已建");
@@ -6813,9 +6820,14 @@ $("#oback").addEventListener("click",()=>{
 });
 $("#osync").addEventListener("click",()=>{ SYNC.err=null; syncNow(); });
 $("#onew").addEventListener("click",async()=>{
-  const keep = OR ? {date:OR.fields.date, inspector:OR.fields.inspector} : null;
+  /* 新柜**只带今天的装柜日期**（oqcBlank() 给的），别的不带 —— 跟另外四个
+     板块同一个规矩。
+
+     原来抄上一柜的日期和检验员。日期那个是**无条件**抄的，跟制程「+新记录」
+     炸掉的是同一个形状：上一条要是没日期，空值就传下去，而空日期的记录在
+     记录表里筛不出来（"" >= from 恒为 false）。制程实测攒到过 22 条，装柜
+     只是记录少（5 条）还没显出来。 */
   OR=oqcBlank();
-  if(keep){ OR.fields.date=keep.date; OR.fields.inspector=keep.inspector; }
   oqcPaintAll(); await dbPut(OR);
   oqcShow("entry");
   toast("新柜已建");
