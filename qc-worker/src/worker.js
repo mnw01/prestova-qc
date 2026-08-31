@@ -109,28 +109,46 @@ const GATE = `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PT. Prestova Home Living Indonesia</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;background:#e2e6ec;
-     font-family:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;color:#16191d;padding:20px}
-.card{background:#fff;border:1px solid #c6ccd4;border-radius:8px;padding:26px 24px;width:min(360px,100%);
-      box-shadow:0 12px 34px -14px rgba(20,26,36,.28)}
-h1{font-family:"Times New Roman",serif;font-size:16px;line-height:1.35;margin:0 0 4px;text-align:center}
-p.sub{margin:0 0 18px;text-align:center;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#79828d}
-label{display:block;font-size:12px;color:#4a525c;margin-bottom:6px}
-input,select{width:100%;padding:11px 12px;font-size:16px;border:1px solid #9aa3ae;
-  border-radius:5px;background:#fff;color:inherit;font-family:inherit}
-select{margin-bottom:14px}
-input:focus,select:focus{outline:2px solid #17458c;outline-offset:1px;border-color:#17458c}
-button{width:100%;margin-top:12px;padding:11px;font-size:15px;font-weight:600;color:#fff;
-       background:#17458c;border:0;border-radius:5px;cursor:pointer}
-button:disabled{opacity:.6;cursor:default}
-.err{margin-top:10px;font-size:12.5px;color:#b32d23;min-height:1.2em}
-@media (prefers-color-scheme:dark){
-  body{background:#14171b;color:#e7eaef}
-  .card{background:#1c2027;border-color:#2d333c}
-  label{color:#aab3bd}
-  input,select{background:#14171b;color:#e7eaef;border-color:#3a424c}
+/* 配色跟主应用的改版方向 C 对齐（值抄自那边的共用 token 块）。这一页是 worker
+   独立发的一段 HTML，拿不到主应用的样式表，所以只能把值写一遍 —— 改这里的时候
+   记得跟前端源文件顶上那个共用 token 块一起改。 */
+:root{
+  --deck:#e8ecf3; --card:#ffffff; --card-line:#e2e7ee;
+  --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
+  --field:#ffffff; --field-line:#cdd5e0;
+  --accent:#1f4fa8; --accent-fill:#1f4fa8; --no:#b0342a;
+  --sh:0 1px 3px rgba(15,23,41,.08),0 14px 34px -18px rgba(15,23,41,.3);
 }
+@media (prefers-color-scheme:dark){
+  :root{
+    --deck:#0d1014; --card:#171b22; --card-line:#252c36;
+    --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
+    --field:#11151b; --field-line:#333c48;
+    --accent:#5b93ea; --accent-fill:#2f62c4; --no:#e08c82;
+    --sh:0 1px 3px rgba(0,0,0,.55),0 16px 38px -20px rgba(0,0,0,.85);
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--deck);
+     font-family:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+     color:var(--ink);padding:20px}
+.card{background:var(--card);border:1px solid var(--card-line);border-radius:11px;
+      padding:28px 26px;width:min(380px,100%);box-shadow:var(--sh)}
+h1{font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.3;margin:0 0 5px;
+   text-align:center;text-wrap:balance}
+p.sub{margin:0 0 22px;text-align:center;font-size:11px;letter-spacing:.13em;
+      text-transform:uppercase;color:var(--ink-3)}
+label{display:block;font-size:12.5px;font-weight:500;color:var(--ink-2);margin-bottom:6px}
+input,select{width:100%;padding:10px 12px;font-size:16px;border:1px solid var(--field-line);
+  border-radius:7px;background:var(--field);color:var(--ink);font-family:inherit}
+select{margin-bottom:16px}
+input:focus,select:focus{outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);
+  outline-offset:1px;border-color:var(--accent)}
+button{width:100%;margin-top:14px;padding:11px;font-size:15px;font-weight:600;color:#fff;
+       background:var(--accent-fill);border:1px solid var(--accent-fill);border-radius:7px;cursor:pointer}
+button:hover:not(:disabled){filter:brightness(1.14)}
+button:disabled{opacity:.6;cursor:default}
+.err{margin-top:10px;font-size:12.5px;color:var(--no);min-height:1.2em}
 </style></head><body>
 <form class="card" id="f">
   <h1>PT. Prestova Home Living Indonesia</h1>

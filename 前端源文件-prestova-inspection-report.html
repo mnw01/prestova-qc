@@ -16,6 +16,7 @@
   --ink-3:#79828d;
   --paper:#ffffff;
   --ground:#e2e6ec;         /* workbench grey */
+  --deck:#e8ecf3;           /* 屏幕底色（改版 C）——body 用它，跟板块无缝 */
   --chrome:#f3f5f8;
   --rule:#1b1f24;           /* form borders — strong so they survive print */
   --rule-2:#9aa3ae;
@@ -33,7 +34,7 @@
 @media (prefers-color-scheme:dark){
   :root{
     --ink:#161a1f;--ink-2:#4d555f;--ink-3:#7b848f;
-    --paper:#f4f5f7;--ground:#14171b;--chrome:#1c2027;
+    --paper:#f4f5f7;--ground:#14171b;--chrome:#1c2027;--deck:#0d1014;
     --rule:#1b1f24;--rule-2:#9aa3ae;--hairline:#c6ccd4;
     --accent:#7ea6e8;--accent-soft:rgba(23,69,140,.05);
     --shadow:0 1px 2px rgba(0,0,0,.5),0 16px 40px -16px rgba(0,0,0,.7);
@@ -41,14 +42,14 @@
 }
 :root[data-theme="dark"]{
   --ink:#161a1f;--ink-2:#4d555f;--ink-3:#7b848f;
-  --paper:#f4f5f7;--ground:#14171b;--chrome:#1c2027;
+  --paper:#f4f5f7;--ground:#14171b;--chrome:#1c2027;--deck:#0d1014;
   --rule:#1b1f24;--rule-2:#9aa3ae;--hairline:#c6ccd4;
   --accent:#7ea6e8;--accent-soft:rgba(23,69,140,.05);
   --shadow:0 1px 2px rgba(0,0,0,.5),0 16px 40px -16px rgba(0,0,0,.7);
 }
 :root[data-theme="light"]{
   --ink:#16191d;--ink-2:#4a525c;--ink-3:#79828d;
-  --paper:#ffffff;--ground:#e2e6ec;--chrome:#f3f5f8;
+  --paper:#ffffff;--ground:#e2e6ec;--chrome:#f3f5f8;--deck:#e8ecf3;
   --accent:#17458c;--accent-soft:rgba(23,69,140,.055);
   --shadow:0 1px 2px rgba(20,26,36,.06),0 12px 34px -14px rgba(20,26,36,.28);
 }
@@ -73,36 +74,62 @@
    --card / --field，写 var(--paper) 在深色下会得到浅色 —— 配上同样是浅色的
    var(--ink) 就是一行看不见的字。用户报过两次，扫描又扫出五处。
    （--card / --field 是两种表面：卡片底和输入框底，深色下它们不一样。） */
-#lab,#iqc,#ipqc,#oqc,#pmpop,.frec-card,.hcorner,#lockbar{
-  --ink:#16191d; --ink-2:#4a525c; --ink-3:#79828d;
-  --hairline:#c6ccd4; --rule-2:#9aa3ae;
-  --ok:#1d7a44; --no:#b32d23; --okbg:#e7f5ec; --nobg:#fdecea;
-  --card:#ffffff; --card-line:#c6ccd4;
-  --field:#ffffff; --field-line:#9aa3ae;
+/* ── 2026-08-31：屏幕配色换成改版方向 C，五个板块 + 首页共用这一份 ────────
+   名字一个没改，只换了值 —— 板块里现存的几百条规则自动跟着换皮。
+   新加进选择器列表的三个：
+     · #home   首页原来吃 :root 那套"纸"的 token，跟板块不是一个世界
+     · .bar    工具栏（成品那条长在 #mod 里，不能靠板块根节点罩到）
+     · #fdash  成品的数据分析屏，同上
+   **`#mod` 故意不进这个列表**：成品那张 A4 `.sheet` 就在 #mod 里面，它用
+   var(--paper)/var(--ink)，必须继续拿 :root 那套永远浅底深字的"纸"token。
+   把 #mod 加进来的话，深色下就是浅色纸配浅色字 —— 那正是这份文件顶上
+   那段注释警告过、用户报过两次的坑。
+   同理 --accent 系列只加在这个模块列表上，不动 :root：报告表单里那些
+   background:var(--accent-soft) 的输入格是打印件的一部分。 */
+#home,#lab,#iqc,#ipqc,#oqc,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar{
+  --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
+  --hairline:#e6eaf1; --rule-2:#cdd5e0;
+  --ok:#0f7a52; --no:#b0342a; --okbg:#e6f5ee; --nobg:#fdecea;
+  --card:#ffffff; --card-line:#e2e7ee;
+  --field:#ffffff; --field-line:#cdd5e0;
+  --accent:#1f4fa8; --accent-soft:#eef3fc; --accent-fill:#1f4fa8;
+  --deck:#e8ecf3; --bar-bg:#f5f8fc; --seg-bg:#e7ecf3; --seg-on:#ffffff;
+  /* 形状与投影：两个主题一样，只在这一处声明，深色那几段不用重抄 */
+  --r-card:11px; --r-ctl:7px; --r-seg:8px;
+  --sh-1:0 1px 2px rgba(15,23,41,.07);
   color:var(--ink);
 }
 @media (prefers-color-scheme:dark){
-  #lab,#iqc,#ipqc,#oqc,#pmpop,.frec-card,.hcorner,#lockbar{
-    --ink:#e7eaef; --ink-2:#aab3bd; --ink-3:#8b949f;
-    --hairline:#2d333c; --rule-2:#39414c;
-    --ok:#5fbf8d; --no:#e88b81; --okbg:#1b2c23; --nobg:#2e1d1b;
-    --card:#1c2027; --card-line:#2d333c;
-    --field:#151a20; --field-line:#39414c;
+  :root:not([data-theme="light"]) :is(#home,#lab,#iqc,#ipqc,#oqc,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
+    --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
+    --hairline:#232a34; --rule-2:#333c48;
+    --ok:#4fbb8a; --no:#e08c82; --okbg:#12291f; --nobg:#2b1a18;
+    --card:#171b22; --card-line:#252c36;
+    --field:#11151b; --field-line:#333c48;
+    --accent:#5b93ea; --accent-soft:#16233a; --accent-fill:#2f62c4;
+    --deck:#0d1014; --bar-bg:#141920; --seg-bg:#0f141a; --seg-on:#272f3a;
+    --sh-1:0 1px 2px rgba(0,0,0,.5);
   }
 }
-:root[data-theme="dark"] :is(#lab,#iqc,#ipqc,#oqc,#pmpop,.frec-card,.hcorner,#lockbar){
-  --ink:#e7eaef; --ink-2:#aab3bd; --ink-3:#8b949f;
-  --hairline:#2d333c; --rule-2:#39414c;
-  --ok:#5fbf8d; --no:#e88b81; --okbg:#1b2c23; --nobg:#2e1d1b;
-  --card:#1c2027; --card-line:#2d333c;
-  --field:#151a20; --field-line:#39414c;
+:root[data-theme="dark"] :is(#home,#lab,#iqc,#ipqc,#oqc,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
+  --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
+  --hairline:#232a34; --rule-2:#333c48;
+  --ok:#4fbb8a; --no:#e08c82; --okbg:#12291f; --nobg:#2b1a18;
+  --card:#171b22; --card-line:#252c36;
+  --field:#11151b; --field-line:#333c48;
+  --accent:#5b93ea; --accent-soft:#16233a; --accent-fill:#2f62c4;
+  --deck:#0d1014; --bar-bg:#141920; --seg-bg:#0f141a; --seg-on:#272f3a;
+  --sh-1:0 1px 2px rgba(0,0,0,.5);
 }
-:root[data-theme="light"] :is(#lab,#iqc,#ipqc,#oqc,#pmpop,.frec-card,.hcorner,#lockbar){
-  --ink:#16191d; --ink-2:#4a525c; --ink-3:#79828d;
-  --hairline:#c6ccd4; --rule-2:#9aa3ae;
-  --ok:#1d7a44; --no:#b32d23; --okbg:#e7f5ec; --nobg:#fdecea;
-  --card:#ffffff; --card-line:#c6ccd4;
-  --field:#ffffff; --field-line:#9aa3ae;
+:root[data-theme="light"] :is(#home,#lab,#iqc,#ipqc,#oqc,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
+  --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
+  --hairline:#e6eaf1; --rule-2:#cdd5e0;
+  --ok:#0f7a52; --no:#b0342a; --okbg:#e6f5ee; --nobg:#fdecea;
+  --card:#ffffff; --card-line:#e2e7ee;
+  --field:#ffffff; --field-line:#cdd5e0;
+  --accent:#1f4fa8; --accent-soft:#eef3fc; --accent-fill:#1f4fa8;
+  --deck:#e8ecf3; --bar-bg:#f5f8fc; --seg-bg:#e7ecf3; --seg-on:#ffffff;
+  --sh-1:0 1px 2px rgba(15,23,41,.07);
 }
 /* 实验室多两组自己的（超差底色、警告色），只补这几个，不重抄整套 */
 #lab{ --overbg:#fdf3f2; --warn:#c98a12; --warntx:#8a5d05; --warnbg:#fdf8ee; }
@@ -841,7 +868,6 @@ body.dropping::after{
    #frec, not .lrec — the lab's own record table already owns that name,
    scoped under #lab; this one lives in #mod instead, id-rooted so nothing
    here needs a prefix beyond frec- to stay out of every other module's way. */
-#frecbtn.cur{background:var(--accent);border-color:var(--accent);color:#fff}
 .frec-card{position:relative;max-width:1180px;margin:18px auto;padding:14px 16px;
   background:var(--card);border:1px solid var(--card-line);border-radius:6px}
 /* --paper/--ink stay print-correct (unflipped) in dark mode everywhere else on
@@ -1160,7 +1186,6 @@ table.frec-table tbody tr.draft .frec-open:hover,
    grid than fqc's fixed pass/fail checklist: 来料检验 has a variable, optional
    checklist (see IQC_ITEMS) and a per-batch 标准 typed by hand rather than a
    centrally fixed spec (see champion-inspection-report-artifact memory for why). */
-#iqc .bar button.cur{background:var(--accent);border-color:var(--accent);color:#fff}
 #iqc .iqwrap{max-width:1180px;margin:0 auto;padding:18px 14px 60px;display:flex;flex-direction:column;gap:14px}
 #iqc .iqcard{position:relative;background:var(--paper);border:1px solid var(--hairline);
   border-radius:6px;padding:14px 16px}
@@ -1334,7 +1359,6 @@ table.frec-table tbody tr.draft .frec-open:hover,
    最重要的约束：**现场 QC 拿手机站在生产线边上录**，取代原来"纸质表手写 →
    文员转录 Excel"。所以一切按窄屏优先：不良明细一行一张卡片（不是横向表格），
    加一条不良只要点一下、常用值都预填好。 */
-#ipqc .bar button.cur{background:var(--accent);border-color:var(--accent);color:#fff}
 #ipqc .ipwrap{max-width:1180px;margin:0 auto;padding:18px 14px 60px;display:flex;flex-direction:column;gap:14px}
 #ipqc .ipcard{position:relative;background:var(--paper);border:1px solid var(--hairline);
   border-radius:6px;padding:14px 16px}
@@ -1443,7 +1467,6 @@ table.frec-table tbody tr.draft .frec-open:hover,
    同时有「从计划表导入的货物明细表」「10 项固定检查」「三组可增张的照片」，
    形状跟哪个现有板块都不一样。深色 token 照例在 #oqc 上重新声明一份
    （--ink 全局不反色是为了打印页，屏幕要自己补）。 */
-#oqc .bar button.cur{background:var(--accent);border-color:var(--accent);color:#fff}
 #oqc .oqwrap{max-width:1280px;margin:0 auto;padding:18px 14px 60px;display:flex;flex-direction:column;gap:14px}
 #oqc .oqcard{position:relative;background:var(--paper);border:1px solid var(--hairline);
   border-radius:6px;padding:14px 16px}
@@ -1673,8 +1696,6 @@ table.frec-table tbody tr.draft .frec-open:hover,
    already-computed near-black is what made every heading vanish on dark.
    .labsheet is unaffected: its print rules pin #000 on #fff explicitly. */
 
-/* which view you are on, marked on its toolbar button */
-#lab .bar button.cur{background:var(--accent);border-color:var(--accent);color:#fff}
 #lab .lwrap{max-width:1180px;margin:0 auto;padding:18px 14px 60px;display:flex;flex-direction:column;gap:14px}
 /* 记录表这张表本身就宽（5 个测试项各占两列，加上疲劳那两列能到 ~1120px 内容
    宽度），跟其它屏幕共用 1180px 的上限时，减掉容器和卡片的内边距，可用宽度
@@ -2071,6 +2092,246 @@ table.frec-table tbody tr.draft .frec-open:hover,
   /* the row of 检验类别 boxes wraps as a whole; never split a label mid-word */
   #lab .ck{white-space:nowrap;display:inline-block;margin-right:3.2mm}
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   界面视觉系统（方向 C）· 五个板块 + 首页共用
+   ══════════════════════════════════════════════════════════════════════
+   放在样式表最后，是因为它要压过各板块自己那些早年写死的 background / 圆角
+   （不少卡片写的是 background:var(--paper)，那是"纸"，屏幕上要的是 --card）。
+   配色不在这里，在文件顶上那个共用 token 块里；这里只管形状、间距、字阶。
+
+   **整段包在 @media screen 里**：打印那几张 A4 完全不受影响 —— 它们的规则
+   都在 @media print 内、而且实验室和装柜的打印容器还各自写死了 #fff/#000。
+   这样"改屏幕不碰纸"是物理保证，不是靠我记得避开哪些选择器。
+
+   选择器都带板块前缀（或是 SHARED 白名单里的 .bar/.plbox 这类公共外壳），
+   所以 check-isolation 的两个方向都过得去。 */
+@media screen{
+
+  /* ── 板块与首页的底 ─────────────────────────────────────────────── */
+  /* body 也要换 —— 首页宽度只有 960，两侧会露出 body 的底色，不换就有一道缝。
+     --deck 现在在 :root 上也声明了一份，专门给 body 用。 */
+  body{background:var(--deck)}
+  #home,#lab,#iqc,#ipqc,#oqc,#mod{background:var(--deck)}
+  #home,#lab,#iqc,#ipqc,#oqc{min-height:100vh}
+
+  /* ── 工具栏 ─────────────────────────────────────────────────────── */
+  /* 三层递进：页底 --deck < 工具栏 --bar-bg < 卡片 --card。
+     第一版把工具栏也做成了纯白，跟卡片和近白的页底糊成一片，整屏没有层次。
+     这套关系跟改版前的 --ground < --chrome < --paper 是同一个结构，只是换了
+     偏蓝的中性色。 */
+  .bar{background:var(--bar-bg);border-bottom:1px solid var(--card-line);padding:10px 18px;gap:10px}
+  .bar .brand{font-family:var(--sans);font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--ink)}
+  .bar select,.bar button{
+    font-size:13px;padding:6px 12px;border-radius:var(--r-ctl);
+    border:1px solid var(--field-line);background:var(--card);color:var(--ink-2);
+  }
+  .bar button:hover{background:var(--seg-bg);color:var(--ink)}
+  .bar button.danger{color:var(--no);border-color:color-mix(in srgb,var(--no) 34%,transparent);background:transparent}
+  .bar button.danger:hover{background:var(--no);border-color:var(--no);color:#fff}
+  .bar .stat{font-size:12.5px;color:var(--ink-3)}
+  .bar .sync{border-radius:var(--r-ctl);font-size:12.5px}
+
+  /* 屏幕切换做成分段控件：一整块底 + 当前那格是浮起来的卡。
+     不用实心蓝 —— 那是"主操作"的语气，导航不该抢这个位置。 */
+  .segnav{display:inline-flex;gap:2px;background:var(--seg-bg);padding:3px;border-radius:var(--r-seg)}
+  .segnav button{
+    border:0;background:transparent;color:var(--ink-3);
+    font-size:13px;font-weight:500;padding:5px 13px;border-radius:calc(var(--r-seg) - 3px);
+  }
+  .segnav button:hover{background:transparent;color:var(--ink-2)}
+  .segnav button.cur{background:var(--seg-on);color:var(--ink);font-weight:600;box-shadow:var(--sh-1)}
+  .segnav button.cur:hover{background:var(--seg-on);color:var(--ink)}
+
+  /* 每屏唯一的主操作：提交并锁定 */
+  .bar #lockbtn,.bar #ilockbtn,.bar #plockbtn,.bar #olockbtn,.bar #llockbtn{
+    background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;font-weight:600;
+  }
+  .bar #lockbtn:hover,.bar #ilockbtn:hover,.bar #plockbtn:hover,
+  .bar #olockbtn:hover,.bar #llockbtn:hover{
+    background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;filter:brightness(1.14);
+  }
+
+  /* ── 卡片 ───────────────────────────────────────────────────────── */
+  #iqc .iqcard,#ipqc .ipcard,#oqc .oqcard,#lab .lcard,
+  .frec-card,#iqc .irec-card,#ipqc .iprec-card,#oqc .orec-card{
+    background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-card);
+    box-shadow:var(--sh-1);padding:18px 20px;
+  }
+  #iqc .iqcard > h2,#ipqc .ipcard > h2,#oqc .oqcard > h2,#lab .lcard > h2,
+  .frec-head h2,#iqc .irec-head h2,#ipqc .iprec-head h2,#oqc .orec-head h2{
+    font-size:15.5px;font-weight:600;letter-spacing:-.005em;color:var(--ink);
+  }
+  .frec-head h2 span,#iqc .irec-head h2 span,#ipqc .iprec-head h2 span,
+  #oqc .orec-head h2 span,#lab .lcard > h2 .note{
+    font-size:12.5px;font-weight:400;color:var(--ink-3);
+  }
+
+  /* 记录表卡片头上的「+ 新建」（从工具栏挪过来的：创建属于列表，不属于导航） */
+  .recnew{
+    font:inherit;font-size:13px;font-weight:600;padding:6px 13px;cursor:pointer;
+    border:1px solid var(--accent-fill);background:var(--accent-fill);color:#fff;
+    border-radius:var(--r-ctl);white-space:nowrap;
+  }
+  .recnew:hover{filter:brightness(1.14)}
+  /* 「+ 新建」要紧跟在标题后面，不要被甩到卡片最右边。
+     那四个记录表卡片头写的是 `h2{margin-right:auto}`，auto 会把后面的兄弟
+     全推到右端（实测离标题 800+px，看着像跟标题无关的另一个东西）。
+     实验室那个之所以位置对，是因为它长在 <h2> **里面**、不受这条影响。
+     这里把 auto 去掉，四个就跟实验室一致了。 */
+  .frec-head h2,#iqc .irec-head h2,#ipqc .iprec-head h2,#oqc .orec-head h2{margin-right:0}
+  /* 实验室那个「+ 新批次」长在 .lcard 的标题栏里，而 `#lab .lcard > h2
+     button:not(.recbtn)` 是 (1,2,2) 的"标题栏按钮统一空心药丸"规则。
+     下面这条同为 (1,2,2)，靠写在样式表更后面赢 —— 这一段本来就是最后一段。 */
+  #lab .lcard > h2 button.recnew{
+    border:1px solid var(--accent-fill);background:var(--accent-fill);color:#fff;
+    font-size:13px;font-weight:600;padding:6px 13px;border-radius:var(--r-ctl);
+  }
+  #lab .lcard > h2 button.recnew:hover{
+    background:var(--accent-fill);color:#fff;filter:brightness(1.14);
+  }
+
+  /* ── 表单控件 ───────────────────────────────────────────────────── */
+  /* ⚠ `:first-child` 是必须的，不是保险起见：字段里的**第一个** span 才是标签，
+     后面可能还有别的 span。实验室的「批号」就是三个控件包在一层
+     <span class="lbatch"> 里，它同样是 .lfield 的直接子 span —— 不限定的话
+     它会被当成标签染上 font-weight:500，里面的 input/select（写了 font:inherit）
+     跟着继承，于是批号那三格比隔壁「测试日期」粗一档。用户一眼看出来了。 */
+  #iqc .iqfield > span:first-child,#ipqc .ipfield > span:first-child,
+  #oqc .oqfield > span:first-child,#lab .lfield > span:first-child,
+  .frec-field > span:first-child,#iqc .irec-field > span:first-child,
+  #ipqc .iprec-field > span:first-child,#oqc .orec-field > span:first-child{
+    font-size:12.5px;font-weight:500;color:var(--ink-2);letter-spacing:0;
+  }
+  #iqc .iqfield :is(input,select),#ipqc .ipfield :is(input,select),
+  #oqc .oqfield :is(input,select),#lab .lfield :is(input,select),
+  .frec-field :is(input,select),#iqc .irec-field :is(input,select),
+  #ipqc .iprec-field :is(input,select),#oqc .orec-field :is(input,select){
+    font-size:13.5px;padding:8px 11px;border-radius:var(--r-ctl);
+    border:1px solid var(--field-line);background:var(--field);color:var(--ink);
+  }
+  #iqc .iqfield :is(input,select):focus,#ipqc .ipfield :is(input,select):focus,
+  #oqc .oqfield :is(input,select):focus,#lab .lfield :is(input,select):focus,
+  .frec-field :is(input,select):focus,#iqc .irec-field :is(input,select):focus,
+  #ipqc .iprec-field :is(input,select):focus,#oqc .orec-field :is(input,select):focus{
+    outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:1px;
+    border-color:var(--accent);
+  }
+  .recbtn{
+    font-size:13px;padding:7px 13px;border-radius:var(--r-ctl);
+    border:1px solid var(--field-line);background:var(--card);color:var(--ink-2);
+  }
+  .recbtn:hover{background:var(--seg-bg);color:var(--ink)}
+
+  /* ── KPI ────────────────────────────────────────────────────────── */
+  .fd-kpis,#iqc .iqan-kpis,#ipqc .ipan-kpis,#lab .lkpis{gap:12px}
+  /* KPI 用 --accent-soft 填充，不描边不投影 —— 跟不良明细卡片、空照片位是
+     同一类"卡片里的内容块"，一套底色。第一版做成了白底描边卡片，跟外层白卡片
+     一个颜色，只靠一根 1px 线分开，看着散。 */
+  .fd-kpi,#iqc .iqan-kpi,#ipqc .ipan-kpi,#lab .lkpi{
+    background:var(--accent-soft);border:0;border-radius:var(--r-card);
+    padding:15px 16px;box-shadow:none;
+  }
+  .fd-kpi .n,#iqc .iqan-kpi .n,#ipqc .ipan-kpi .n,#lab .lkpi .n{
+    font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1.15;
+  }
+  .fd-kpi .t,#iqc .iqan-kpi .t,#ipqc .ipan-kpi .t,#lab .lkpi .t{
+    font-size:12px;font-weight:500;color:var(--ink-3);margin-top:5px;letter-spacing:0;
+  }
+
+  /* ── 记录表 ─────────────────────────────────────────────────────── */
+  /* **行高一概不动** —— padding / 字号 / 「查看」按钮尺寸全部沿用原值。
+     密度是这几张表的价值，一屏能看多少行比好看重要（评审时明确要求过）。 */
+  .frec-wrap,#iqc .irec-wrap,#ipqc .iprec-wrap,#oqc .orec-wrap,#lab .lrecwrap{
+    border:1px solid var(--card-line);border-radius:var(--r-ctl);
+  }
+  table.frec-table thead th,#iqc table.irec-table thead th,
+  #ipqc table.iprec-table thead th,#oqc table.orec-table thead th,
+  #lab table.lrec thead th{
+    /* 表头用 --seg-bg（卡片内的"凹陷"色），不是 --deck —— deck 是整页的底，
+       放在白卡片里会比卡片深太多，看着像另一张卡片。 */
+    background:var(--seg-bg);color:var(--ink-3);font-weight:600;letter-spacing:0;
+    box-shadow:inset 0 -1px 0 var(--card-line);
+  }
+  /* ⚠ 这条不是装饰，是**必须**的：这个页面没有 doctype，跑在怪异模式
+     （document.compatMode === "BackCompat"）下，而怪异模式里 <table> 不继承
+     祖先的 color —— 它会重置成 body 的颜色，也就是"纸"的深墨 #161a1f。
+     深色下卡片是深底，于是表格内容变成黑字压黑底（实测 1.01:1，等于看不见）。
+     五张记录表都要显式写 color，漏一张就瞎一张（实验室那张就是这么露出来的）。
+     根治办法是补 doctype 进标准模式，但那会改掉整个 645KB 应用的盒模型和
+     行高默认值，不是这次改版该顺手做的事。 */
+  /* 用 --ink（正文近黑）不是 --ink-2（次要文字）。第一版写了 --ink-2，浅色下
+     锁定行只有 8.5:1，而改版前因为上面那个怪异模式 bug 反而被重置成近黑、
+     有 17.6:1 —— 用户一眼就说"老版更清晰"，实测确实是。
+     草稿行还要再乘 opacity:.6，用 --ink-2 合成完只剩 3.0:1（正文不达标）；
+     用 --ink 是 4.6:1，跟改版前持平。**行的深浅是这张表的可读性主线，
+     不要拿它去做"次要信息"的层级。** */
+  table.frec-table,#iqc table.irec-table,#ipqc table.iprec-table,
+  #oqc table.orec-table,#lab table.lrec{color:var(--ink)}
+  table.frec-table td,#iqc table.irec-table td,#ipqc table.iprec-table td,
+  #oqc table.orec-table td,#lab table.lrec td{color:var(--ink)}
+  table.frec-table tr:hover td,#iqc table.irec-table tr:hover td,
+  #ipqc table.iprec-table tr:hover td,#oqc table.orec-table tr:hover td{
+    background:var(--accent-soft);
+  }
+  /* 「查看」只换配色和圆角，尺寸不动 —— 它才是行高的实际决定者。
+     实验室那个叫 .lrecbtn，一起纳进来（漏掉它的话五张表就它一个是 4px 圆角）。
+     限定在 tbody 里：.lrecbtn 同时是录入页那个「出检验报告」(#lprt)，它在表外面。 */
+  .frec-open,#iqc .irec-open,#ipqc .iprec-open,#oqc .orec-open,
+  #lab table.lrec tbody .lrecbtn{
+    border-radius:var(--r-ctl);border-color:var(--field-line);
+    background:var(--card);color:var(--accent);
+  }
+  /* 「已锁 = 实心 / 草稿 = 空心」那套约定，实验室这条原来写死的是旧 accent
+     #17458c，跟另外四个换过 token 之后对不上；统一走 --accent-fill。 */
+  #lab table.lrec tbody tr:not(.draft) .lrecbtn{
+    background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;
+  }
+
+  /* ── 收拾 --accent-soft 变实色之后的副作用 ──────────────────────────
+     它原来是 rgba(23,69,140,.055)，5.5% 的一层、基本看不出来，所以早年有几处
+     "顺手垫一层淡色"的地方一直没人在意。换成实色 #eef3fc 之后这些地方全都
+     变成了明显的蓝块 —— 不是有意加的，是 token 提亮带出来的。
+     该中性的换 --seg-bg，该没有的直接去掉。悬停高亮那类保持 accent-soft，
+     那本来就是要被看见的。 */
+  #lab table.lrec td.act{background:transparent}      /* 「查看」那一整列的蓝底 */
+  #lab table.lstdt th{background:var(--seg-bg)}       /* 标准表表头，跟另外五张对齐 */
+  /* 不良明细卡片和空照片位保留 --accent-soft 的蓝调 —— 试过换成中性的
+     --seg-bg，评审下来不如蓝的好看。它们是"卡片里的内容块"，带一点色反而
+     跟外层白卡片分得开。真正要去掉的只有上面那一整列的底。 */
+
+  /* ── 批次选择器弹层（公共外壳）───────────────────────────────────── */
+  .plbox{border-radius:var(--r-card);border-color:var(--card-line);box-shadow:var(--sh-1)}
+  .plrow,.plday{border-radius:calc(var(--r-ctl) - 2px)}
+
+  /* ── 首页 ───────────────────────────────────────────────────────── */
+  #home{padding-top:44px}
+  /* --card-line (#e2e7ee) 是画在白卡片上的线，压到灰蓝的页底 --deck 上几乎
+     看不见。首页这条分隔线坐在 deck 上，要用深一档的 --rule-2。 */
+  .hhead{border-bottom:1px solid var(--rule-2);padding-bottom:26px}
+  .hhead h1{font-family:var(--sans);font-weight:700;font-size:24px;letter-spacing:-.015em;color:var(--ink)}
+  .hsub{font-size:11.5px;letter-spacing:.14em;color:var(--ink-3)}
+  .mcard{
+    background:var(--card);border:1px solid var(--card-line);border-left-width:1px;
+    border-radius:var(--r-card);box-shadow:var(--sh-1);padding:18px 20px;
+  }
+  .mcard:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(15,23,41,.07),0 14px 30px -16px rgba(15,23,41,.4)}
+  .mcard .zh{font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
+  .mcard .en{font-size:10.5px;letter-spacing:.12em;color:var(--ink-3)}
+  .mcard .desc{font-size:13px;color:var(--ink-2)}
+  .mcard .go{color:var(--accent);font-weight:600}
+  .rrow{
+    background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-ctl);
+    box-shadow:var(--sh-1);
+  }
+  .rrow:hover{border-color:var(--accent)}
+  .recent h2{font-size:12px;letter-spacing:.12em;color:var(--ink-3)}
+  .langsw{border-radius:var(--r-ctl);overflow:hidden;border-color:var(--field-line)}
+  .langsw button{font-size:12px;background:var(--card);color:var(--ink-2)}
+  .langsw button.on{background:var(--accent-fill);color:#fff;font-weight:600}
+  .rolechip{border-radius:var(--r-ctl);background:var(--seg-bg);color:var(--ink-2);font-weight:600}
+  .logoutbtn{border-radius:var(--r-ctl);border-color:var(--field-line);background:var(--card);color:var(--ink-2)}
+}
 </style>
 
 <section id="home" hidden>
@@ -2100,13 +2361,14 @@ table.frec-table tbody tr.draft .frec-open:hover,
     <span class="brand" id="modname">成品检查报告</span>
     <button type="button" id="pickbtn" aria-haspopup="dialog" title="切换报告"><span id="picklabel">—</span><span class="caret">▾</span></button>
     <button type="button" id="del" class="danger">删除</button>
-    <button type="button" id="new">+ 新报告</button>
   </span>
   <span class="grp">
     <button type="button" class="sync" id="sync" hidden title="同步状态 — 点一下立即同步"></button>
     <span class="stat" id="stat">—</span>
-    <button type="button" id="frecbtn">记录表</button>
-    <button type="button" id="fdashbtn">数据分析</button>
+    <span class="segnav">
+      <button type="button" id="frecbtn">记录表</button>
+      <button type="button" id="fdashbtn">数据分析</button>
+    </span>
     <button type="button" id="lockbtn">提交并锁定</button>
   </span>
 </div>
@@ -2244,6 +2506,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
 <section class="frec-card">
   <div class="frec-head">
     <h2>记录表 <span id="frec-scope"></span></h2>
+    <button type="button" class="recnew" id="new">+ 新报告</button>
     <button type="button" class="plx" id="frec-close" title="关闭">✕</button>
   </div>
   <div class="frec-bar">
@@ -2329,13 +2592,14 @@ table.frec-table tbody tr.draft .frec-open:hover,
     <span class="brand">来料检验记录</span>
     <button type="button" id="ipickbtn" aria-haspopup="dialog" title="切换批次"><span id="ipicklabel">—</span><span class="caret">▾</span></button>
     <button type="button" id="idel" class="danger">删除</button>
-    <button type="button" id="inew">+ 新批次</button>
   </span>
   <span class="grp">
     <button type="button" class="sync" id="isync" hidden title="同步状态 — 点一下立即同步"></button>
     <span class="stat" id="istat">—</span>
-    <button type="button" id="irecbtn">记录表</button>
-    <button type="button" id="idashbtn">数据分析</button>
+    <span class="segnav">
+      <button type="button" id="irecbtn">记录表</button>
+      <button type="button" id="idashbtn">数据分析</button>
+    </span>
     <button type="button" id="ilockbtn">提交并锁定</button>
     <button type="button" id="imatbtn">物料基础资料</button>
   </span>
@@ -2393,6 +2657,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
 <section class="irec-card">
   <div class="irec-head">
     <h2>记录表 <span id="irec-scope"></span></h2>
+    <button type="button" class="recnew" id="inew">+ 新批次</button>
     <button type="button" class="plx" id="irec-close" title="关闭">✕</button>
   </div>
   <div class="irec-bar">
@@ -2474,13 +2739,18 @@ table.frec-table tbody tr.draft .frec-open:hover,
     <span class="brand">制程检验记录</span>
     <button type="button" id="ppickbtn" aria-haspopup="dialog" title="切换记录"><span id="ppicklabel">—</span><span class="caret">▾</span></button>
     <button type="button" id="pdel" class="danger">删除</button>
-    <button type="button" id="pnew">+ 新记录</button>
   </span>
   <span class="grp">
     <button type="button" class="sync" id="psync" hidden title="同步状态 — 点一下立即同步"></button>
     <span class="stat" id="pstat">—</span>
-    <button type="button" id="precbtn">记录表</button>
-    <button type="button" id="pdashbtn">数据分析</button>
+    <!-- 记录表 / 数据分析做成一组分段控件。**录入屏没有自己的格子** ——
+         进录入是点记录表里的行（或「+ 新记录」），回记录表是左边那个「← 返回」，
+         跟改版前完全一致，这次只换皮不动导航。
+         「+ 新记录」挪到了记录表卡片头上：创建属于列表，不属于全局导航。 -->
+    <span class="segnav">
+      <button type="button" id="precbtn">记录表</button>
+      <button type="button" id="pdashbtn">数据分析</button>
+    </span>
     <button type="button" id="plockbtn">提交并锁定</button>
     <button type="button" id="pmatbtn">产品基础资料</button>
   </span>
@@ -2517,6 +2787,8 @@ table.frec-table tbody tr.draft .frec-open:hover,
 <section class="iprec-card">
   <div class="iprec-head">
     <h2>记录表 <span id="iprec-scope"></span></h2>
+    <!-- 从工具栏挪过来的：新建属于列表，不属于全局导航 -->
+    <button type="button" class="recnew" id="pnew">+ 新记录</button>
     <button type="button" class="plx" id="iprec-close" title="关闭">✕</button>
   </div>
   <div class="iprec-bar">
@@ -2590,12 +2862,15 @@ table.frec-table tbody tr.draft .frec-open:hover,
     <span class="brand">装柜检验记录</span>
     <button type="button" id="opickbtn" aria-haspopup="dialog" title="切换柜"><span id="opicklabel">—</span><span class="caret">▾</span></button>
     <button type="button" id="odel" class="danger">删除</button>
-    <button type="button" id="onew">+ 新柜</button>
   </span>
   <span class="grp">
     <button type="button" class="sync" id="osync" hidden title="同步状态 — 点一下立即同步"></button>
     <span class="stat" id="ostat">—</span>
-    <button type="button" id="orecbtn">记录表</button>
+    <!-- 装柜只有一个屏幕按钮（它没有数据分析），分段控件里就一格；
+         保持同一个控件形状，五个板块的工具栏才是一套语言。 -->
+    <span class="segnav">
+      <button type="button" id="orecbtn">记录表</button>
+    </span>
     <button type="button" id="olockbtn">提交并锁定</button>
     <button type="button" id="oimpbtn">导入计划表</button>
   </span>
@@ -2660,6 +2935,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
 <section class="oqcard orec-card">
   <div class="orec-head">
     <h2>记录表 <span id="orec-scope"></span></h2>
+    <button type="button" class="recnew" id="onew">+ 新柜</button>
     <button type="button" class="plx" id="orec-close" title="关闭">✕</button>
   </div>
   <div class="orec-bar">
@@ -2708,15 +2984,18 @@ table.frec-table tbody tr.draft .frec-open:hover,
     <span class="brand">实验室检测记录</span>
     <button type="button" id="lpickbtn" aria-haspopup="dialog" title="切换批次"><span id="lpicklabel">—</span><span class="caret">▾</span></button>
     <button type="button" id="ldel" class="danger">删除</button>
-    <button type="button" id="lnew">+ 新批次</button>
   </span>
   <span class="grp">
     <button type="button" class="sync" id="lsync" hidden title="同步状态 — 点一下立即同步"></button>
     <span class="stat" id="lstat">—</span>
-    <button type="button" id="lsheetbtn">记录表</button>
-    <button type="button" id="ldashbtn">数据分析</button>
+    <!-- 标准表也是一个屏幕，所以它进分段控件（它是管理员专属，applyRole()
+         会把它 hidden，那时候这一组就只剩两格，flex 布局自然收拢）。 -->
+    <span class="segnav">
+      <button type="button" id="lsheetbtn">记录表</button>
+      <button type="button" id="ldashbtn">数据分析</button>
+      <button type="button" id="lstdbtn">标准表</button>
+    </span>
     <button type="button" id="llockbtn">提交并锁定</button>
-    <button type="button" id="lstdbtn">标准表</button>
   </span>
 </div>
 
@@ -2835,6 +3114,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
   <div class="lwrap">
     <section class="lcard">
       <h2 class="dtitle">海绵物性测试表 <span class="lhint" id="lrec-scope"></span>
+        <button type="button" class="recnew" id="lnew">+ 新批次</button>
         <button type="button" class="plx" id="lrec-close" title="关闭">✕</button>
       </h2>
       <div class="lrecbar">
@@ -6084,6 +6364,9 @@ function ipqcShow(view){
   $("#ipdash").hidden = view!=="dash";
   $("#precbtn").classList.toggle("cur", view==="rec");
   $("#pdashbtn").classList.toggle("cur", view==="dash");
+  /* 导航一律维持改版前的行为（两级返回、按钮可开可关），这次只换视觉。
+     录入屏没有对应的格子，所以那时候两格都不高亮 —— 这本身就是"你在录入页"
+     的信号。 */
   backLevel("#pback", view==="rec");
   statFor("#pstat", view==="entry");
   $("#plockbtn").hidden = view!=="entry";
