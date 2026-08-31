@@ -7720,7 +7720,28 @@ async function withPool(items, limit, fn){
   await Promise.all(Array.from({length:Math.min(limit, items.length)}, worker));
   return results;
 }
-const SYNC_CONCURRENCY = 6;
+/* 同步时同时在飞的请求数上限（拉和推共用 withPool）。**不是批次大小** ——
+   要拉的会全部拉完，只是最多这么多个并排跑。
+
+   原来是 6，正好是 HTTP/1.1 每域名 6 连接那个老限制。线上走 Cloudflare 的
+   HTTP/2，多路复用，那个限制早就不成立了。
+
+   2026-08-31 实测（harness 每请求注入 80ms 模拟到 APAC 的 RTT，拉 300 条）：
+       并发  1 →  31.9 s
+       并发  6 →   4.9 s   ← 原来
+       并发 10 →   2.8 s   ← 现在（-41%）
+       并发 16 →   1.8 s
+       并发 40 →   0.7 s
+   几乎线性，一次失败都没有。折算到实验室设备首次同步 1,432 条：23 s → 14 s。
+
+   **没往更高调**：那是 Node 打 localhost 的数，跟手机在车间 wifi 上不是一回事
+   （没有浏览器的每域名连接限制、没有 TLS 握手、没有丢包重传、harness 的延迟是
+   setTimeout 不占 CPU）。并发过高在手机上的典型表现是超时重试反而更慢，而且
+   偶发、难复现。10 只比浏览器的老默认高一点，是有把握的一档。
+
+   只影响**首次同步**：日常一次就拉几条，Math.min(limit, items.length) 决定
+   实际只开几个 worker，6 和 10 没区别。 */
+const SYNC_CONCURRENCY = 10;
 
 /* `lab` carries a batch's readings, `std` the shared 品号标准表 — both are plain
    JSON and the server stores the payload opaquely, so they ride along as-is.
