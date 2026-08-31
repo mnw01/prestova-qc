@@ -2339,8 +2339,11 @@ table.frec-table tbody tr.draft .frec-open:hover,
   /* --card-line (#e2e7ee) 是画在白卡片上的线，压到灰蓝的页底 --deck 上几乎
      看不见。首页这条分隔线坐在 deck 上，要用深一档的 --rule-2。 */
   .hhead{border-bottom:1px solid var(--rule-2);padding-bottom:26px}
-  /* 字号回到改版前的 21px —— 24px 那一版太抢 */
-  .hhead h1{font-family:var(--sans);font-weight:700;font-size:21px;letter-spacing:-.015em;color:var(--ink)}
+  /* 首页大标题**完全不覆盖**，用回原来那条（第 183 行）：
+     英文 --serif（Times / 宋体）+ 中文 --sans、21px、无负字距。
+     我先前改成 --sans 并加了 -.015em 字距，把"英文衬线 / 中文黑体"这个
+     原有的对比也一起抹掉了 —— 用户说的"字体不同"指的就是这个，不是字号。
+     颜色不用管：.hhead 在 #home 里，var(--ink) 自动拿到新配色。 */
   .hsub{font-size:11.5px;letter-spacing:.14em;color:var(--ink-3)}
   .mcard{
     background:var(--card);border:1px solid var(--card-line);border-left-width:1px;
