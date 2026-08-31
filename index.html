@@ -118,7 +118,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
   --card:#ffffff; --card-line:#e2e7ee;
   --field:#ffffff; --field-line:#cdd5e0;
   --accent:#1f4fa8; --accent-soft:#eef3fc; --accent-fill:#1f4fa8;
-  --deck:#e8ecf3; --bar-bg:#f5f8fc; --seg-bg:#e7ecf3; --seg-on:#ffffff;
+  --deck:#e8ecf3; --bar-bg:#f5f8fc; --seg-bg:#e7ecf3; --seg-on:#ffffff; --sunk:#eef0f3;
   /* 形状与投影：两个主题一样，只在这一处声明，深色那几段不用重抄 */
   --r-card:11px; --r-ctl:7px; --r-seg:8px;
   --sh-1:0 1px 2px rgba(15,23,41,.07);
@@ -132,7 +132,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
     --card:#171b22; --card-line:#252c36;
     --field:#11151b; --field-line:#333c48;
     --accent:#5b93ea; --accent-soft:#16233a; --accent-fill:#2f62c4;
-    --deck:#0d1014; --bar-bg:#141920; --seg-bg:#0f141a; --seg-on:#272f3a;
+    --deck:#0d1014; --bar-bg:#141920; --seg-bg:#0f141a; --seg-on:#272f3a; --sunk:#1c2129;
     --sh-1:0 1px 2px rgba(0,0,0,.5);
   }
 }
@@ -143,7 +143,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
   --card:#171b22; --card-line:#252c36;
   --field:#11151b; --field-line:#333c48;
   --accent:#5b93ea; --accent-soft:#16233a; --accent-fill:#2f62c4;
-  --deck:#0d1014; --bar-bg:#141920; --seg-bg:#0f141a; --seg-on:#272f3a;
+  --deck:#0d1014; --bar-bg:#141920; --seg-bg:#0f141a; --seg-on:#272f3a; --sunk:#1c2129;
   --sh-1:0 1px 2px rgba(0,0,0,.5);
 }
 :root[data-theme="light"] :is(#home,#lab,#iqc,#ipqc,#oqc,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
@@ -153,7 +153,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
   --card:#ffffff; --card-line:#e2e7ee;
   --field:#ffffff; --field-line:#cdd5e0;
   --accent:#1f4fa8; --accent-soft:#eef3fc; --accent-fill:#1f4fa8;
-  --deck:#e8ecf3; --bar-bg:#f5f8fc; --seg-bg:#e7ecf3; --seg-on:#ffffff;
+  --deck:#e8ecf3; --bar-bg:#f5f8fc; --seg-bg:#e7ecf3; --seg-on:#ffffff; --sunk:#eef0f3;
   --sh-1:0 1px 2px rgba(15,23,41,.07);
 }
 /* 实验室多两组自己的（超差底色、警告色），只补这几个，不重抄整套 */
@@ -2250,12 +2250,17 @@ table.frec-table tbody tr.draft .frec-open:hover,
 
   /* ── KPI ────────────────────────────────────────────────────────── */
   .fd-kpis,#iqc .iqan-kpis,#ipqc .ipan-kpis,#lab .lkpis{gap:12px}
-  /* KPI 用 --accent-soft 填充，不描边不投影 —— 跟不良明细卡片、空照片位是
-     同一类"卡片里的内容块"，一套底色。第一版做成了白底描边卡片，跟外层白卡片
-     一个颜色，只靠一根 1px 线分开，看着散。 */
+  /* KPI / 不良明细卡片 / 空照片位是同一类"卡片里的内容块"，一套底色：
+     中性浅灰 --sunk，不描边不投影。
+     用 --sunk 不用 --seg-bg：后者是 #e7ecf3，蓝通道比红高 12，实际看着偏蓝；
+     --sunk 是 #eef0f3，三通道只差 5，才是真的浅灰。
+     也不用 --accent-soft（那是蓝的）—— 评审时明确说浅蓝不好看。 */
+  .fd-kpi,#iqc .iqan-kpi,#ipqc .ipan-kpi,#lab .lkpi,
+  #ipqc .ipd,#oqc .oqimg{
+    background:var(--sunk);
+  }
   .fd-kpi,#iqc .iqan-kpi,#ipqc .ipan-kpi,#lab .lkpi{
-    background:var(--accent-soft);border:0;border-radius:var(--r-card);
-    padding:15px 16px;box-shadow:none;
+    border:0;border-radius:var(--r-card);padding:15px 16px;box-shadow:none;
   }
   .fd-kpi .n,#iqc .iqan-kpi .n,#ipqc .ipan-kpi .n,#lab .lkpi .n{
     font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1.15;
@@ -2334,7 +2339,8 @@ table.frec-table tbody tr.draft .frec-open:hover,
   /* --card-line (#e2e7ee) 是画在白卡片上的线，压到灰蓝的页底 --deck 上几乎
      看不见。首页这条分隔线坐在 deck 上，要用深一档的 --rule-2。 */
   .hhead{border-bottom:1px solid var(--rule-2);padding-bottom:26px}
-  .hhead h1{font-family:var(--sans);font-weight:700;font-size:24px;letter-spacing:-.015em;color:var(--ink)}
+  /* 字号回到改版前的 21px —— 24px 那一版太抢 */
+  .hhead h1{font-family:var(--sans);font-weight:700;font-size:21px;letter-spacing:-.015em;color:var(--ink)}
   .hsub{font-size:11.5px;letter-spacing:.14em;color:var(--ink-3)}
   .mcard{
     background:var(--card);border:1px solid var(--card-line);border-left-width:1px;
