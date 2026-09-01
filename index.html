@@ -2177,6 +2177,41 @@ table.frec-table tbody tr.draft .frec-open:hover,
     background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;filter:brightness(1.14);
   }
 
+  /* ── 三个打印按钮（全站仅有的「主操作」蓝底白字）────────────────────
+     #prt 成品「打印 / 存 PDF」、#lrpt-print 实验室报告、#oprt 装柜。
+     原来三条都写死旧 accent #17458c，跟统一后的 --accent-fill (#1f4fa8) 差一档，
+     跟「+ 新建」「已锁的查看」并排能看出两种蓝。 */
+  .bar button.key,#oqc .oqprt,#lab .lcard > h2 button.key:not(.recbtn){
+    background:var(--accent-fill);border-color:var(--accent-fill);
+  }
+  .bar button.key:hover,#oqc .oqprt:hover,
+  #lab .lcard > h2 button.key:not(.recbtn):hover{
+    background:var(--accent-fill);filter:brightness(1.14);
+  }
+  /* 深色下原来单独把描边挑成 #2d5fa8（因为填充是写死的深蓝）。现在描边跟填充
+     同色，那两条没必要了；选择器照抄以压过它们（它们优先级 (0,4,1) 更高）。 */
+  :root[data-theme="dark"] .bar button.key,
+  :root[data-theme="dark"] #oqc .oqprt,
+  :root[data-theme="dark"] #lab .lcard > h2 button.key:not(.recbtn){
+    border-color:var(--accent-fill);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]) .bar button.key,
+    :root:not([data-theme="light"]) #oqc .oqprt,
+    :root:not([data-theme="light"]) #lab .lcard > h2 button.key:not(.recbtn){
+      border-color:var(--accent-fill);
+    }
+  }
+  /* 成品那个「打印 / 存 PDF」是个例外，两点原因：
+     1. 它长在 .sheet 上 —— 祖先链是 .prtfoot → .sheet → .wrap → #mod，
+        **一个都不带 --accent-fill**（那个 token 只挂在板块根节点和 .bar 上），
+        写 var() 会解析失败、整条声明作废。
+     2. 那张纸永远是白的，按钮不该跟着深色模式变成浅一档的 #2f62c4。
+     所以这里写字面值，并固定用浅色那一档。
+     （@media print 里 .prtfoot 是 display:none，改它不影响打印件。） */
+  .prtfoot > button.key{background:#1f4fa8;border-color:#1f4fa8}
+  .prtfoot > button.key:hover{background:#1f4fa8;border-color:#1f4fa8;filter:brightness(1.14)}
+
   /* ── 卡片 ───────────────────────────────────────────────────────── */
   #iqc .iqcard,#ipqc .ipcard,#oqc .oqcard,#lab .lcard,
   .frec-card,#iqc .irec-card,#ipqc .iprec-card,#oqc .orec-card{
@@ -2312,10 +2347,26 @@ table.frec-table tbody tr.draft .frec-open:hover,
     border-radius:var(--r-ctl);border-color:var(--field-line);
     background:var(--card);color:var(--accent);
   }
-  /* 「已锁 = 实心 / 草稿 = 空心」那套约定，实验室这条原来写死的是旧 accent
-     #17458c，跟另外四个换过 token 之后对不上；统一走 --accent-fill。 */
+  /* 「已锁 = 实心 / 草稿 = 空心」那套约定。**五个板块原来都写死 #17458c**
+     （改版前的 accent），换 token 之后跟同一张卡片上的「+ 新建」(--accent-fill
+     = #1f4fa8) 差一档，两个蓝并排放着能看出来。统一走 --accent-fill。
+     **只改底色，字体一概不动**：字号 12.5px、字重 400、内边距 4px 10px 全部
+     保持原值。这个按钮是记录表行高的实际决定者，评审时要求行高不变；
+     字重试过对齐成 600，评审下来也不要。 */
+  table.frec-table tbody tr:not(.draft) .frec-open,
+  #iqc table.irec-table tbody tr:not(.draft) .irec-open,
+  #ipqc table.iprec-table tbody tr:not(.draft) .iprec-open,
+  #oqc table.orec-table tbody tr:not(.draft) .orec-open,
   #lab table.lrec tbody tr:not(.draft) .lrecbtn{
     background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;
+  }
+  table.frec-table tbody tr:not(.draft) .frec-open:hover,
+  #iqc table.irec-table tbody tr:not(.draft) .irec-open:hover,
+  #ipqc table.iprec-table tbody tr:not(.draft) .iprec-open:hover,
+  #oqc table.orec-table tbody tr:not(.draft) .orec-open:hover,
+  #lab table.lrec tbody tr:not(.draft) .lrecbtn:hover{
+    background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;
+    filter:brightness(1.14);
   }
 
   /* ── 收拾 --accent-soft 变实色之后的副作用 ──────────────────────────
