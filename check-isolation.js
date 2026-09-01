@@ -24,6 +24,9 @@ const SHARED = new Set([
   'segnav', 'recnew',
   /* 记录表里「人工改判」那个小角标 */
   'recmark',
+  /* 记录表卡片：所有板块共用一套外壳和排版样式 */
+  'frec-card', 'frec-head', 'frec-bar', 'frec-field', 'frec-wrap',
+  'frec-table', 'frec-badge', 'frec-open', 'frec-empty',
 ]);
 
 /* 成品检验在 document 上挂了几个「全局委托监听」，靠 data 属性认元素：
@@ -80,9 +83,18 @@ const MODULES = [
     cssSections: ['/* ── 装柜检验：录入界面', '/* ── 装柜检验记录表',
                   '/* ── 装柜检验记录：A4'],
     htmlFrom: '<section id="oqc" hidden>',
-    htmlTo: '<!-- ══ 实验室',
+    htmlTo: '<!-- ══ 16 CFR 1633',
     jsFrom: '/* ── 装柜检验：常量',
     jsTo: '/* ── housekeeping: drop stale reports',
+  },
+  {
+    id: 'cfr1633',
+    root: '#cfr1633',
+    cssSections: ['/* ── 16 CFR 1633 防火检测'],
+    htmlFrom: '<section id="cfr1633" hidden>',
+    htmlTo: '<!-- ══ 实验室',
+    jsFrom: 'let FT = null',
+    jsTo: '/* ── 一级：模块首页',
   },
 ];
 
