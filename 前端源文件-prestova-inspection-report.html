@@ -2343,6 +2343,15 @@ table.frec-table tbody tr.draft .frec-open:hover,
     background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;
     filter:brightness(1.14);
   }
+  /* 通用那条 hover（空心态划上去变实心蓝）也还写着旧蓝。它管得到的主要是
+     **表外面**的实验室「出检验报告」#lprt —— 那个按钮也是 .lrecbtn，但不在
+     tbody 里，上面几条限定在 tbody 的规则都罩不到它，只有这条通用的能管。
+     ⚠ 上一轮我扫「旧蓝残留」时只量了静态 backgroundColor，:hover 根本没被
+     覆盖到，所以报了 0 处 —— 是漏，不是没有。 */
+  .frec-open:hover,#iqc .irec-open:hover,#ipqc .iprec-open:hover,
+  #oqc .orec-open:hover,#lab .lrecbtn:hover{
+    background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;
+  }
 
   /* ── 收拾 --accent-soft 变实色之后的副作用 ──────────────────────────
      它原来是 rgba(23,69,140,.055)，5.5% 的一层、基本看不出来，所以早年有几处
