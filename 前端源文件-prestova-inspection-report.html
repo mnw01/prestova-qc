@@ -2141,9 +2141,23 @@ table.frec-table tbody tr.draft .frec-open:hover,
      偏蓝的中性色。 */
   .bar{background:var(--bar-bg);border-bottom:1px solid var(--card-line);padding:10px 18px;gap:10px}
   .bar .brand{font-family:var(--sans);font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--ink)}
+  /* ── 工具栏控件的高度 ──────────────────────────────────────────────
+     改之前三个高度并存：普通按钮 31.5、分段控件里的 27.5、同步条 24.9。
+     统一用 min-height 而不是加 padding —— padding 会连带撑宽，而工具栏在窄屏
+     上本来就要换行。
+     34 / 44 两档：桌面保持紧凑；pointer:coarse（手机、平板）拉到 44，
+     那是 Apple HIG 的触摸目标下限，车间戴手套点的就是这一档。
+     分段控件的格子比外框矮 6（外框 padding 3+3），这样两者外沿刚好齐平。 */
   .bar select,.bar button{
     font-size:13px;padding:6px 12px;border-radius:var(--r-ctl);
     border:1px solid var(--field-line);background:var(--card);color:var(--ink-2);
+    min-height:34px;
+  }
+  .bar .sync{min-height:34px}
+  .segnav button{min-height:28px}
+  @media (pointer:coarse){
+    .bar select,.bar button,.bar .sync{min-height:44px}
+    .segnav button{min-height:38px}
   }
   .bar button:hover{background:var(--seg-bg);color:var(--ink)}
   .bar button.danger{color:var(--no);border-color:color-mix(in srgb,var(--no) 34%,transparent);background:transparent}
@@ -2314,7 +2328,11 @@ table.frec-table tbody tr.draft .frec-open:hover,
   }
   table.frec-table thead th,#iqc table.irec-table thead th,
   #ipqc table.iprec-table thead th,#oqc table.orec-table thead th,
-  #lab table.lrec thead th{
+  #lab table.lrec thead th,
+  /* 实验室看板那张「按品号」表漏了 —— 全站就它的表头是透明底。
+     它的 th 不在 thead 里，所以写 `table.lmodel th`（(1,1,2)，跟它自己
+     1994 行那条同分，靠写在后面赢）。 */
+  #lab table.lmodel th{
     /* 表头用 --seg-bg（卡片内的"凹陷"色），不是 --deck —— deck 是整页的底，
        放在白卡片里会比卡片深太多，看着像另一张卡片。 */
     background:var(--seg-bg);color:var(--ink-3);font-weight:600;letter-spacing:0;
