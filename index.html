@@ -2180,10 +2180,9 @@ table.frec-table tbody tr.draft .frec-open:hover,
   }
   .bar .sync{min-height:34px}
   .segnav button{min-height:28px}
-  @media (pointer:coarse){
-    .bar select,.bar button,.bar .sync{min-height:44px}
-    .segnav button{min-height:38px}
-  }
+  /* 触摸屏原来单独拉到 44（Apple HIG 的触摸目标下限），评审下来"太大了不好看"，
+     去掉那一档，手机和桌面一律 34。要再加回来就是一个
+     @media (pointer:coarse) 块的事。 */
   .bar button:hover{background:var(--seg-bg);color:var(--ink)}
   .bar button.danger{color:var(--no);border-color:color-mix(in srgb,var(--no) 34%,transparent);background:transparent}
   .bar button.danger:hover{background:var(--no);border-color:var(--no);color:#fff}
@@ -7535,9 +7534,11 @@ $("#orec-table").addEventListener("click",async e=>{
 
 /* ── 装柜检验：导入装柜计划表 ─────────────────────────────────────────
    计划表（PRINT KERTAS CONTAINER）一天一份、含多个柜；按「NO. CONTAINER」
-   分组，一个柜一条记录。PO/DI、PO KECIL、NO.CONTAINER、NO.SEAL 在原表里是
-   纵向合并单元格（一个柜跨好几行 SKU），合并区只有左上角那格有值，所以要把
-   值往下带——跟来料检验那份 Excel 一个套路。
+   分组，一个柜一条记录。**PO/DI、NO. CONTAINER、NO.SEAL 是纵向合并单元格**
+   （一个柜跨好几行 SKU），合并区只有左上角那格有值，所以要把值往下带——
+   跟来料检验那份 Excel 一个套路。
+   **INVOICE 和 PO KECIL 不是合并的，是逐行填的**（2026-09-01 用户拿真实表
+   确认），不能跟着往下带，见下面 carry 那里的注释。
    表头靠列名找，不写死在第几行/第几列，改了列顺序也不会错位。 */
 /* 表头别名表。比对前会 oqNormHdr()：**去掉所有空格 + 转大写**，所以这里的键
    也必须是去空格的形式——第一版把 "PO KECIL" 原样写成键（带空格），归一化后
@@ -7581,18 +7582,29 @@ function oqcPlanFromXlsx(book){
       "缺少："+miss.join("、")+"。至少要认出 5 列、且必须有柜号和型号 SKU。");
   }
   const get=(row,k)=>map[k]==null?"":String(row[map[k]]==null?"":row[map[k]]).trim();
-  const carry={po:"",inv:"",kecil:"",container:"",seal:""};
+  /* ⚠ 向下带的名单**只放真正合并的那三列**（2026-09-01 改）。
+     用户拿真实计划表确认过：合并的是 PO/DI、NO. CONTAINER、NO.SEAL；
+     INVOICE 和 PO KECIL 是逐行填的。
+
+     原来 kecil 和 inv 也在名单里，前提是「它们也是合并单元格」——
+     而那个前提从没被验证过：写下原注释时表头别名是带空格的 "PO KECIL"，
+     归一化后永远匹配不上，这一列**根本没被导进来**（当时的样表又刚好是空列，
+     所以没人发现）。后果是空的 PO KECIL 会沿用上一个柜的值 —— 实测柜9262
+     最后一行的 PO-柜8995 被带到了柜9263、柜9305 的全部 5 行上。
+
+     逐行的列宁可留空也不要猜：空格是看得见的缺失，填错的值看不出来。 */
+  const carry={po:"",container:"",seal:""};
   const byC=new Map();
   for(let rn=hr+1; rn<sheet.length; rn++){
     const row=sheet[rn]; if(!row) continue;
-    ["po","inv","kecil","container","seal"].forEach(k=>{ const v=get(row,k); if(v) carry[k]=v; });
+    ["po","container","seal"].forEach(k=>{ const v=get(row,k); if(v) carry[k]=v; });
     const sku=get(row,"sku");
     if(!sku || !carry.container) continue;
     let c=byC.get(carry.container);
     if(!c) byC.set(carry.container,c={container:carry.container,seal:carry.seal,goods:[]});
     if(carry.seal && !c.seal) c.seal=carry.seal;
     c.goods.push(Object.assign(oqcBlankGoods(),{
-      po:carry.po, inv:carry.inv, kecil:carry.kecil, sku,
+      po:carry.po, inv:get(row,"inv"), kecil:get(row,"kecil"), sku,
       plan:get(row,"plan"), actual:get(row,"actual"), dept:get(row,"dept")
     }));
   }
