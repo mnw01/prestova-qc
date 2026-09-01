@@ -3768,8 +3768,15 @@ function blank(){
 }
 let R = blank();
 const urls = {};              // slot -> object URL
-function setURL(k,blob){
+const urlBlobs = {};          // slot -> 上次拿来生成 URL 的那个 Blob
+/* 图没换就沿用同一个 objectURL。换 URL = 浏览器要把这张图从头解码一遍：
+   一轮重画 14 张全换就是 14 次重解码，实测占了整轮 16ms 里的绝大部分（DOM 那
+   点拆建反而便宜）。而且解码跑到一半再被下一轮打断，就是 iOS Safari 上那个
+   破图问号。force 只给 onerror 兜底用 —— 那时候恰恰需要一个新 URL 重试。 */
+function setURL(k,blob,force){
+  if(!force && blob && urlBlobs[k]===blob) return urls[k];
   if(urls[k]) URL.revokeObjectURL(urls[k]);
+  urlBlobs[k] = blob || null;
   urls[k] = blob ? URL.createObjectURL(blob) : null;
   return urls[k];
 }
@@ -3822,13 +3829,30 @@ function mount(host,list,opts){
 mount($("#grid1"),PHOTOS_1);
 mount($("#grid1b"),PHOTOS_1B);
 mount($("#grid2"),PHOTOS_2);
+/* 兜底：blob 图解码中途被打断（URL 被 revoke，比如同步把整份记录换掉那一下重画）
+   会停在破图问号上，自己不会恢复。重新给一个 URL 再试一次，只试一次。
+   error 不冒泡，所以用捕获阶段。装柜 #oq-photos 上有一份一样的。
+   内置图（BUILTIN）不走这里 —— 它们的 src 不是 blob，R.photos 里也没有。 */
+[$("#grid1"),$("#grid1b"),$("#grid2")].forEach(host=>{
+  if(!host) return;
+  host.addEventListener("error",e=>{
+    const img=e.target;
+    if(img.tagName!=="IMG" || img.dataset.retried) return;
+    const slot=img.closest(".slot"), k=slot && slot.dataset.slot;
+    const blob=k && R.photos[k];
+    if(!blob) return;
+    img.dataset.retried="1";
+    img.src=setURL(k,blob,true);
+  },true);
+});
 /* 品质部 / 总经理 are signed by hand on the printout — no upload here. */
 
 function paintSlot(key){
   const s=document.querySelector('.slot[data-slot="'+key+'"]'); if(!s) return;
   const box=$(".pimg",s), img=$("img",box), blob=R.photos[key];
-  if(blob){ img.src=setURL(key,blob); box.classList.add("has"); box.classList.remove("builtin"); }
-  else if(BUILTIN[key]){ img.src=BUILTIN[key]; box.classList.add("has","builtin"); setURL(key,null); }
+  img.removeAttribute("data-retried");   /* 换了图就允许再兜底一次，见 #grid1/1b/2 的 error 监听 */
+  if(blob){ const u=setURL(key,blob); if(img.getAttribute("src")!==u) img.src=u; box.classList.add("has"); box.classList.remove("builtin"); }
+  else if(BUILTIN[key]){ if(img.getAttribute("src")!==BUILTIN[key]) img.src=BUILTIN[key]; box.classList.add("has","builtin"); setURL(key,null); }
   else { img.removeAttribute("src"); box.classList.remove("has","builtin"); setURL(key,null); }
   const cover = R.fits[key]==="cover";
   box.classList.toggle("cover",cover);
@@ -4826,7 +4850,12 @@ $("#fd-item").addEventListener("pmpick",()=>{ clearTimeout(fdItemTimer); fqcDash
    so Export fell back to dumping several MB of base64 into the clipboard —
    useless on the phones this runs on. Moving a report between devices is the
    sync backend's job now, and the server holds the copy of record. */
-window.addEventListener("beforeunload",()=>{ Object.keys(urls).forEach(k=>{ if(urls[k]) URL.revokeObjectURL(urls[k]); }); });
+/* 两个板块各有一份 objectURL 表（成品 urls / 装柜 OQ_URLS），一起收。
+   原来只收了成品那份。OQ_URLS 在这行下面才声明，但回调是卸载时才跑的，
+   那会儿早初始化完了。 */
+window.addEventListener("beforeunload",()=>{
+  [urls,OQ_URLS].forEach(m=>Object.keys(m).forEach(k=>{ if(m[k]) URL.revokeObjectURL(m[k]); }));
+});
 
 /* ── 来料检验：物料基础资料（品号→类别/品名/规格） ───────────────────
    Not baked into the source — 在库一览.xlsx runs to ~3000 rows, which would
@@ -6994,8 +7023,15 @@ function oqcGSum(gs){
 
 let OR=null;               /* 当前打开的柜 */
 let OQ_URLS={};            /* slot -> objectURL，本板块自己一份，不跟 fqc 的 urls 混用 */
-function oqSetURL(k,blob){
+let OQ_BLOBS={};           /* slot -> 上次拿来生成 URL 的那个 Blob，用来判「图没变」 */
+/* 图没换就沿用同一个 objectURL。换 URL = 浏览器要把这张图从头解码一遍：
+   一轮重画 14 张全换就是 14 次重解码，实测占了整轮 16ms 里的绝大部分（DOM 那
+   点拆建反而便宜）。而且解码跑到一半再被下一轮打断，就是 iOS Safari 上那个
+   破图问号。force 只给 onerror 兜底用 —— 那时候恰恰需要一个新 URL 重试。 */
+function oqSetURL(k,blob,force){
+  if(!force && blob && OQ_BLOBS[k]===blob) return OQ_URLS[k];
   if(OQ_URLS[k]) URL.revokeObjectURL(OQ_URLS[k]);
+  OQ_BLOBS[k]= blob || null;
   OQ_URLS[k]= blob ? URL.createObjectURL(blob) : null;
   return OQ_URLS[k];
 }
@@ -7107,34 +7143,62 @@ function oqcPaintChecks(){
         (k==="c1"?"整柜货柜封号 / 备注":k==="c3"?"订单INV号 / 备注":"有问题写原因")+'"></div>';
   }).join('');
 }
-function oqcPaintPhotos(){
-  $("#oq-photos").innerHTML=OQC_PGROUPS.map(g=>{
-    const n=OR.oqc.pn[g.k];
-    let cells="";
-    for(let i=0;i<n;i++){
-      const k=OQ_SLOT(g.k,i);
-      cells+='<div class="oqslot"><div class="oqimg" data-os="'+k+'">'+
-        '<img alt="">'+
-        '<button type="button" class="oqcam" data-ocam="'+k+'"><span class="camico">📷</span><span>拍照</span></button>'+
-        '<button type="button" class="oqadd" data-oadd="'+k+'"><span>＋</span><span>相册</span></button>'+
-        '<button type="button" class="oqx" data-odel="'+k+'" title="删除">✕</button>'+
-        '</div>'+
-        '<input class="oqcapi" data-ocap="'+k+'" placeholder="'+esc(g.zh)+' '+(i+1)+'"></div>';
-    }
-    return '<div class="oqpg"><div class="oqpgh"><b>'+esc(g.zh)+'</b><span>'+esc(g.tip)+'</span></div>'+
-      '<div class="oqgrid">'+cells+
+/* 照片格子跟成品那边一个路子：**建一次就不动了**，之后只逐格 oqcPaintSlot()。
+   原来是每次重画都 $("#oq-photos").innerHTML=... 整块推倒，代价是 13 个 DOM 节点
+   全换 + 13 个 blob URL 全部 revokeObjectURL 掉再重建。iOS Safari 上正在解码的
+   那几张被这么一打断就停在破图问号上，不会自己恢复（2026-09-01 现场遇到）；
+   顺带还会把正在输入的备注框销毁掉、丢焦点。
+
+   装柜比成品麻烦的地方是格子数是动的（＋加一张 / −减一张，不同记录的 pn 也不同），
+   成品那边 PHOTOS_1/1B/2 是写死的清单，mount 完就不用管。所以这里多一步：
+   把每组的格子数补齐 / 从尾部裁掉，剩下的格子原地留着。 */
+function oqcSlotNode(gk,zh,i){
+  const k=OQ_SLOT(gk,i), s=document.createElement("div");
+  s.className="oqslot";
+  s.innerHTML='<div class="oqimg" data-os="'+k+'">'+
+    '<img alt="">'+
+    '<button type="button" class="oqcam" data-ocam="'+k+'"><span class="camico">📷</span><span>拍照</span></button>'+
+    '<button type="button" class="oqadd" data-oadd="'+k+'"><span>＋</span><span>相册</span></button>'+
+    '<button type="button" class="oqx" data-odel="'+k+'" title="删除">✕</button>'+
+    '</div>'+
+    '<input class="oqcapi" data-ocap="'+k+'" placeholder="'+esc(zh)+' '+(i+1)+'">';
+  return s;
+}
+/* 组的外壳（标题 + 网格 + ＋/− 那一格）只建一次，跟 mount($("#grid1"),PHOTOS_1) 对应 */
+function oqcMountPhotos(){
+  $("#oq-photos").innerHTML=OQC_PGROUPS.map(g=>
+    '<div class="oqpg" data-opg="'+g.k+'"><div class="oqpgh"><b>'+esc(g.zh)+'</b><span>'+esc(g.tip)+'</span></div>'+
+      '<div class="oqgrid">'+
         '<div class="oqpgctl">'+
           '<button type="button" data-opadd="'+g.k+'">＋ 加一张</button>'+
-          '<button type="button" data-opdel="'+g.k+'"'+(n<=g.n?' disabled':'')+'>− 减一张</button>'+
+          '<button type="button" data-opdel="'+g.k+'">− 减一张</button>'+
         '</div>'+
-      '</div></div>';
-  }).join('');
-  OQC_PGROUPS.forEach(g=>{ for(let i=0;i<OR.oqc.pn[g.k];i++) oqcPaintSlot(OQ_SLOT(g.k,i)); });
+      '</div></div>').join('');
+}
+oqcMountPhotos();
+function oqcPaintPhotos(){
+  OQC_PGROUPS.forEach(g=>{
+    const grid=$('.oqpg[data-opg="'+g.k+'"] .oqgrid'); if(!grid) return;
+    const ctl=$(".oqpgctl",grid), n=OR.oqc.pn[g.k];
+    const cells=[...grid.querySelectorAll(".oqslot")];
+    /* 多了从尾部收。收掉的格子要把它的 objectURL 一起撤掉，不然就漏了 */
+    while(cells.length>n){
+      const c=cells.pop(), box=$(".oqimg",c);
+      if(box && box.dataset.os) oqSetURL(box.dataset.os,null);
+      c.remove();
+    }
+    /* 少了就补在 ＋/− 那一格前面，保证控制格永远在最后 */
+    for(let i=cells.length;i<n;i++) grid.insertBefore(oqcSlotNode(g.k,g.zh,i),ctl);
+    /* 原来这个 disabled 是拼 HTML 时定死的，现在格子不重建了，要在这里更新 */
+    const del=$('[data-opdel="'+g.k+'"]',grid); if(del) del.disabled = n<=g.n;
+    for(let i=0;i<n;i++) oqcPaintSlot(OQ_SLOT(g.k,i));
+  });
 }
 function oqcPaintSlot(k){
   const box=$('.oqimg[data-os="'+k+'"]'); if(!box) return;
   const img=$("img",box), blob=OR.photos[k];
-  if(blob){ img.src=oqSetURL(k,blob); box.classList.add("has"); }
+  img.removeAttribute("data-retried");   /* 换了图就允许再兜底一次，见下面的 error 监听 */
+  if(blob){ const u=oqSetURL(k,blob); if(img.getAttribute("src")!==u) img.src=u; box.classList.add("has"); }
   else { img.removeAttribute("src"); box.classList.remove("has"); oqSetURL(k,null); }
   const cap=$('.oqcapi[data-ocap="'+k+'"]'); if(cap) cap.value=OR.caps[k]||"";
 }
@@ -7163,14 +7227,21 @@ $("#olockbtn").addEventListener("click",async()=>{
   oqcSave();
   paintLockUI(OR, "#oqcv", "#olockbtn", "#olockbar");
 });
-/* 照片是打开记录之后才从 R2 拉的，拉回来要重画一次，不然格子一直是空的。
+/* 照片是打开记录之后才从 R2 拉的。每张拉回来就地画那一格 —— hydratePhotos 的
+   循环里有一条 OR 分支，跟成品那边的 R 分支一样。
    抽成函数是因为现在有两个调用点：oqcLoad()，以及 oqcShow() 切回录入页时补拉
-   （记录表里点一行走的是 skipPhotos，没拉过）。 */
+   （记录表里点一行走的是 skipPhotos，没拉过）。
+
+   ⚠ 这里原来是「等 hydratePhotos 跑完，重新 dbGet 一次，整块 oqcPaintPhotos()」，
+   **不管有没有真拉到照片都要重画**。一个柜 13 张图，重画一次就是 13 个 blob URL
+   全部 revokeObjectURL 掉再重建；而 oqcShow("entry") 每次切回录入页都调它，
+   oqcLoad() 里还会再调一次（打开记录时连着重画两遍）。iOS Safari 上正在解码的
+   那几张被这么一打断就停在破图问号上，不会自己恢复 —— 2026-09-01 现场遇到，
+   退出重进就好了，因为那一次重建没被打断。
+   改成就地画之后，没拉到东西就一个 URL 都不动。 */
 function oqcHydrate(id){
   if(!SYNC.enabled || !id) return;
-  hydratePhotos(id).then(async()=>{
-    if(OR && OR.id===id){ const fresh=await dbGet(id); if(fresh){ OR=oqcNorm(fresh); oqcPaintPhotos(); } }
-  });
+  hydratePhotos(id);
 }
 async function oqcLoad(id, skipPhotos){
   const rec=await dbGet(id);
@@ -7382,6 +7453,18 @@ $("#oq-photos").addEventListener("input",e=>{
   const t=e.target; if(!t.matches("[data-ocap]")) return;
   OR.caps[t.dataset.ocap]=t.value; oqcSave();
 });
+/* 兜底：blob 图解码中途被打断（URL 被 revoke、或者整块重画）会停在破图问号上，
+   自己不会恢复。这里重新给它一个 URL 再试一次。error 不冒泡，所以用捕获阶段。
+   只重试一次 —— 真的坏了的图不能让它无限打转。 */
+$("#oq-photos").addEventListener("error",e=>{
+  const img=e.target;
+  if(img.tagName!=="IMG" || img.dataset.retried) return;
+  const k=img.parentNode && img.parentNode.dataset && img.parentNode.dataset.os;
+  const blob=k && OR && OR.photos[k];
+  if(!blob) return;
+  img.dataset.retried="1";
+  img.src=oqSetURL(k,blob,true);
+},true);
 /* 相册（多选）和拍照（单张）回来走同一段：循环本来就按张数走，一张也一样。 */
 async function oqcTakeFiles(e){
   const files=[...(e.target.files||[])].filter(f=>/^image\//.test(f.type));
@@ -8352,6 +8435,7 @@ async function hydratePhotos(id){
       rec.photos[slot] = await r.blob();
       got++;
       if(R && R.id===id){ R.photos[slot]=rec.photos[slot]; paintSlot(slot); }
+      if(OR && OR.id===id){ OR.photos[slot]=rec.photos[slot]; oqcPaintSlot(slot); }
     }catch(e){ /* leave it for the next open */ }
   }
   if(got){ await persistQuiet(rec); if(R && R.id===id) markSaved(); }
