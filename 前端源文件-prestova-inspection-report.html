@@ -1159,7 +1159,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
    输入框，见 #lab .lrow input.warn），#lab 那条更具体又在后面，套用会让
    实验室这张表的黄点变成另一个色。 */
 .lockdot{
-  display:inline-block;width:9px;height:9px;border-radius:50%;
+  display:inline-block;width:6px;height:6px;border-radius:50%;
   margin-right:8px;vertical-align:middle;background:var(--ok);
 }
 table.frec-table tbody tr.draft .lockdot,
@@ -4708,7 +4708,7 @@ async function frecRender(){
   rangeNote("#frec-scope","#frec-range","#frec-date",rows.length,total);
   $("#frec-table").innerHTML = !rows.length
     ? '<tbody><tr><td class="frec-empty" colspan="9">没有记录。</td></tr></tbody>'
-    : '<thead><tr><th class="seq">序号</th><th>项目编号</th><th>品名</th><th>床垫类型</th><th>PO</th><th>检查日期</th><th>检验员</th><th>判定</th><th>操作</th></tr></thead>'+
+    : '<thead><tr><th class="seq">序号</th><th>项目编号</th><th>品名</th><th>床垫类型</th><th>PO</th><th>检查日期</th><th>检验员</th><th>判定</th><th>状态/操作</th></tr></thead>'+
       '<tbody>'+rows.map((r,i)=>{
         const bad = r.verdict==="reject";
         /* 未提交的是草稿，压暗；已提交的正常。r.locked 来自轻量索引，
@@ -5428,7 +5428,7 @@ async function irecRender(){
   rangeNote("#irec-scope","#irec-range","#irec-date",rows.length,total);
   $("#irec-table").innerHTML = !rows.length
     ? '<tbody><tr><td class="irec-empty" colspan="8">没有记录。</td></tr></tbody>'
-    : '<thead><tr><th class="seq">序号</th><th>品号</th><th>类别</th><th>供应商</th><th>进料日期</th><th>检验员</th><th>判定</th><th>操作</th></tr></thead>'+
+    : '<thead><tr><th class="seq">序号</th><th>品号</th><th>类别</th><th>供应商</th><th>进料日期</th><th>检验员</th><th>判定</th><th>状态/操作</th></tr></thead>'+
       '<tbody>'+rows.map((r,i)=>{
         const bad=r.verdict==="reject", pend=!r.verdict;
         /* 未提交的是草稿，压暗；已提交的正常。r.locked 来自轻量索引 */
@@ -6773,7 +6773,7 @@ async function iprecRender(){
     " · "+rows.length+" "+tr("条")+(total>rows.length?"（"+tr("共")+" "+total+" "+tr("条")+"）":"");
   $("#iprec-table").innerHTML = !rows.length
     ? '<tbody><tr><td class="iprec-empty" colspan="10">没有记录。</td></tr></tbody>'
-    : '<thead><tr><th class="seq">序号</th><th>日期</th><th>班次</th><th>车间</th><th>工序</th><th class="num">检查数量</th><th class="num">不良数量</th><th class="num">不良率</th><th>检验员</th><th>操作</th></tr></thead>'+
+    : '<thead><tr><th class="seq">序号</th><th>日期</th><th>班次</th><th>车间</th><th>工序</th><th class="num">检查数量</th><th class="num">不良数量</th><th class="num">不良率</th><th>检验员</th><th>状态/操作</th></tr></thead>'+
       '<tbody>'+rows.map((r,i)=>{
         const q=lnum(r.qty)||0, b=lnum(r.bad)||0, rate=q?pct(b,q):null;
         const cls=(PR&&r.id===PR.id?"cur ":"")+(r.locked?"":"draft");
@@ -7595,7 +7595,7 @@ async function orecRender(){
   rangeNote("#orec-scope","#orec-range","#orec-date",rows.length,total);
   $("#orec-table").innerHTML = !rows.length
     ? '<tbody><tr><td class="orec-empty" colspan="8">没有记录。</td></tr></tbody>'
-    : '<thead><tr><th class="seq">序号</th><th>PO/DI</th><th>柜号</th><th>封条号</th><th>装柜日期</th><th>检验员</th><th>判定</th><th>操作</th></tr></thead>'+
+    : '<thead><tr><th class="seq">序号</th><th>PO/DI</th><th>柜号</th><th>封条号</th><th>装柜日期</th><th>检验员</th><th>判定</th><th>状态/操作</th></tr></thead>'+
       '<tbody>'+rows.map((r,i)=>{
         const bad=r.verdict==="reject", pend=!r.verdict;
         const cls=(OR&&r.id===OR.id?"cur ":"")+(r.locked?"":"draft");
@@ -9341,6 +9341,7 @@ const I18N_ID={
   "接受": "Terima",
   "提货方": "Pengambil Barang",
   "操作": "Aksi",
+  "状态/操作": "Status/Aksi",
   "支": "sampel",
   "支数": "Jumlah Sampel",
   "改判理由": "Alasan Ubah Hasil",
@@ -10032,7 +10033,7 @@ function labRenderRec(){
     '<th rowspan="2">测试日期</th><th rowspan="2">测试备注</th>'+
     LAB_ITEMS.map(it=>'<th colspan="2">'+esc(it.zh)+'<br>'+esc(it.un)+'</th>').join('')+
     (anyFat?'<th colspan="2">8 万次疲劳</th>':'')+
-    '<th rowspan="2">判定</th><th rowspan="2">操作</th></tr><tr>'+
+    '<th rowspan="2">判定</th><th rowspan="2">状态/操作</th></tr><tr>'+
     LAB_ITEMS.map(()=>'<th>执行标准</th><th>测试结果</th>').join('')+
     (anyFat?'<th>厚度减少%</th><th>抗压减少%</th>':'')+'</tr></thead>';
 
