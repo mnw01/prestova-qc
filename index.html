@@ -42,6 +42,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
   --paper:#ffffff;
   --ground:#e2e6ec;         /* workbench grey */
   --deck:#e8ecf3;           /* 屏幕底色（改版 C）——body 用它，跟板块无缝 */
+  --grid:rgba(15,23,41,.055);   /* 细格线色，见样式表末尾 body 那条 */
   --chrome:#f3f5f8;
   --rule:#1b1f24;           /* form borders — strong so they survive print */
   --rule-2:#9aa3ae;
@@ -59,7 +60,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
 @media (prefers-color-scheme:dark){
   :root{
     --ink:#161a1f;--ink-2:#4d555f;--ink-3:#7b848f;
-    --paper:#f4f5f7;--ground:#14171b;--chrome:#1c2027;--deck:#0d1014;
+    --paper:#f4f5f7;--ground:#14171b;--chrome:#1c2027;--deck:#0d1014;--grid:rgba(180,200,235,.065);
     --rule:#1b1f24;--rule-2:#9aa3ae;--hairline:#c6ccd4;
     --accent:#7ea6e8;--accent-soft:rgba(23,69,140,.05);
     --shadow:0 1px 2px rgba(0,0,0,.5),0 16px 40px -16px rgba(0,0,0,.7);
@@ -67,14 +68,14 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
 }
 :root[data-theme="dark"]{
   --ink:#161a1f;--ink-2:#4d555f;--ink-3:#7b848f;
-  --paper:#f4f5f7;--ground:#14171b;--chrome:#1c2027;--deck:#0d1014;
+  --paper:#f4f5f7;--ground:#14171b;--chrome:#1c2027;--deck:#0d1014;--grid:rgba(180,200,235,.065);
   --rule:#1b1f24;--rule-2:#9aa3ae;--hairline:#c6ccd4;
   --accent:#7ea6e8;--accent-soft:rgba(23,69,140,.05);
   --shadow:0 1px 2px rgba(0,0,0,.5),0 16px 40px -16px rgba(0,0,0,.7);
 }
 :root[data-theme="light"]{
   --ink:#16191d;--ink-2:#4a525c;--ink-3:#79828d;
-  --paper:#ffffff;--ground:#e2e6ec;--chrome:#f3f5f8;--deck:#e8ecf3;
+  --paper:#ffffff;--ground:#e2e6ec;--chrome:#f3f5f8;--deck:#e8ecf3;--grid:rgba(15,23,41,.055);
   --accent:#17458c;--accent-soft:rgba(23,69,140,.055);
   --shadow:0 1px 2px rgba(20,26,36,.06),0 12px 34px -14px rgba(20,26,36,.28);
 }
@@ -2133,11 +2134,29 @@ table.frec-table tbody tr.draft .frec-open:hover,
    所以 check-isolation 的两个方向都过得去。 */
 @media screen{
 
-  /* ── 板块与首页的底 ─────────────────────────────────────────────── */
-  /* body 也要换 —— 首页宽度只有 960，两侧会露出 body 的底色，不换就有一道缝。
-     --deck 现在在 :root 上也声明了一份，专门给 body 用。 */
-  body{background:var(--deck)}
-  #home,#lab,#iqc,#ipqc,#oqc,#mod{background:var(--deck)}
+  /* ── 板块与首页的底：12px 均匀细格（方案 B1）────────────────────────
+     **格纹画在 body 上，板块根节点一律透明。**
+     不能反过来（body 平色、根节点画格）：首页 #home 只有 960 宽、居中，
+     两侧露出的是 body，那样会在 960 的边界上出现一道"有格 / 没格"的缝。
+     画在 body 上则整屏连续，板块切换也不会跳。
+
+     压不到内容：卡片(--card)、工具栏(--bar-bg)、A4 纸(.sheet 的 --paper)
+     全是不透明的，格线只出现在它们之外的留白里。
+
+     方案 B3：16px 均匀细格，单一线宽，没有粗线（评审时在 B1 12px / B2 16+80 粗细
+     两档 / B3 之间比过，选的 B3）。线色走 :root 的 --grid，跟着深浅色走。
+     整段在 @media screen 里，打印件碰不到。
+
+     **只想铺首页**的话：把下面 body 那条的选择器换成 #home，并把
+     `#home,#lab,…{background:transparent}` 里的 #home 去掉即可。 */
+  body{
+    background-color:var(--deck);
+    background-image:
+      linear-gradient(to right, var(--grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+    background-size:16px 16px;
+  }
+  #home,#lab,#iqc,#ipqc,#oqc,#mod{background:transparent}
   #home,#lab,#iqc,#ipqc,#oqc{min-height:100vh}
 
   /* ── 工具栏 ─────────────────────────────────────────────────────── */
@@ -2307,7 +2326,15 @@ table.frec-table tbody tr.draft .frec-open:hover,
   /* ── 记录表 ─────────────────────────────────────────────────────── */
   /* **行高一概不动** —— padding / 字号 / 「查看」按钮尺寸全部沿用原值。
      密度是这几张表的价值，一屏能看多少行比好看重要（评审时明确要求过）。 */
-  .frec-wrap,#iqc .irec-wrap,#ipqc .iprec-wrap,#oqc .orec-wrap,#lab .lrecwrap{
+  .frec-wrap,#iqc .irec-wrap,#ipqc .iprec-wrap,#oqc .orec-wrap,#lab .lrecwrap,
+  /* ── 数据分析里的表 + 实验室标准表 ──────────────────────────────
+     记录表的滚动框一开始就在上面这行里，看板里那几张分析表却漏了：
+     成品是个内联 style 的裸 div（补了 class="anwrap"）、来料是 .iqan-tblwrap、
+     实验室看板是 .lmt、标准表是 .lstdwrap —— 四处都是**既无边框也无圆角**，
+     跟旁边已经是圆角的记录表放一起很突兀。统一到同一条规则上。
+     这些外层都写了 overflow-x:auto；按规范另一轴的 visible 会跟着变成 auto，
+     所以圆角能把表头背景裁住，不会在四角戳出方角。 */
+  #fdash .anwrap,#iqc .iqan-tblwrap,#lab .lmt,#lab .lstdwrap{
     border:1px solid var(--card-line);border-radius:var(--r-ctl);
   }
   table.frec-table thead th,#iqc table.irec-table thead th,
@@ -2404,7 +2431,12 @@ table.frec-table tbody tr.draft .frec-open:hover,
      我先前改成 --sans 并加了 -.015em 字距，把"英文衬线 / 中文黑体"这个
      原有的对比也一起抹掉了 —— 用户说的"字体不同"指的就是这个，不是字号。
      颜色不用管：.hhead 在 #home 里，var(--ink) 自动拿到新配色。 */
-  .hsub{font-size:11.5px;letter-spacing:.14em;color:var(--ink-3)}
+  /* ⚠ 下面这三处文字**直接坐在 body 的格纹上**（不在任何不透明卡片里）。
+     --ink-3 压平底是 4.55:1、压到格线只剩 4.12:1（格线让底变暗，而它们本身
+     就是灰的），实测掉出 AA。提到 --ink-2：平底 7.19、格线 6.53。
+     板块内页不用管 —— 那边的文字全在不透明卡片里，格纹碰不到。 */
+  .hsub{font-size:11.5px;letter-spacing:.14em;color:var(--ink-2)}
+  .rempty{color:var(--ink-2)}
   .mcard{
     background:var(--card);border:1px solid var(--card-line);border-left-width:1px;
     border-radius:var(--r-card);box-shadow:var(--sh-1);padding:18px 20px;
@@ -2419,7 +2451,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
     box-shadow:var(--sh-1);
   }
   .rrow:hover{border-color:var(--accent)}
-  .recent h2{font-size:12px;letter-spacing:.12em;color:var(--ink-3)}
+  .recent h2{font-size:12px;letter-spacing:.12em;color:var(--ink-2)}
   .langsw{border-radius:var(--r-ctl);overflow:hidden;border-color:var(--field-line)}
   .langsw button{font-size:12px;background:var(--card);color:var(--ink-2)}
   .langsw button.on{background:var(--accent-fill);color:#fff;font-weight:600}
@@ -2672,7 +2704,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
 
 <section class="frec-card">
   <h2>按品名 <span class="note">不良最多的前 15 个</span></h2>
-  <div style="overflow-x:auto"><table class="frec-table" id="fd-descs"></table></div>
+  <div class="anwrap" style="overflow-x:auto"><table class="frec-table" id="fd-descs"></table></div>
 </section>
 </div>
 
