@@ -3023,17 +3023,19 @@ table.frec-table tbody tr.draft .frec-open:hover,
     <p class="oqhint">计划数量从计划表导入；实际装柜数量、装柜顺序、备注装柜时填。实际跟计划对不上的行会标红。</p>
   </section>
 
+  <!-- 照片排在检验项目前面：现场是先把柜拍完，再照着拍到的逐项打勾。
+       两块的顺序只影响录入屏，打印件 .oqsheet 是另一套排版，不受影响。 -->
+  <section class="oqcard">
+    <h2>装柜照片</h2>
+    <div id="oq-photos"></div>
+  </section>
+
   <section class="oqcard">
     <h2>检验项目
       <button type="button" id="oq-allok">全部打 √</button>
     </h2>
     <div class="oqchecks" id="oq-checks"></div>
     <p class="oqhint">没问题打 √，有问题打 × 并在备注写原因。</p>
-  </section>
-
-  <section class="oqcard">
-    <h2>装柜照片</h2>
-    <div id="oq-photos"></div>
   </section>
 
   <section class="oqcard">
