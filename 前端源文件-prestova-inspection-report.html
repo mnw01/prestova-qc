@@ -570,6 +570,14 @@ html[lang="id"] .hhead h1 .cn{display:none}
 .lbstage{
   flex:1 1 auto;min-height:0;display:grid;place-items:center;overflow:auto;padding:0 10px 12px;
 }
+/* 「适应窗口」这一档，轨道必须钉死成舞台的可视尺寸。
+   默认的 auto 轨道会被图片自己撑大（外面是 overflow:auto，撑大了就滚动），
+   于是 img 上的 max-height:100% 解析成的是「图片自己的高度」—— 自己限制自己，
+   等于没限制。实测：舞台 1506x784、照片 1400x1050，"适应窗口"下渲染出来仍是
+   1400x1050（100%），再点「原尺寸」放大 1.00x，看起来就像这个功能坏了。
+   只钉 :not(.actual)：原尺寸那一档要让轨道跟着图长大，不然图比轨道宽时
+   justify-items:center 会把左半边挤到滚不到的地方。 */
+.lbstage:not(.actual){grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr)}
 .lbstage img{max-width:100%;max-height:100%;object-fit:contain;display:block}
 /* actual-size mode: let the frame scroll so a defect can be inspected closely */
 .lbstage.actual{place-items:start center}
