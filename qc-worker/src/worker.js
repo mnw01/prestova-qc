@@ -114,7 +114,12 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;background:#e2e6e
      font-family:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;color:#16191d;padding:20px}
 .card{background:#fff;border:1px solid #c6ccd4;border-radius:8px;padding:26px 24px;width:min(360px,100%);
       box-shadow:0 12px 34px -14px rgba(20,26,36,.28)}
-h1{font-family:"Times New Roman",serif;font-size:16px;line-height:1.35;margin:0 0 4px;text-align:center}
+/* 字体跟首页那个标题对齐（--serif 的完整后备链 + 700 + balance）：原来只写
+   "Times New Roman",serif，缺 Nimbus Roman / Songti SC 两个后备，在没装
+   Times New Roman 的机器上会掉到系统默认 serif，跟进去之后看到的不是同一个字。
+   字号仍是 16px —— 卡片只有 360px 宽，照搬首页的 21px 会换行。 */
+h1{font-family:"Times New Roman","Nimbus Roman","Songti SC",serif;font-weight:700;
+   font-size:16px;line-height:1.3;text-wrap:balance;margin:0 0 4px;text-align:center}
 p.sub{margin:0 0 18px;text-align:center;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#79828d}
 label{display:block;font-size:12px;color:#4a525c;margin-bottom:6px}
 input,select{width:100%;padding:11px 12px;font-size:16px;border:1px solid #9aa3ae;

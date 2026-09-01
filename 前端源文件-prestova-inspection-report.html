@@ -2256,7 +2256,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
         <option value="海绵床垫">海绵床垫</option>
       </select>
     </label>
-    <label class="frec-field"><span>范围</span><select id="frec-range"><option value="day">当天</option><option value="month" selected>当月</option><option value="1">近 1 个月</option><option value="3">近 3 个月</option><option value="6">近 6 个月</option><option value="12">近 12 个月</option><option value="all">全部（最近 200 条）</option></select></label>
+    <label class="frec-field"><span>范围</span><select id="frec-range"><option value="day">当天</option><option value="month" selected>当月</option><option value="1">上个月</option><option value="3">近 3 个月</option><option value="6">近 6 个月</option><option value="12">近 12 个月</option><option value="all">全部（最近 200 条）</option></select></label>
     <label class="frec-field"><span>检查日期</span><input type="date" id="frec-date"></label>
     <label class="frec-field"><span>判定</span>
       <select id="frec-verdict">
@@ -2281,8 +2281,8 @@ table.frec-table tbody tr.draft .frec-open:hover,
   <div class="frec-bar">
     <label class="frec-field"><span>区间</span>
       <select id="fd-range">
-        <option value="cur">当月</option>
-        <option value="1" selected>近 1 个月</option>
+        <option value="cur" selected>当月</option>
+        <option value="1">上个月</option>
         <option value="3">近 3 个月</option>
         <option value="6">近 6 个月</option>
         <option value="12">近 12 个月</option>
@@ -2401,7 +2401,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
     <label class="irec-field"><span>类别</span>
       <select id="irec-cat"><option value="">全部</option></select>
     </label>
-    <label class="irec-field"><span>范围</span><select id="irec-range"><option value="day">当天</option><option value="month" selected>当月</option><option value="1">近 1 个月</option><option value="3">近 3 个月</option><option value="6">近 6 个月</option><option value="12">近 12 个月</option><option value="all">全部（最近 200 条）</option></select></label>
+    <label class="irec-field"><span>范围</span><select id="irec-range"><option value="day">当天</option><option value="month" selected>当月</option><option value="1">上个月</option><option value="3">近 3 个月</option><option value="6">近 6 个月</option><option value="12">近 12 个月</option><option value="all">全部（最近 200 条）</option></select></label>
     <label class="irec-field"><span>进料日期</span><input type="date" id="irec-date"></label>
     <label class="irec-field"><span>判定</span>
       <select id="irec-verdict">
@@ -2665,7 +2665,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
   <div class="orec-bar">
     <label class="orec-field"><span>PO/DI</span><input type="text" id="orec-podi" placeholder="全部"></label>
     <label class="orec-field"><span>柜号</span><input type="text" id="orec-container" placeholder="全部"></label>
-    <label class="orec-field"><span>范围</span><select id="orec-range"><option value="day">当天</option><option value="month" selected>当月</option><option value="1">近 1 个月</option><option value="3">近 3 个月</option><option value="6">近 6 个月</option><option value="12">近 12 个月</option><option value="all">全部（最近 200 条）</option></select></label>
+    <label class="orec-field"><span>范围</span><select id="orec-range"><option value="day">当天</option><option value="month" selected>当月</option><option value="1">上个月</option><option value="3">近 3 个月</option><option value="6">近 6 个月</option><option value="12">近 12 个月</option><option value="all">全部（最近 200 条）</option></select></label>
     <label class="orec-field wide"><span>装柜日期</span><input type="date" id="orec-date"></label>
     <label class="orec-field"><span>判定</span>
       <select id="orec-verdict">
@@ -2842,7 +2842,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
           <select id="lrec-range">
             <option value="day">当天</option>
             <option value="month" selected>当月</option>
-            <option value="1">近 1 个月</option>
+            <option value="1">上个月</option>
             <option value="3">近 3 个月</option>
             <option value="6">近 6 个月</option>
             <option value="12">近 12 个月</option>
@@ -2881,12 +2881,12 @@ table.frec-table tbody tr.draft .frec-open:hover,
            塞在 h2 里带来过两个毛病，挪出来这两个补丁就都不用了：h2 是
            align-items:center，按钮跟输入框中线对齐、不上不下；h2 又是
            font-weight:700，而 .lfield 的控件写 `font:inherit`，简写把粗细也
-           继承了过去，「近 1 个月」比别的板块黑一大截。 -->
+           继承了过去，「上个月」比别的板块黑一大截。 -->
       <div class="lrecbar">
         <label class="lfield" style="flex:0 0 130px"><span>区间</span>
           <select id="ld-range">
-            <option value="cur">当月</option>
-            <option value="1" selected>近 1 个月</option>
+            <option value="cur" selected>当月</option>
+            <option value="1">上个月</option>
             <option value="3">近 3 个月</option>
             <option value="6">近 6 个月</option>
             <option value="12">近 12 个月</option>
@@ -4408,10 +4408,10 @@ $("#fd-close").addEventListener("click",()=>fqcShow("form"));
 /* ── 数据分析的「清除筛选」：四个板块各一个 ──────────────────────────
    口径跟记录表那几个一致 —— **回到打开这一屏时的默认状态，不是清空**。
    区间清空了等于"全部"，几万条一次摊开，那不是用户点这个按钮想要的。
-   各板块的默认不一样，所以没法抽成一个公共函数：成品/实验室是「近 1 个月」
+   各板块的默认不一样，所以没法抽成一个公共函数：成品/实验室是「当月」
    （下拉的 selected 项），来料/制程是「最近 30 天」的起止日期。 */
 $("#fd-clear").addEventListener("click",()=>{
-  $("#fd-range").value="1"; $("#fd-item").value=""; $("#fd-mattress").value="";
+  $("#fd-range").value="cur"; $("#fd-item").value=""; $("#fd-mattress").value="";
   fqcDashRender();
 });
 /* 品名是输入框了：边打边筛。防抖 250ms，不然一千条记录每敲一下都要重算一遍。
@@ -8968,7 +8968,7 @@ const I18N_ID={
   "车间": "Dept",
   "车间 · 工序": "Dept · Section",
   "输入品号或品名搜索": "Ketik kode atau nama barang untuk cari",
-  "近 1 个月": "1 Bulan Terakhir",
+  "上个月": "Bulan Lalu",
   "近 12 个月": "12 Bulan Terakhir",
   "近 3 个月": "3 Bulan Terakhir",
   "近 6 个月": "6 Bulan Terakhir",
@@ -9794,7 +9794,7 @@ $("#ld-close").addEventListener("click",()=>labShow("entry"));
 $("#ld-range").addEventListener("change",labRenderDash);
 $("#ld-model").addEventListener("change",labRenderDash);
 $("#ld-clear").addEventListener("click",()=>{
-  $("#ld-range").value="1"; $("#ld-model").value="";
+  $("#ld-range").value="cur"; $("#ld-model").value="";
   labRenderDash();
 });
 
