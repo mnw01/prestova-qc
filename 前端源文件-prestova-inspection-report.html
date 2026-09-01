@@ -1489,6 +1489,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
   position:relative;overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;
   background:var(--field);transition:border-color .15s}
 #cfr1633 .ftpbox:hover{border-color:var(--accent)}
+#cfr1633 .ftpbox.dragover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--field))}
 #cfr1633 .ftpbox.has{border-style:solid}
 #cfr1633 .ftpbox img{width:100%;height:100%;object-fit:cover;display:none}
 #cfr1633 .ftpbox.has img{display:block}
@@ -1502,7 +1503,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
 #cfr1633 .ftsum .unit{font-size:11px;color:var(--ink-3);margin-left:2px}
 #cfr1633 .ftsum .pass{color:var(--ok);font-weight:600}
 #cfr1633 .ftsum .fail{color:var(--no);font-weight:600}
-#cfr1633 .ftverdict{font-size:14px;font-weight:700;margin-left:auto}
+#cfr1633 .ftverdict{font-size:14px;font-weight:700}
 
 /* ── 装柜检验：录入界面 ────────────────────────────────────────────
    自成一屏（跟 #lab/#iqc 一样），不走 fqc 的 #mod/CHECKS 引擎：这个板块
@@ -3142,7 +3143,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
 <div class="bar">
   <span class="grp">
     <button type="button" id="ftback" title="返回板块">← 板块</button>
-    <span class="brand">16 CFR 1633 防火检测</span>
+    <span class="brand">16 CFR 1633 防火检验</span>
     <button type="button" id="ftpickbtn" aria-haspopup="dialog" title="切换记录"><span id="ftpicklabel">—</span><span class="caret">▾</span></button>
     <button type="button" id="ftdel" class="danger">删除</button>
   </span>
@@ -3169,10 +3170,6 @@ table.frec-table tbody tr.draft .frec-open:hover,
         </select></label>
       <label class="ftfield"><span>SKU</span>
         <input id="ft-sku" placeholder="B-2503M01905-14-Q"></label>
-      <label class="ftfield"><span>时间（秒）</span>
-        <input id="ft-time" placeholder="50+70"></label>
-      <label class="ftfield"><span>流量（L/min）</span>
-        <input id="ft-flow" placeholder="6.6+12.9"></label>
       <label class="ftfield"><span>测试日期</span>
         <input type="date" id="ft-testdate"></label>
       <label class="ftfield"><span>生产日期</span>
@@ -3195,6 +3192,10 @@ table.frec-table tbody tr.draft .frec-open:hover,
         <img alt=""><span class="ftplabel">📷 侧部测试图</span>
         <button type="button" class="ftpdel" title="删除照片">✕</button>
       </div>
+      <div class="ftpbox" id="ft-pbox-report" title="点击或拖入上传测试报告">
+        <img alt=""><span class="ftplabel">📄 测试报告</span>
+        <button type="button" class="ftpdel" title="删除照片">✕</button>
+      </div>
     </div>
   </section>
 
@@ -3205,15 +3206,15 @@ table.frec-table tbody tr.draft .frec-open:hover,
         <input id="ft-phrr" inputmode="decimal" placeholder="≤ 200"></label>
       <label class="ftfield"><span>总热释放量 THR（MJ）</span>
         <input id="ft-thr" inputmode="decimal" placeholder="≤ 15"></label>
-      <label class="ftfield"><span>测试结果</span>
+      <label class="ftfield"><span>燃烧时间</span>
         <input id="ft-result" placeholder="7min自然熄灭"></label>
       <label class="ftfield" style="grid-column:1/-1"><span>备注</span>
         <input id="ft-remark" placeholder="测试合格"></label>
     </div>
     <div class="ftsum" id="ft-verdict-bar">
+      <span class="ftverdict" id="ft-verdict">—</span>
       <span>PHRR: <b id="ft-phrr-v">—</b><span class="unit">kW</span></span>
       <span>THR: <b id="ft-thr-v">—</b><span class="unit">MJ</span></span>
-      <span class="ftverdict" id="ft-verdict">—</span>
     </div>
   </section>
 </div>
@@ -3222,7 +3223,7 @@ table.frec-table tbody tr.draft .frec-open:hover,
 <div id="ftrec" hidden>
 <section class="frec-card">
   <div class="frec-head">
-    <h2>成品防火检测记录 <span id="ftrec-scope"></span></h2>
+    <h2>成品防火检验记录 <span id="ftrec-scope"></span></h2>
     <button type="button" class="recnew" id="ftnew">+ 新记录</button>
     <button type="button" class="plx" id="ftrec-close" title="关闭">✕</button>
   </div>
@@ -3613,8 +3614,8 @@ const MODULES=[
     reportZh:"成品检查报告", desc:"每柜成品抽检，出 A4 两页报告" },
   { id:"oqc",  zh:"装柜检验", en:"Loading Inspection", ready:true,
     reportZh:"装柜检验记录", desc:"装柜现场核对与封柜记录，出提货清单" },
-  { id:"cfr1633", zh:"防火检测", en:"16 CFR 1633", ready:true,
-    reportZh:"16 CFR 1633 防火检测", desc:"成品全尺寸燃烧测试，峰值热释放率/总热释放量" }
+  { id:"cfr1633", zh:"防火检验", en:"16 CFR 1633", ready:true,
+    reportZh:"16 CFR 1633 防火检验", desc:"成品燃烧测试，峰值热释放率/总热释放量" }
 ];
 const moduleById = id => MODULES.find(m=>m.id===id);
 let CURRENT="fqc";
@@ -3857,8 +3858,6 @@ function metaOf(r){
   if(type==="cfr1633"){
     m.productType=(f.productType||"").trim();
     m.sku=(f.sku||"").trim();
-    m.skuTime=(f.skuTime||"").trim();
-    m.skuFlow=(f.skuFlow||"").trim();
     m.testDate=(f.testDate||"").trim();
     m.videoNo=(f.videoNo||"").trim();
     m.prodDate=(f.prodDate||"").trim();
@@ -8163,7 +8162,7 @@ const FT_URLS = {};
 function ftBlank(){
   return {
     id:uid(), type:"cfr1633", updatedAt:Date.now(), syncedAt:0,
-    fields:{ productType:"", sku:"", skuTime:"", skuFlow:"",
+    fields:{ productType:"", sku:"",
              testDate:today(), videoNo:"", prodDate:"",
              phrr:"", thr:"", remark:"", result:"", inspector:"",
              itemNo:"", po:"" },
@@ -8225,8 +8224,6 @@ function ftPaintAll(){
   const f=FT.fields;
   $("#ft-prodtype").value=f.productType||"";
   $("#ft-sku").value=f.sku||"";
-  $("#ft-time").value=f.skuTime||"";
-  $("#ft-flow").value=f.skuFlow||"";
   $("#ft-testdate").value=toDateInput(f.testDate);
   $("#ft-proddate").value=toDateInput(f.prodDate);
   $("#ft-videono").value=f.videoNo||"";
@@ -8251,13 +8248,13 @@ function ftPaintVerdict(){
   tEl.className=thr!=null?(thr<=15?"pass":"fail"):"";
   const v=ftVerdict(FT);
   const ve=$("#ft-verdict");
-  ve.textContent=v?(v==="合格"?tr("合格 PASS"):tr("不合格 FAIL")):"—";
+  ve.textContent=v?(v==="合格"?tr("合格"):tr("不合格")):"—";
   ve.className="ftverdict"+(v==="合格"?" pass":v==="不合格"?" fail":"");
 }
 
-const FT_PBOX={top:$("#ft-pbox-top"), side:$("#ft-pbox-side")};
+const FT_PBOX={top:$("#ft-pbox-top"), side:$("#ft-pbox-side"), report:$("#ft-pbox-report")};
 function ftPaintPhotos(){
-  ["top","side"].forEach(k=>{
+  ["top","side","report"].forEach(k=>{
     const box=FT_PBOX[k];
     const blob=FT.photos["ft_"+k];
     if(blob){
@@ -8308,7 +8305,7 @@ async function enterCfr1633(recordId){
   $("#iqc").hidden=true; $("#oqc").hidden=true; $("#ipqc").hidden=true;
   $("#cfr1633").hidden=false;
   ftShow(recordId?"entry":"rec");
-  document.title=tr("荣升家居 · 16 CFR 1633 防火检测");
+  document.title=tr("荣升家居 · 16 CFR 1633 防火检验");
   try{
     if(recordId){ await ftLoad(recordId); }
     else{
@@ -8336,7 +8333,7 @@ $("#ftnew").addEventListener("click",async()=>{
 });
 $("#ftdel").addEventListener("click",async()=>{
   if(!FT) return;
-  if(!confirm("删除这条防火检测记录？不可撤销。")) return;
+  if(!confirm("删除这条防火检验记录？不可撤销。")) return;
   await deleteEverywhere(FT);
   const mine=(await metaAll()).filter(m=>m.type==="cfr1633")
     .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
@@ -8354,8 +8351,8 @@ $("#ftlockbtn").addEventListener("click",async()=>{
 
 /* head fields */
 const FT_FIELDS=[
-  ["ft-prodtype","productType"],["ft-sku","sku"],["ft-time","skuTime"],
-  ["ft-flow","skuFlow"],["ft-videono","videoNo"],["ft-inspector","inspector"],
+  ["ft-prodtype","productType"],["ft-sku","sku"],
+  ["ft-videono","videoNo"],["ft-inspector","inspector"],
   ["ft-phrr","phrr"],["ft-thr","thr"],["ft-result","result"],["ft-remark","remark"]
 ];
 FT_FIELDS.forEach(([id,k])=>{
@@ -8367,7 +8364,7 @@ $("#ft-proddate").addEventListener("change",e=>{ FT.fields.prodDate=fromDateInpu
 
 /* photos */
 let ftPendingSlot=null;
-["top","side"].forEach(k=>{
+["top","side","report"].forEach(k=>{
   const box=FT_PBOX[k];
   box.addEventListener("click",e=>{
     if(e.target.closest(".ftpdel")) return;
@@ -8381,6 +8378,20 @@ let ftPendingSlot=null;
     delete FT.photos[sk]; FT.photoOps[sk]="del";
     if(FT_URLS[k]){ URL.revokeObjectURL(FT_URLS[k]); FT_URLS[k]=null; }
     ftPaintPhotos(); ftSave();
+  });
+  box.addEventListener("dragover",e=>{ e.preventDefault(); if(!FT||FT.locked) return; box.classList.add("dragover"); });
+  box.addEventListener("dragleave",()=>{ box.classList.remove("dragover"); });
+  box.addEventListener("drop",async e=>{
+    e.preventDefault(); box.classList.remove("dragover");
+    if(!FT||FT.locked) return;
+    const f=e.dataTransfer.files[0]; if(!f||!f.type.startsWith("image/")) return;
+    try{
+      const blob=await shrink(f), sk="ft_"+k;
+      FT.photos[sk]=blob; FT.photoOps[sk]="put";
+      if(FT_URLS[k]) URL.revokeObjectURL(FT_URLS[k]);
+      FT_URLS[k]=URL.createObjectURL(blob);
+      ftPaintPhotos(); ftSave();
+    }catch(err){ toast("照片处理失败"); }
   });
 });
 $("#ftpick").addEventListener("change",async e=>{
@@ -8423,14 +8434,14 @@ async function ftrecRender(){
   tbl.innerHTML='<thead><tr>'+
     '<th class="seq">序号</th>'+
     '<th>产品类型</th>'+
-    '<th>SKU(时间)(流量)</th>'+
+    '<th>SKU</th>'+
     '<th>测试日期</th>'+
     '<th class="num">PHRR(kW)</th>'+
     '<th class="num">THR(MJ)</th>'+
     '<th>视频编号</th>'+
     '<th>生产日期</th>'+
     '<th>备注</th>'+
-    '<th>测试结果</th>'+
+    '<th>燃烧时间</th>'+
     '<th>判定</th>'+
     '<th></th>'+
     '</tr></thead>';
@@ -8442,7 +8453,7 @@ async function ftrecRender(){
     if(FT && r.id===FT.id) row.classList.add("cur");
     const v=r.ftVerdict||"";
     const vbadge=v?('<span class="frec-badge '+(v==="合格"?"ok":"no")+'">'+esc(v)+'</span>'):"—";
-    const skuFull=(r.sku||"")+(r.skuTime?" ("+r.skuTime+")":"")+(r.skuFlow?" ("+r.skuFlow+")":"");
+    const skuFull=r.sku||"";
     const phrr=r.phrr||"";
     const thrVal=r.thr||"";
     row.innerHTML='<td class="seq">'+(i+1)+'</td>'+
