@@ -116,6 +116,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
   --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
   --hairline:#e6eaf1; --rule-2:#cdd5e0;
   --ok:#0f7a52; --no:#b0342a; --okbg:#e6f5ee; --nobg:#fdecea;
+  --lock-off:#e08600;
   --card:#ffffff; --card-line:#e2e7ee;
   --field:#ffffff; --field-line:#cdd5e0;
   --accent:#1f4fa8; --accent-soft:#eef3fc; --accent-fill:#1f4fa8;
@@ -130,6 +131,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
     --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
     --hairline:#232a34; --rule-2:#333c48;
     --ok:#4fbb8a; --no:#e08c82; --okbg:#12291f; --nobg:#2b1a18;
+    --lock-off:#fcd34d;
     --card:#171b22; --card-line:#252c36;
     --field:#11151b; --field-line:#333c48;
     --accent:#5b93ea; --accent-soft:#16233a; --accent-fill:#2f62c4;
@@ -141,6 +143,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
   --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
   --hairline:#232a34; --rule-2:#333c48;
   --ok:#4fbb8a; --no:#e08c82; --okbg:#12291f; --nobg:#2b1a18;
+  --lock-off:#fcd34d;
   --card:#171b22; --card-line:#252c36;
   --field:#11151b; --field-line:#333c48;
   --accent:#5b93ea; --accent-soft:#16233a; --accent-fill:#2f62c4;
@@ -151,6 +154,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
   --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
   --hairline:#e6eaf1; --rule-2:#cdd5e0;
   --ok:#0f7a52; --no:#b0342a; --okbg:#e6f5ee; --nobg:#fdecea;
+  --lock-off:#e08600;
   --card:#ffffff; --card-line:#e2e7ee;
   --field:#ffffff; --field-line:#cdd5e0;
   --accent:#1f4fa8; --accent-soft:#eef3fc; --accent-fill:#1f4fa8;
@@ -1165,6 +1169,30 @@ table.frec-table tbody tr.draft .frec-open:hover,
 #lab table.lrec tbody tr.draft .lrecbtn:hover{
   background:color-mix(in srgb,var(--accent) 16%,transparent);
   border-color:var(--accent);color:var(--accent);
+}
+/* ── 记录表的锁状态圆点：已锁绿点，未锁黄点 ────────────────────────
+   放在「查看」左边。锁状态原来有两个信号：整行 opacity:.6 压暗，和按钮的
+   实心/空心。这两个都得**跟旁边的行比**才读得出来，单看一行说不清；圆点
+   是绝对信号，一眼就是绿或黄。三个信号并存，不去掉原来的两个。
+
+   ⚠ 未锁的行整行 opacity:.6（tr.draft>td 那条，压暗的对比度是实测定下来的，
+   不动），所以黄点显示出来的是**被压过之后**的颜色。黄色本来就浅，这里选了
+   饱和度拉满的一档：浅色下 #e08600 压到 .6 落在 rgb(236,182,102)，跟满色
+   的绿点在色相和明度上都拉得开。
+   一律限定在 tbody 里：#lab .lrecbtn 同时是表外面的「出检验报告」。
+   token 叫 --lock-off 不叫 --warn：--warn 已经被 #lab 占了（超标测量值的
+   输入框，见 #lab .lrow input.warn），#lab 那条更具体又在后面，套用会让
+   实验室这张表的黄点变成另一个色。 */
+.lockdot{
+  display:inline-block;width:9px;height:9px;border-radius:50%;
+  margin-right:8px;vertical-align:middle;background:var(--ok);
+}
+table.frec-table tbody tr.draft .lockdot,
+#iqc table.irec-table tbody tr.draft .lockdot,
+#ipqc table.iprec-table tbody tr.draft .lockdot,
+#oqc table.orec-table tbody tr.draft .lockdot,
+#lab table.lrec tbody tr.draft .lockdot{
+  background:var(--lock-off);
 }
 /* 标题旁边那行小字：现在看的是哪一段、几条。三个板块共用（实验室有自己的
    #lab .lhint，别去套它 —— 那是板块作用域下的类，出了 #lab 一点样式都没有）。 */
@@ -4720,7 +4748,7 @@ async function frecRender(){
           '<td>'+esc(r.inspDate||"—")+'</td>'+
           '<td>'+esc(r.inspector||"—")+'</td>'+
           '<td><span class="frec-badge '+(bad?"no":"ok")+'">'+(bad?"不合格":"合格")+'</span></td>'+
-          '<td><button type="button" class="frec-open" data-rpt="'+esc(r.id)+'">查看</button></td></tr>';
+          '<td><span class="lockdot" aria-hidden="true"></span><button type="button" class="frec-open" data-rpt="'+esc(r.id)+'">查看</button></td></tr>';
       }).join('')+'</tbody>';
 }
 $("#frecbtn").addEventListener("click",()=>frecShow($("#frec").hidden));
@@ -5439,7 +5467,7 @@ async function irecRender(){
           '<td>'+esc(r.inspector||"—")+'</td>'+
           '<td><span class="irec-badge '+(pend?"na":bad?"no":"ok")+'">'+(pend?"待检查":bad?"不合格":"合格")+'</span>'+
             (r.override?'<span class="recmark">人工改判</span>':'')+'</td>'+
-          '<td><button type="button" class="irec-open" data-rpt="'+esc(r.id)+'">查看</button></td></tr>';
+          '<td><span class="lockdot" aria-hidden="true"></span><button type="button" class="irec-open" data-rpt="'+esc(r.id)+'">查看</button></td></tr>';
       }).join('')+'</tbody>';
 }
 $("#irecbtn").addEventListener("click",()=>irecShow($("#irec").hidden));
@@ -6783,7 +6811,7 @@ async function iprecRender(){
           '<td class="num">'+ipn(b)+'</td>'+
           '<td class="num'+(rate!=null&&rate>5?' warn':'')+'">'+(rate!=null?rate+"%":"—")+'</td>'+
           '<td>'+esc(r.inspector||"—")+'</td>'+
-          '<td><button type="button" class="iprec-open" data-iprpt="'+esc(r.id)+'">查看</button></td></tr>';
+          '<td><span class="lockdot" aria-hidden="true"></span><button type="button" class="iprec-open" data-iprpt="'+esc(r.id)+'">查看</button></td></tr>';
       }).join('')+'</tbody>';
 }
 $("#precbtn").addEventListener("click",()=>ipqcShow($("#iprec").hidden?"rec":"entry"));
@@ -7605,7 +7633,7 @@ async function orecRender(){
           '<td>'+esc(r.inspector||"—")+'</td>'+
           '<td><span class="orec-badge '+(pend?"na":bad?"no":"ok")+'">'+(pend?"待检查":bad?"不合格":"合格")+'</span>'+
             (r.override?'<span class="recmark">人工改判</span>':'')+'</td>'+
-          '<td><button type="button" class="orec-open" data-orpt="'+esc(r.id)+'">查看</button></td></tr>';
+          '<td><span class="lockdot" aria-hidden="true"></span><button type="button" class="orec-open" data-orpt="'+esc(r.id)+'">查看</button></td></tr>';
       }).join('')+'</tbody>';
 }
 $("#orecbtn").addEventListener("click",()=>oqcShow($("#orec").hidden?"rec":"entry"));
@@ -10063,6 +10091,7 @@ function labRenderRec(){
       const sv=labSampleVerdict(r,i);
       c.push('<td class="'+(sv==="合格"?"vok":sv==="不合格"?"vno":"")+'">'+esc(sv||"")+'</td>');
       if(i===0) c.push('<td class="act" rowspan="3">'+
+        '<span class="lockdot" aria-hidden="true"></span>'+
         '<button type="button" class="lrecbtn" data-rpt="'+esc(r.id)+'">查看</button>'+
         (r.lab.override?'<span class="lrecmark">人工改判</span>':'')+'</td>');
       /* 一批三行，当前打开的那批三行都要标 —— 只标第一行的话，
