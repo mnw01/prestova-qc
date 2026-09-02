@@ -980,6 +980,33 @@ table.frec-table tbody tr.draft>td,#iqc table.irec-table tbody tr.draft>td,
 /* 防火的照片格是 <div>，不在上面那串控件里，光标还会是 pointer，看着像能点。
    真正拦住"点了会改记录"的是各 handler 里的 FT.locked 守卫加 lockGate 那道闸，
    这条只管光标。 */
+/* 锁了之后，「会改记录」的那些操作键一律**藏起来**，不只是点不动 ——
+   照片角上留一个按不下去的 ✕，看的人只会以为坏了（用户报的）。
+   五个板块一条规则收掉：删除 / 加图 / 拍照 / 标记不良 / 适应窗口，
+   以及各板块照片网格末尾那个「＋」。
+
+   只读的一律不动：照片和 PDF 仍然点得开，打印 / 出报告那些带 data-lockok
+   的照常 —— 那才是锁定态该保留的东西。
+
+   **必须 !important**：这些键各自的显示规则是带 id 的
+   （如 `#cfr1633 .ftpbox.has .ftpdel{display:flex}`，(1,2,0)），
+   纯类选择器压不过。
+
+   每行写成完整选择器、各自带上板块容器 —— 不能图省事把各板块的类名塞进一个
+   共用的 :is() 列表里，那样它们在隔离检查眼里就是「无作用域的裸类规则」，
+   构建当场红（试过了；连注释里写出那种示例都会被扫到）。 */
+.wrap.locked .pdel,
+.wrap.locked .padd,
+.wrap.locked .pcam,
+.wrap.locked .pflag,
+.wrap.locked .pfit,
+#oqcv.locked .oqx,
+#oqcv.locked .oqcam,
+#oqcv.locked .oqadd,
+#ftentryv.locked .ftpdel,
+#ftentryv.locked .ftpbox-add{
+  display:none!important;
+}
 #ftentryv.locked .ftpbox{cursor:default}
 /* 锁了之后**照片仍然要能点开看大图**（跟另外两个板块一个规矩：lockGate 放行
    img，CSS 也只关控件不关图片），所以有图那格的 zoom-in 光标要留着。 */
@@ -8564,7 +8591,9 @@ function ftBuildPhotoGrid(){
     }
     wrap.insertBefore(box,addBtn);
   });
-  addBtn.hidden=!!(FT&&FT.locked);
+  /* 「＋」的显隐**只交给 CSS**（#ftentryv.locked .ftpbox-add）。原来这里还
+     写了一句 addBtn.hidden=FT.locked —— 两套机制管同一件事，而解锁并不重建
+     网格，于是解锁之后「＋」再也回不来（实测抓到的）。 */
   ftBuildRptGrid();
 }
 
@@ -8596,7 +8625,7 @@ function ftBuildRptGrid(){
   if(!wrap||!addBtn) return;
   wrap.querySelectorAll(".ftpbox:not(.ftpbox-add)").forEach(el=>el.remove());
   ftRptKeys().forEach(k=>{ wrap.insertBefore(ftMakeRptBox(k),addBtn); ftPaintRptBox(k); });
-  addBtn.hidden=!!(FT&&FT.locked);
+  /* 同上：显隐交给 CSS，别在这儿再写一次 hidden */
 }
 function ftPaintRptBox(k){
   const box=$('#ft-rpt-wrap .ftpbox[data-ftslot="'+CSS.escape(k)+'"]');
