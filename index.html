@@ -3256,17 +3256,17 @@ table.frec-table tbody tr.draft .lockdot,
           <option value="海绵床垫">海绵床垫</option>
         </select></label>
       <label class="ftfield"><span>SKU</span>
-        <input id="ft-sku" data-pm="model" autocomplete="off" placeholder="B-2503M01905-14-Q"></label>
+        <input id="ft-sku" data-pm="model" autocomplete="off"></label>
       <label class="ftfield"><span>测试日期</span>
         <input type="date" id="ft-testdate"></label>
       <label class="ftfield"><span>生产日期</span>
         <input type="date" id="ft-proddate"></label>
       <label class="ftfield"><span>测试视频编号</span>
-        <input id="ft-videono" placeholder="2026033103"></label>
+        <input id="ft-videono"></label>
       <label class="ftfield"><span>检测人员</span>
         <input id="ft-inspector"></label>
       <label class="ftfield" style="grid-column:1/-1"><span>工艺要求</span>
-        <input id="ft-craft" placeholder="阻燃布套 / 防火棉 / 包边工艺等"></label>
+        <input id="ft-craft"></label>
     </div>
   </section>
 
@@ -3294,15 +3294,17 @@ table.frec-table tbody tr.draft .lockdot,
     <div class="fthead">
       <!-- 单位用半角括号：全角（）两个就占 25px，整条标签要 155px、
            而单栏只有 148px，正好折行把 (kW) 顶到第二排。半角只要 141px，
-           一行放得下。括号里是拉丁字母，本来也该配半角。 -->
+           一行放得下。括号里是拉丁字母，本来也该配半角。
+           这两个框的 ≤ 200 / ≤ 15 是判定阈值，不是示例，所以留着 —— 其余
+           几个框的示例文案用户要求一律留空（"不用写说明"）。 -->
       <label class="ftfield"><span>峰值热释放率 PHRR (kW)</span>
         <input id="ft-phrr" inputmode="decimal" placeholder="≤ 200"></label>
       <label class="ftfield"><span>总热释放量 THR (MJ)</span>
         <input id="ft-thr" inputmode="decimal" placeholder="≤ 15"></label>
       <label class="ftfield"><span>燃烧时间</span>
-        <input id="ft-result" placeholder="7min自然熄灭"></label>
+        <input id="ft-result"></label>
       <label class="ftfield" style="grid-column:1/-1"><span>备注</span>
-        <input id="ft-remark" placeholder="测试合格"></label>
+        <input id="ft-remark"></label>
     </div>
     <div class="ftsum" id="ft-verdict-bar">
       <div class="ftverdict" id="ft-verdict">—</div>
@@ -10241,7 +10243,6 @@ const I18N_ID={
   "测试视频编号": "No. Video Pengujian",
   "检测人员": "Penguji",
   "工艺要求": "Persyaratan Proses",
-  "阻燃布套 / 防火棉 / 包边工艺等": "Kain tahan api / busa tahan api / proses jahit tepi dll.",
   "测试照片": "Foto Pengujian",
   "增加照片": "Tambah Foto",
   "点击上传或拖入照片": "Klik untuk upload atau tarik foto ke sini",
@@ -10254,7 +10255,6 @@ const I18N_ID={
   "峰值热释放率 PHRR (kW)": "Laju Pelepasan Panas Puncak PHRR (kW)",
   "总热释放量 THR (MJ)": "Total Pelepasan Panas THR (MJ)",
   "燃烧时间": "Waktu Pembakaran",
-  "测试合格": "Lulus uji",
   "成品防火检验记录": "Catatan Uji Ketahanan Api Produk Jadi",
   "荣升家居 · 16 CFR 1633 防火检验": "Prestova · 16 CFR 1633 Uji Ketahanan Api",
   "视频编号": "No. Video",
