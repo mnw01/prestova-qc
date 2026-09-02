@@ -8256,7 +8256,16 @@ async function cleanupBlanks(){
 
 /* ── 16 CFR 1633 防火检测 ──────────────────────────────────────────── */
 let FT = null;
+/* 槽位 key → objectURL。**只按槽位 key 存、不带记录 id**，所以换记录时必须
+   整个清掉（ftLoad 第一行），否则 ftBuildPhotoGrid 里那句
+   `FT_URLS[k]||(FT_URLS[k]=createObjectURL(blob))` 会复用上一条记录的 URL，
+   把上一条的照片显示在这一条上。装柜的 oqSetURL / oqcLoad 就是这么做的。 */
 const FT_URLS = {};
+function ftSetURL(k, url){
+  if(FT_URLS[k]) URL.revokeObjectURL(FT_URLS[k]);
+  if(url) FT_URLS[k]=url; else delete FT_URLS[k];
+}
+function ftClearURLs(){ Object.keys(FT_URLS).forEach(k=>ftSetURL(k,null)); }
 
 function ftBlank(){
   return {
@@ -8365,6 +8374,7 @@ let ftPhotoCounter=0;
 function ftMakePhotoBox(k){
   const box=document.createElement("div");
   box.className="ftpbox"; box.title="点击上传或拖入照片";
+  box.dataset.ftslot=k;                     /* ftPaintSlot 靠它认格子 */
   box.innerHTML='<img alt=""><span class="ftplabel">📷 照片</span><button type="button" class="ftpdel" title="删除照片">✕</button>';
   ftBindPhotoBox(box,k);
   return box;
@@ -8380,7 +8390,7 @@ function ftBindPhotoBox(box,k){
     if(!FT||FT.locked) return;
     const sk="ft_"+k;
     delete FT.photos[sk]; FT.photoOps[sk]="del";
-    if(FT_URLS[k]){ URL.revokeObjectURL(FT_URLS[k]); FT_URLS[k]=null; }
+    ftSetURL(k,null);
     ftBuildPhotoGrid(); ftSave();
   });
   box.addEventListener("dragover",e=>{ e.preventDefault(); if(!FT||FT.locked) return; box.classList.add("dragover"); });
@@ -8392,8 +8402,7 @@ function ftBindPhotoBox(box,k){
     try{
       const blob=await shrink(f), sk="ft_"+k;
       FT.photos[sk]=blob; FT.photoOps[sk]="put";
-      if(FT_URLS[k]) URL.revokeObjectURL(FT_URLS[k]);
-      FT_URLS[k]=URL.createObjectURL(blob);
+      ftSetURL(k, URL.createObjectURL(blob));
       ftBuildPhotoGrid(); ftSave();
     }catch(err){ toast("照片处理失败"); }
   });
@@ -8422,11 +8431,26 @@ function ftPaintReport(){
     const url=FT_URLS["report"]||(FT_URLS["report"]=URL.createObjectURL(blob));
     $("img",box).src=url; box.classList.add("has");
   }else{
-    if(FT_URLS["report"]){ URL.revokeObjectURL(FT_URLS["report"]); FT_URLS["report"]=null; }
+    ftSetURL("report",null);
     $("img",box).src=""; box.classList.remove("has");
   }
 }
 function ftPaintPhotos(){ ftBuildPhotoGrid(); }
+/* 逐格更新：hydratePhotos 一张到就补一格，跟成品 paintSlot / 装柜 oqcPaintSlot
+   同一个形状。不这么做的话，慢网下几张图会一直空着，等全部下完才一起出现。
+   slot 是带 ft_ 前缀的（ft_top / ft_side / ft_report / ft_x1_…）。
+   格子还不存在（别的设备加拍的动态格）就整块重建一次，重建本身会把图带上。 */
+function ftPaintSlot(slot){
+  if(!FT) return;
+  if(slot==="ft_report") return ftPaintReport();
+  const k=slot.slice(3);
+  const box=$('#ft-photo-wrap .ftpbox[data-ftslot="'+CSS.escape(k)+'"]');
+  if(!box) return ftBuildPhotoGrid();
+  const blob=FT.photos[slot];
+  if(!blob){ $("img",box).src=""; box.classList.remove("has"); return; }
+  ftSetURL(k, URL.createObjectURL(blob));
+  $("img",box).src=FT_URLS[k]; box.classList.add("has");
+}
 
 /* 走共用的 paintLockUI，不自己写一套：原来这里手写按钮文案（锁了固定显示
    「已提交」）+ 手动 disabled + 自拼提示条，三个后果 ——
@@ -8449,19 +8473,13 @@ function ftPaintLock(){
    真正的下载走 want = serverPhotos - photos - photoOps，跟这个标记无关。 */
 function ftHydrate(id){
   if(!SYNC.enabled || !id) return;
-  hydratePhotos(id).then(()=>{
-    if(!FT || FT.id!==id) return;
-    dbGet(id).then(r=>{
-      if(!r || !FT || FT.id!==id) return;
-      FT.photos=r.photos; FT.serverPhotos=r.serverPhotos; FT.photosChecked=r.photosChecked;
-      ftPaintPhotos();
-    });
-  });
+  hydratePhotos(id);          /* 逐张回来时 hydratePhotos 自己调 ftPaintSlot */
 }
 /* skipPhotos 同装柜 / 成品：记录表点一行也走这里，一行行点过去会连着从 R2
    拉一串图，而点行只是在挑、不是要看图。真开录入屏时 ftShow 会补拉。 */
 async function ftLoad(id, skipPhotos){
   const rec=await dbGet(id);
+  ftClearURLs();              /* 换记录必须清，理由见 FT_URLS 那段注释 */
   FT=ftNorm(rec||ftBlank());
   ftPaintAll();
   if(!skipPhotos) ftHydrate(id);
@@ -8569,8 +8587,7 @@ $("#ftpick").addEventListener("change",async e=>{
     const blob=await shrink(f);
     const sk="ft_"+ftPendingSlot;
     FT.photos[sk]=blob; FT.photoOps[sk]="put";
-    if(FT_URLS[ftPendingSlot]) URL.revokeObjectURL(FT_URLS[ftPendingSlot]);
-    FT_URLS[ftPendingSlot]=URL.createObjectURL(blob);
+    ftSetURL(ftPendingSlot, URL.createObjectURL(blob));
     ftPaintPhotos(); ftSave();
   }catch(err){ toast("照片处理失败"); }
   ftPendingSlot=null;
@@ -9187,6 +9204,7 @@ async function hydratePhotos(id){
       got++;
       if(R && R.id===id){ R.photos[slot]=rec.photos[slot]; paintSlot(slot); }
       if(OR && OR.id===id){ OR.photos[slot]=rec.photos[slot]; oqcPaintSlot(slot); }
+      if(FT && FT.id===id){ FT.photos[slot]=rec.photos[slot]; ftPaintSlot(slot); }
     }catch(e){ /* leave it for the next open */ }
   }
   if(got){ await persistQuiet(rec); if(R && R.id===id) markSaved(); }
