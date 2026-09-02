@@ -3849,7 +3849,7 @@ const ROLE = readCookie("qc_role")==="admin" ? "admin" : "qc";
 const isAdmin = () => ROLE==="admin";
 /* 管理员专属的按钮：一改就影响所有人的（基础资料 / 标准表 / 覆盖式导入），
    加上删除（服务端会清空内容并把 R2 里的照片真删掉，救不回来）。 */
-const ADMIN_ONLY=["#del","#ldel","#idel","#odel","#pdel",
+const ADMIN_ONLY=["#del","#ldel","#idel","#odel","#pdel","#ftdel",
                   "#lstdbtn","#ld-import","#imatbtn","#pmatbtn","#oimpbtn"];
 function applyRole(){
   if(isAdmin()) return;
