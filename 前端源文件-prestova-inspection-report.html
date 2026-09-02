@@ -974,9 +974,13 @@ table.frec-table tbody tr.draft>td,#iqc table.irec-table tbody tr.draft>td,
 /* [data-lockok] 是"只读动作"的口子 —— 出报告 / 打印 / 关闭报告浮层。
    五个板块的打印按钮都在录入容器里面（成品的 #prt 在报告末尾），不放行的话
    锁了就出不了报告。报告里那些会写回记录的输入框和 ▲▼ 不打这个标记。 */
-:is(#iqcv,#ipqcv,#oqcv,#labv).locked :is(input,textarea,select,button):not([data-lockok]){
+:is(#iqcv,#ipqcv,#oqcv,#labv,#ftentryv).locked :is(input,textarea,select,button):not([data-lockok]){
   pointer-events:none;cursor:default;
 }
+/* 防火的照片格是 <div>，不在上面那串控件里，光标还会是 pointer，看着像能点。
+   真正拦住"点了会改记录"的是各 handler 里的 FT.locked 守卫加 lockGate 那道闸，
+   这条只管光标。 */
+#ftentryv.locked .ftpbox{cursor:default}
 #lockbar,#ilockbar,#plockbar,#olockbar,#llockbar,#ftlockbar{
   /* 五个容器都是 column flex：align-self 让提示条收缩到内容宽再居中，
      不跟着卡片一起拉满。成品的 .wrap 本来就 align-items:center，这里是空操作。 */
@@ -2257,11 +2261,11 @@ table.frec-table tbody tr.draft .lockdot,
   .segnav button.cur:hover{background:var(--seg-on);color:var(--ink)}
 
   /* 每屏唯一的主操作：提交并锁定 */
-  .bar #lockbtn,.bar #ilockbtn,.bar #plockbtn,.bar #olockbtn,.bar #llockbtn{
+  .bar #lockbtn,.bar #ilockbtn,.bar #plockbtn,.bar #olockbtn,.bar #llockbtn,.bar #ftlockbtn{
     background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;font-weight:600;
   }
   .bar #lockbtn:hover,.bar #ilockbtn:hover,.bar #plockbtn:hover,
-  .bar #olockbtn:hover,.bar #llockbtn:hover{
+  .bar #olockbtn:hover,.bar #llockbtn:hover,.bar #ftlockbtn:hover{
     background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;filter:brightness(1.14);
   }
 
@@ -2360,6 +2364,17 @@ table.frec-table tbody tr.draft .lockdot,
     font-size:13.5px;padding:8px 11px;border-radius:var(--r-ctl);
     border:1px solid var(--field-line);background:var(--field);color:var(--ink);
   }
+  /* 标签换行时输入框不许被顶下去。字段是 column flex、在网格里默认 stretch 到
+     整排最高那格，margin-top:auto 把控件吸到底，同一排的框顶边就永远齐。
+     标签是单行、没有富余空间时 auto 解析成 0，什么都不变 —— 所以这条对现有
+     几个板块是空操作，只在标签变长/屏幕变窄真换行时才起作用。
+     防火「测试结果」那排就是：PHRR（kW）标签两行，旁边 THR 和燃烧时间一行，
+     不加这条差整整一行 17px（用户截图报的）。
+     **必须用 `>` 直接子元素**：实验室的「批号」是三个控件包在一层 .lbatch 里，
+     用后代选择器会连里面那三个也吸到底，把那一格拆散。 */
+  #iqc .iqfield > :is(input,select),#ipqc .ipfield > :is(input,select),
+  #oqc .oqfield > :is(input,select),#lab .lfield > :is(input,select),
+  #cfr1633 .ftfield > :is(input,select){ margin-top:auto }
   #iqc .iqfield :is(input,select):focus,#ipqc .ipfield :is(input,select):focus,
   #oqc .oqfield :is(input,select):focus,#lab .lfield :is(input,select):focus,
   #cfr1633 .ftfield :is(input,select):focus,
@@ -4848,6 +4863,7 @@ wireRowMark("#irec-table",  id=>iqcLoad(id));
 wireRowMark("#iprec-table", id=>ipqcLoad(id));
 wireRowMark("#orec-table",  id=>oqcLoad(id, true));
 wireRowMark("#lrec-table",  id=>labLoad(id));
+wireRowMark("#ftrec-table", id=>ftLoad(id));
 
 /* 鼠标划过时整批一起亮。只有实验室要走 JS：**它一批三行**，纯 CSS 的
    `tr:hover` 只会亮鼠标底下那一条，三行里亮中间一条看着像错位。
@@ -8377,17 +8393,16 @@ function ftPaintReport(){
 }
 function ftPaintPhotos(){ ftBuildPhotoGrid(); }
 
+/* 走共用的 paintLockUI，不自己写一套：原来这里手写按钮文案（锁了固定显示
+   「已提交」）+ 手动 disabled + 自拼提示条，三个后果 ——
+     · 管理员看不到「解除锁定」，锁上就再也解不开；
+     · 提示条文案跟另外五个板块不一样（少了时间格式和那句"需要管理员解除"）；
+     · 按钮少了 disabled / .danger 两个态。
+   共用函数还会给 #ftentryv 挂 .locked，样式表那条 :is(…).locked 的控件规则
+   才生效（那串选择器里也补了 #ftentryv）。 */
 function ftPaintLock(){
   if(!FT) return;
-  const bar=$("#ftlockbar");
-  if(FT.locked){
-    bar.hidden=false;
-    bar.innerHTML='<span class="lockinfo">已提交 · '+new Date(FT.locked).toLocaleString("zh-CN")+'</span>';
-  }else{ bar.hidden=true; }
-  const ro=!!FT.locked;
-  $("#ftentryv").querySelectorAll("input,select").forEach(el=>{ el.disabled=ro; });
-  $("#ftentryv").querySelectorAll(".ftpbox").forEach(el=>{ el.style.pointerEvents=ro?"none":""; });
-  $("#ftlockbtn").textContent=ro?tr("已提交"):tr("提交并锁定");
+  paintLockUI(FT, "#ftentryv", "#ftlockbtn", "#ftlockbar");
 }
 
 async function ftLoad(id){
@@ -8454,10 +8469,10 @@ $("#ftdel").addEventListener("click",async()=>{
   toast("已删除");
 });
 $("#ftlockbtn").addEventListener("click",async()=>{
-  if(!FT) return;
-  if(FT.locked){ toast(tr("已经提交过了")); return; }
-  if(!confirm(tr("提交并锁定这条记录？提交后不可修改。"))) return;
-  FT.locked=Date.now(); ftSave(); ftPaintLock();
+  if(!lockAsk(FT, "#ftstat")) return;
+  ftSave();
+  ftPaintLock();
+  if(!$("#ftrec").hidden) await ftrecRender();   /* 锁状态圆点和 .draft 跟着变 */
 });
 
 /* head fields */
@@ -8548,6 +8563,9 @@ async function ftrecRender(){
   const viewLabel=tr("查看");
   rows.forEach((r,i)=>{
     const row=document.createElement("tr");
+    /* wireRowMark 靠 data-row 认行 —— 少了它点行只会把别处的 .cur 清掉、
+       自己这行永远高亮不上，另外五张表都写了这个属性。 */
+    row.dataset.row=r.id;
     if(!r.locked) row.classList.add("draft");
     if(FT && r.id===FT.id) row.classList.add("cur");
     const v=r.ftVerdict||"";
@@ -10210,9 +10228,6 @@ const I18N_ID={
   "还没有记录。": "Belum ada catatan.",
   "新记录已建": "Catatan baru dibuat",
   "删除这条防火检验记录？不可撤销。": "Hapus catatan uji api ini? Tidak bisa dibatalkan.",
-  "已经提交过了": "Sudah dikirim sebelumnya",
-  "提交并锁定这条记录？提交后不可修改。": "Kirim dan kunci catatan ini? Setelah dikunci tidak bisa diubah.",
-  "已提交": "Terkirim",
   "照片处理失败": "Gagal memproses foto",
 };
 /* 照片格里的「拍照 / 相册」要单独刷一遍。两个原因叠在一起让它翻不过来：
