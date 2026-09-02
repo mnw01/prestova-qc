@@ -4873,7 +4873,7 @@ wireRowMark("#irec-table",  id=>iqcLoad(id));
 wireRowMark("#iprec-table", id=>ipqcLoad(id));
 wireRowMark("#orec-table",  id=>oqcLoad(id, true));
 wireRowMark("#lrec-table",  id=>labLoad(id));
-wireRowMark("#ftrec-table", id=>ftLoad(id));
+wireRowMark("#ftrec-table", id=>ftLoad(id, true));
 
 /* 鼠标划过时整批一起亮。只有实验室要走 JS：**它一批三行**，纯 CSS 的
    `tr:hover` 只会亮鼠标底下那一条，三行里亮中间一条看着像错位。
@@ -8415,13 +8415,31 @@ function ftPaintLock(){
   paintLockUI(FT, "#ftentryv", "#ftlockbtn", "#ftlockbar");
 }
 
-async function ftLoad(id){
+/* 照抄装柜的 oqcHydrate：**无条件调 hydratePhotos**，别在外面自己加守卫。
+   原来这里写的是 `if(SYNC.enabled && !FT.photosChecked)` —— 多出来的
+   `!photosChecked` 正好把「别的设备建的记录」全挡死了：pullAll 拉一条新记录
+   下来时写的就是 photosChecked:true + photos:{}（空），于是守卫成立、
+   hydratePhotos 永远不跑、照片永远不下载。
+   photosChecked 是 hydratePhotos **内部**用来决定「要不要再问一次照片清单」的，
+   真正的下载走 want = serverPhotos - photos - photoOps，跟这个标记无关。 */
+function ftHydrate(id){
+  if(!SYNC.enabled || !id) return;
+  hydratePhotos(id).then(()=>{
+    if(!FT || FT.id!==id) return;
+    dbGet(id).then(r=>{
+      if(!r || !FT || FT.id!==id) return;
+      FT.photos=r.photos; FT.serverPhotos=r.serverPhotos; FT.photosChecked=r.photosChecked;
+      ftPaintPhotos();
+    });
+  });
+}
+/* skipPhotos 同装柜 / 成品：记录表点一行也走这里，一行行点过去会连着从 R2
+   拉一串图，而点行只是在挑、不是要看图。真开录入屏时 ftShow 会补拉。 */
+async function ftLoad(id, skipPhotos){
   const rec=await dbGet(id);
   FT=ftNorm(rec||ftBlank());
   ftPaintAll();
-  if(SYNC.enabled && !FT.photosChecked) hydratePhotos(FT.id).then(()=>{
-    if(FT && FT.id===id){ dbGet(id).then(r=>{ if(r){ FT.photos=r.photos; FT.serverPhotos=r.serverPhotos; FT.photosChecked=true; ftPaintPhotos(); } }); }
-  });
+  if(!skipPhotos) ftHydrate(id);
 }
 
 function ftShow(view){
@@ -8432,6 +8450,8 @@ function ftShow(view){
   statFor("#ftstat", view==="entry");
   $("#ftlockbtn").hidden = view!=="entry";
   if(view==="rec"){ ftrecDefaultRange(); ftrecRender(); }
+  /* 记录表点行是 skipPhotos 进来的，真开录入屏时在这儿补拉（同装柜 oqcShow） */
+  if(view==="entry" && FT && FT.id) ftHydrate(FT.id);
 }
 
 async function enterCfr1633(recordId){
