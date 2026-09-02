@@ -1543,7 +1543,12 @@ table.frec-table tbody tr.draft .lockdot,
   padding:16px 18px;box-shadow:var(--sh-1)}
 #cfr1633 .ftcard>h2{font-size:15px;font-weight:700;color:var(--ink);margin:0 0 12px;
   display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-#cfr1633 .ftcard>h2 .fthint{font-weight:400;font-size:12px;color:var(--ink-3)}
+/* 通用的一条，照抄制程 .iphint —— 原来只有下面那条 `h2 .fthint`（限定在标题
+   里面），所以看板那个独立的 <p class="fthint" id="ftd-scope">「区间内 N 条
+   记录…」一条规则都不匹配，直接继承正文字号，比周围大一大截（用户报的）。 */
+#cfr1633 .fthint{font-size:11.5px;color:var(--ink-3);font-weight:400;line-height:1.5;margin-top:8px}
+/* 标题里那个小注的字号由样式表最后共用那段统一（12.5px），这里只留颜色/字重兜底 */
+#cfr1633 .ftcard>h2 .fthint{font-weight:400;font-size:12px;color:var(--ink-3);margin-top:0}
 /* 140px + auto-fit，跟来料 / 制程一字不差。原来是 auto-fill + 170px，两个毛病：
    170 在 375 屏上过不了 (375-2*边距-14)/2 的门槛，整行塌成单列，一屏能填的东西
    减半；auto-fill 在宽屏上还会留着空轨道，字段比隔壁板块窄一截。
@@ -2377,17 +2382,25 @@ table.frec-table tbody tr.draft .lockdot,
   .prtfoot > button.key:hover{background:#1f4fa8;border-color:#1f4fa8;filter:brightness(1.14)}
 
   /* ── 卡片 ───────────────────────────────────────────────────────── */
-  #iqc .iqcard,#ipqc .ipcard,#oqc .oqcard,#lab .lcard,
+  #iqc .iqcard,#ipqc .ipcard,#oqc .oqcard,#lab .lcard,#cfr1633 .ftcard,
   .frec-card,#iqc .irec-card,#ipqc .iprec-card,#oqc .orec-card{
     background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-card);
     box-shadow:var(--sh-1);padding:18px 20px;
   }
+  /* ⚠ 加板块 / 加看板时**这两条都要登记**，漏了就停在自己那份老值上，
+     跟别人差半档。2026-09-02 查出两处漏的：成品看板的区块标题（.frec-card>h2，
+     停在 13px/700）和防火的（#cfr1633 .ftcard>h2，停在 15px/700），
+     而另外三个看板都是 15.5px/600 —— 用户一眼看出来了。
+     注意 .frec-card 同时也是记录表的外壳，但记录表的标题包在 .frec-head 里，
+     不是直接子 h2，所以这条只命中看板那几个区块。 */
   #iqc .iqcard > h2,#ipqc .ipcard > h2,#oqc .oqcard > h2,#lab .lcard > h2,
+  .frec-card > h2,#cfr1633 .ftcard > h2,
   .frec-head h2,#iqc .irec-head h2,#ipqc .iprec-head h2,#oqc .orec-head h2{
     font-size:15.5px;font-weight:600;letter-spacing:-.005em;color:var(--ink);
   }
   .frec-head h2 span,#iqc .irec-head h2 span,#ipqc .iprec-head h2 span,
-  #oqc .orec-head h2 span,#lab .lcard > h2 .note{
+  #oqc .orec-head h2 span,#lab .lcard > h2 .note,
+  .frec-card > h2 .note,#cfr1633 .ftcard > h2 .fthint{
     font-size:12.5px;font-weight:400;color:var(--ink-3);
   }
 
@@ -3391,6 +3404,7 @@ table.frec-table tbody tr.draft .lockdot,
         <option value="合格">合格</option>
         <option value="不合格">不合格</option>
       </select></label>
+    <label class="frec-field"><span>测试日期</span><input type="date" id="ftrec-date"></label>
     <label class="frec-field"><span>SKU</span><input type="text" id="ftrec-sku" placeholder="全部"></label>
     <button type="button" class="recbtn" id="ftrec-clear">清除筛选</button>
   </div>
@@ -3406,8 +3420,15 @@ table.frec-table tbody tr.draft .lockdot,
         <button type="button" class="plx" id="ftd-close" title="关闭">✕</button>
       </h2>
       <div class="frec-bar">
-        <label class="frec-field wide"><span>起始日期</span><input type="date" id="ftd-from"></label>
-        <label class="frec-field wide"><span>结束日期</span><input type="date" id="ftd-to"></label>
+        <label class="frec-field"><span>区间</span>
+          <select id="ftd-range">
+            <option value="cur" selected>当月</option>
+            <option value="1">上个月</option>
+            <option value="3">近 3 个月</option>
+            <option value="6">近 6 个月</option>
+            <option value="12">近 12 个月</option>
+            <option value="all">全部</option>
+          </select></label>
         <label class="frec-field"><span>产品类型</span>
           <select id="ftd-prodtype">
             <option value="">全部</option>
@@ -8624,7 +8645,9 @@ function ftShow(view){
    索引了，而记录本体带着照片 Blob，为了算个平均值把它们全拉进内存正是这个
    索引设计出来要避免的浪费。 */
 const FT_PHRR_LIMIT=200, FT_THR_LIMIT=15;
-function ftDashDefaultRange(){ rollMonthRange("#ftd-from","#ftd-to"); }
+function ftDashDefaultRange(){
+  const sel=$("#ftd-range"); if(sel && !sel.value) sel.value="cur";
+}
 /* 燃烧时间是自由文本（「7min自然熄灭」「7 分钟」「7」都有人写），
    取头一个数字当分钟；读不出来的单独归一档，不猜也不丢。 */
 function ftBurnMin(s){
@@ -8645,13 +8668,21 @@ const FT_BURN_EDGES=[5,10,15,20,25,30];
 const FT_BURN_LABELS=["≤ 5 min","5–10 min","10–15 min","15–20 min","20–25 min","25–30 min","> 30 min"];
 
 async function ftDashAgg(){
-  const from=$("#ftd-from").value, to=$("#ftd-to").value, pt=$("#ftd-prodtype").value;
+  /* 区间走共用的 labRangeOf，跟成品看板一模一样：当月 / 上个月 / 近 N 个月 /
+     全部，都是完整自然月窗口（to 是本月 1 号，不含）。原来是两个手填的
+     起止日期框，跟另外几个看板不是一套。 */
+  const r=labRangeOf($("#ftd-range").value);
+  const pt=$("#ftd-prodtype").value;
   const sku=$("#ftd-sku").value.trim().toLowerCase();
-  let rows=(await metaAll()).filter(r=>r.type==="cfr1633");
-  if(from) rows=rows.filter(r=>toDateInput(r.testDate)>=from);
-  if(to)   rows=rows.filter(r=>toDateInput(r.testDate)<=to);
-  if(pt)   rows=rows.filter(r=>(r.productType||"")===pt);
-  if(sku)  rows=rows.filter(r=>String(r.sku||"").toLowerCase().includes(sku));
+  let rows=(await metaAll()).filter(x=>x.type==="cfr1633");
+  if(r.from||r.to) rows=rows.filter(x=>{
+    const d=parseDMY(x.testDate); if(!d) return false;
+    if(r.from && d<r.from) return false;
+    if(r.to   && d>=r.to)  return false;   /* to 不含 */
+    return true;
+  });
+  if(pt)   rows=rows.filter(x=>(x.productType||"")===pt);
+  if(sku)  rows=rows.filter(x=>String(x.sku||"").toLowerCase().includes(sku));
 
   const out={ n:0, pass:0, fail:0, unrated:0,
               phrrOnly:0, thrOnly:0, bothOver:0,
@@ -8779,11 +8810,10 @@ async function ftdashRender(){
 }
 $("#ftdashbtn").addEventListener("click",()=>ftShow($("#ftdash").hidden?"dash":"entry"));
 $("#ftd-close").addEventListener("click",()=>ftShow("entry"));
-["#ftd-from","#ftd-to","#ftd-prodtype"].forEach(id=>$(id).addEventListener("change",ftdashRender));
+["#ftd-range","#ftd-prodtype"].forEach(id=>$(id).addEventListener("change",ftdashRender));
 $("#ftd-sku").addEventListener("input",ftdashRender);   /* 文本框打一个字就重算 */
 $("#ftd-clear").addEventListener("click",()=>{
-  $("#ftd-prodtype").value=""; $("#ftd-sku").value="";
-  rollMonthRange("#ftd-from","#ftd-to", true);   /* force：连 RANGE_TOUCHED 一起复位 */
+  $("#ftd-range").value="cur"; $("#ftd-prodtype").value=""; $("#ftd-sku").value="";
   ftdashRender();
 });
 
@@ -8887,19 +8917,20 @@ $("#ftpick").addEventListener("change",async e=>{
 function ftrecDefaultRange(){
   const sel=$("#ftrec-range");
   if(!sel.value) sel.value="month";
+  rangeToday("#ftrec-date");   /* 日期锚点默认今天，用户手改过就不再回拨 */
 }
 
 async function ftrecRender(){
   let rows=[];
   try{ rows=(await metaAll()).filter(m=>m.type==="cfr1633"); }catch(e){}
   rows.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  const total=rows.length;
+  /* 改用共用的 rangeFilter，按**测试日期**筛（原来是手写一段按 updatedAt 筛的
+     —— updatedAt 是「最后改动时间」，跟这条记录测的是哪天没关系，补录一条上个月
+     的测试会算进当月）。另外四个板块（成品 inspDate / 来料 date / 装柜 date）
+     早就是这一套，防火当初漏了。 */
   const range=$("#ftrec-range").value;
-  const now=new Date(), y=now.getFullYear(), m=now.getMonth(), d=now.getDate();
-  let from=0;
-  if(range==="day") from=new Date(y,m,d).getTime();
-  else if(range==="month") from=new Date(y,m,1).getTime();
-  else if(/^\d+$/.test(range)) from=new Date(y,m-Number(range),1).getTime();
-  if(from) rows=rows.filter(r=>(r.updatedAt||0)>=from);
+  rows = rangeFilter("#ftrec-range","#ftrec-date",rows,r=>r.testDate);
   const pt=$("#ftrec-prodtype").value;
   if(pt) rows=rows.filter(r=>(r.productType||"")==pt);
   const vf=$("#ftrec-verdict").value;
@@ -8909,7 +8940,9 @@ async function ftrecRender(){
   const sku=$("#ftrec-sku").value.trim().toLowerCase();
   if(sku) rows=rows.filter(r=>String(r.sku||"").toLowerCase().includes(sku));
   if(range!=="all") rows=rows.slice(0,200);
-  $("#ftrec-scope").textContent=rows.length+" "+tr("条");
+  /* 共用的 rangeNote：会写成「02/09/2026 · 3 条（共 14 条）」，
+     跟成品 / 来料 / 装柜 三张记录表一个格式 */
+  rangeNote("#ftrec-scope","#ftrec-range","#ftrec-date",rows.length,total);
   const tbl=$("#ftrec-table");
   tbl.innerHTML='<thead><tr>'+
     '<th class="seq">序号</th>'+
@@ -8956,14 +8989,18 @@ async function ftrecRender(){
   });
   tbl.appendChild(body);
 }
-["ftrec-range","ftrec-prodtype","ftrec-verdict"].forEach(id=>{
+["ftrec-prodtype","ftrec-verdict"].forEach(id=>{
   $("#"+id).addEventListener("change",ftrecRender);
 });
+/* 区间 + 日期锚点走共用的 rangeWire（它会在用户手改日期时记 RANGE_TOUCHED，
+   之后 rangeToday 就不再把它拨回今天）——同成品 / 来料 / 装柜 */
+rangeWire("#ftrec-range","#ftrec-date",ftrecRender);
 /* 文本框走 input 不是 change —— 打一个字就筛，跟装柜柜号 / 来料品号一致 */
 $("#ftrec-sku").addEventListener("input",ftrecRender);
 $("#ftrec-clear").addEventListener("click",()=>{
   $("#ftrec-range").value="month"; $("#ftrec-prodtype").value=""; $("#ftrec-verdict").value="";
   $("#ftrec-sku").value="";
+  rangeToday("#ftrec-date", true);   /* force：连 RANGE_TOUCHED 一起复位 */
   ftrecRender();
 });
 $("#ftrec-close").addEventListener("click",()=>ftShow("entry"));
