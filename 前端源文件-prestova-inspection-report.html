@@ -981,6 +981,9 @@ table.frec-table tbody tr.draft>td,#iqc table.irec-table tbody tr.draft>td,
    真正拦住"点了会改记录"的是各 handler 里的 FT.locked 守卫加 lockGate 那道闸，
    这条只管光标。 */
 #ftentryv.locked .ftpbox{cursor:default}
+/* 锁了之后**照片仍然要能点开看大图**（跟另外两个板块一个规矩：lockGate 放行
+   img，CSS 也只关控件不关图片），所以有图那格的 zoom-in 光标要留着。 */
+#ftentryv.locked .ftpbox.has img{cursor:zoom-in}
 #lockbar,#ilockbar,#plockbar,#olockbar,#llockbar,#ftlockbar{
   /* 五个容器都是 column flex：align-self 让提示条收缩到内容宽再居中，
      不跟着卡片一起拉满。成品的 .wrap 本来就 align-items:center，这里是空操作。 */
@@ -1028,6 +1031,7 @@ table.frec-table tbody tr.cur:hover td,#iqc table.irec-table tbody tr.cur:hover 
 #idash .iqcard > h2.dtitle,
 #ipdash .ipcard > h2.dtitle,
 #ldash .lcard > h2.dtitle,
+#ftdash .ftcard > h2.dtitle,
 #lsheetv .lcard > h2.dtitle{font-size:15px}
 
 /* ── <input type="date"> 的溢出守卫：全站所有日期框 ────────────────────
@@ -1533,7 +1537,8 @@ table.frec-table tbody tr.draft .lockdot,
 #cfr1633 .ftpbox.dragover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--field))}
 #cfr1633 .ftpbox.has{border-style:solid}
 #cfr1633 .ftpbox img{width:100%;height:100%;object-fit:cover;display:none}
-#cfr1633 .ftpbox.has img{display:block}
+/* zoom-in 同装柜 .oqimg.has img —— 有图的格子点了是看大图，不是上传 */
+#cfr1633 .ftpbox.has img{display:block;cursor:zoom-in}
 #cfr1633 .ftpbox .ftplabel{font-size:12px;color:var(--ink-3);text-align:center;pointer-events:none}
 #cfr1633 .ftpbox.has .ftplabel{display:none}
 #cfr1633 .ftpbox .ftpdel{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;
@@ -1548,6 +1553,35 @@ table.frec-table tbody tr.draft .lockdot,
 #cfr1633 .ftsum .pass{color:var(--ok);font-weight:600}
 #cfr1633 .ftsum .fail{color:var(--no);font-weight:600}
 #cfr1633 .ftverdict{font-size:14px;font-weight:700}
+
+/* ── 防火数据分析：KPI + 分布条 ──────────────────────────────────
+   形状照抄制程的 .ipan-*（同一套 KPI 卡 / 横条），只是 fill 默认走 --accent-fill、
+   超限那一档才转红 —— 这里的条子是「分布」不是「不良」，整排全红没有信息量。
+   字号/圆角这些还会被样式表最后那段共用「界面视觉系统」统一盖一遍，
+   .ftan-kpis / .ftan-kpi 已经登记进那几条选择器列表了。 */
+#cfr1633 .ftan-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:4px}
+#cfr1633 .ftan-kpi{background:var(--accent-soft);border-radius:6px;padding:11px 13px}
+#cfr1633 .ftan-kpi .n{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+#cfr1633 .ftan-kpi .t{font-size:11.5px;color:var(--ink-3);margin-top:2px;letter-spacing:.02em}
+#cfr1633 .ftan-kpi.bad .n{color:var(--no)}
+#cfr1633 .ftan-kpi.good .n{color:var(--ok)}
+#cfr1633 .ftan-items{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+#cfr1633 .ftan-item{display:grid;grid-template-columns:minmax(90px,140px) 1fr 150px;gap:10px;
+  align-items:center;font-size:12.5px}
+#cfr1633 .ftan-item .track{height:13px;background:var(--rule-2);border-radius:3px;overflow:hidden}
+/* 条形图全站就两种颜色，照抄成品 .fd-bar / 实验室 .lbar 那一对字面值：
+     合格 / 在限值内  #3f9d67
+     不合格 / 超限值  #c9483c
+   没有限值可言的那种分档（燃烧时间）用中性 --ink-3，不硬套语义。
+   **不要写 var(--ok)** —— 那是文字绿（--ok，另一个值），用在 KPI 数字和角标上；
+   条形填充这四处历来用的是 #3f9d67 这个字面值。
+   第一版把普通档写成 var(--accent-fill) 是错的：那是"主操作"按钮的蓝
+   （全站 13 处全是按钮），拿来当图表填充等于凭空多一种图表色。 */
+#cfr1633 .ftan-item .fill{display:block;height:100%;background:var(--ink-3)}
+#cfr1633 .ftan-item.ok .fill{background:#3f9d67}
+#cfr1633 .ftan-item.over .fill{background:#c9483c}
+#cfr1633 .ftan-item .num{text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+#cfr1633 .ftempty{padding:14px 12px;font-size:12.5px;color:var(--ink-3);text-align:center}
 
 /* ── 装柜检验：录入界面 ────────────────────────────────────────────
    自成一屏（跟 #lab/#iqc 一样），不走 fqc 的 #mod/CHECKS 引擎：这个板块
@@ -2395,23 +2429,23 @@ table.frec-table tbody tr.draft .lockdot,
   .recbtn:hover{background:var(--seg-bg);color:var(--ink)}
 
   /* ── KPI ────────────────────────────────────────────────────────── */
-  .fd-kpis,#iqc .iqan-kpis,#ipqc .ipan-kpis,#lab .lkpis{gap:12px}
+  .fd-kpis,#iqc .iqan-kpis,#ipqc .ipan-kpis,#lab .lkpis,#cfr1633 .ftan-kpis{gap:12px}
   /* KPI / 不良明细卡片 / 空照片位是同一类"卡片里的内容块"，一套底色：
      中性浅灰 --sunk，不描边不投影。
      用 --sunk 不用 --seg-bg：后者是 #e7ecf3，蓝通道比红高 12，实际看着偏蓝；
      --sunk 是 #eef0f3，三通道只差 5，才是真的浅灰。
      也不用 --accent-soft（那是蓝的）—— 评审时明确说浅蓝不好看。 */
-  .fd-kpi,#iqc .iqan-kpi,#ipqc .ipan-kpi,#lab .lkpi,
+  .fd-kpi,#iqc .iqan-kpi,#ipqc .ipan-kpi,#lab .lkpi,#cfr1633 .ftan-kpi,
   #ipqc .ipd,#oqc .oqimg{
     background:var(--sunk);
   }
-  .fd-kpi,#iqc .iqan-kpi,#ipqc .ipan-kpi,#lab .lkpi{
+  .fd-kpi,#iqc .iqan-kpi,#ipqc .ipan-kpi,#lab .lkpi,#cfr1633 .ftan-kpi{
     border:0;border-radius:var(--r-card);padding:15px 16px;box-shadow:none;
   }
-  .fd-kpi .n,#iqc .iqan-kpi .n,#ipqc .ipan-kpi .n,#lab .lkpi .n{
+  .fd-kpi .n,#iqc .iqan-kpi .n,#ipqc .ipan-kpi .n,#lab .lkpi .n,#cfr1633 .ftan-kpi .n{
     font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1.15;
   }
-  .fd-kpi .t,#iqc .iqan-kpi .t,#ipqc .ipan-kpi .t,#lab .lkpi .t{
+  .fd-kpi .t,#iqc .iqan-kpi .t,#ipqc .ipan-kpi .t,#lab .lkpi .t,#cfr1633 .ftan-kpi .t{
     font-size:12px;font-weight:500;color:var(--ink-3);margin-top:5px;letter-spacing:0;
   }
 
@@ -3214,6 +3248,7 @@ table.frec-table tbody tr.draft .lockdot,
     <span class="stat" id="ftstat">—</span>
     <span class="segnav">
       <button type="button" id="ftrecbtn">记录表</button>
+      <button type="button" id="ftdashbtn">数据分析</button>
     </span>
     <button type="button" id="ftlockbtn">提交并锁定</button>
   </span>
@@ -3257,7 +3292,8 @@ table.frec-table tbody tr.draft .lockdot,
   <section class="ftcard">
     <h2>测试报告</h2>
     <div class="ftphotos">
-      <div class="ftpbox ftpbox-rpt" id="ft-pbox-report" title="点击或拖入上传测试报告">
+      <!-- data-ftslot 跟动态照片格一个规矩：ftPaintSlot 和 ftLbOpen 都靠它认格子 -->
+      <div class="ftpbox ftpbox-rpt" id="ft-pbox-report" data-ftslot="report" title="点击或拖入上传测试报告">
         <img alt=""><span class="ftplabel">📄 测试报告</span>
         <button type="button" class="ftpdel" title="删除">✕</button>
       </div>
@@ -3322,10 +3358,66 @@ table.frec-table tbody tr.draft .lockdot,
         <option value="合格">合格</option>
         <option value="不合格">不合格</option>
       </select></label>
+    <label class="frec-field"><span>SKU</span><input type="text" id="ftrec-sku" placeholder="全部"></label>
     <button type="button" class="recbtn" id="ftrec-clear">清除筛选</button>
   </div>
   <div class="frec-wrap"><table class="frec-table" id="ftrec-table"></table></div>
 </section>
+</div>
+
+<!-- 数据分析 -->
+<div id="ftdash" hidden>
+  <div class="ftwrap">
+    <section class="ftcard">
+      <h2 class="dtitle">数据分析
+        <button type="button" class="plx" id="ftd-close" title="关闭">✕</button>
+      </h2>
+      <div class="frec-bar">
+        <label class="frec-field wide"><span>起始日期</span><input type="date" id="ftd-from"></label>
+        <label class="frec-field wide"><span>结束日期</span><input type="date" id="ftd-to"></label>
+        <label class="frec-field"><span>产品类型</span>
+          <select id="ftd-prodtype">
+            <option value="">全部</option>
+            <option value="弹簧床垫">弹簧床垫</option>
+            <option value="海绵床垫">海绵床垫</option>
+          </select></label>
+        <label class="frec-field"><span>SKU</span><input type="text" id="ftd-sku" placeholder="全部"></label>
+        <button type="button" class="recbtn" id="ftd-clear">清除筛选</button>
+      </div>
+      <div class="ftan-kpis" id="ftd-kpis"></div>
+      <p class="fthint" id="ftd-scope"></p>
+    </section>
+
+    <section class="ftcard">
+      <h2>判定构成 <span class="fthint">不合格是哪一项超的</span></h2>
+      <div class="ftan-items" id="ftd-verdict"></div>
+    </section>
+
+    <section class="ftcard">
+      <h2>峰值热释放率 PHRR 分布 <span class="fthint">限值 ≤ 200 kW</span></h2>
+      <div class="ftan-items" id="ftd-phrr"></div>
+    </section>
+
+    <section class="ftcard">
+      <h2>总热释放量 THR 分布 <span class="fthint">限值 ≤ 15 MJ</span></h2>
+      <div class="ftan-items" id="ftd-thr"></div>
+    </section>
+
+    <section class="ftcard">
+      <h2>燃烧时间分布 <span class="fthint">从「燃烧时间」里读出的分钟数</span></h2>
+      <div class="ftan-items" id="ftd-burn"></div>
+    </section>
+
+    <section class="ftcard">
+      <h2>按产品类型</h2>
+      <div class="frec-wrap"><table class="frec-table" id="ftd-types"></table></div>
+    </section>
+
+    <section class="ftcard">
+      <h2>按 SKU <span class="fthint">不合格最多的前 15 个</span></h2>
+      <div class="frec-wrap"><table class="frec-table" id="ftd-skus"></table></div>
+    </section>
+  </div>
 </div>
 
 <!-- 记录选择器 -->
@@ -8354,9 +8446,25 @@ function ftMakePhotoBox(k){
   ftBindPhotoBox(box,k);
   return box;
 }
+/* 点照片看大图 —— 跟成品 / 装柜共用那个全屏查看器（lbShow），只是格子结构
+   不一样，这里把 #cfr1633 里所有有图的格子收集成通用清单再交给它。
+   「测试报告」那张也算一格，排在最后。
+   标题用格子名：上/侧/报告，动态加的格子用它的序号。 */
+const FT_SLOT_NAME={top:"上部",side:"侧面",report:"测试报告"};
+const ftSlotLabel = k => FT_SLOT_NAME[k] || (tr("照片")+" "+String(k).replace(/^x(\d+).*$/,"$1"));
+function ftLbOpen(k){
+  const cells=[...document.querySelectorAll("#ftentryv .ftpbox.has")];
+  lbShow(cells.map(b=>({
+    src: b.querySelector("img").getAttribute("src"),
+    cap: tr(ftSlotLabel(b.dataset.ftslot||"report"))
+  })), cells.findIndex(b=>(b.dataset.ftslot||"report")===k));
+}
 function ftBindPhotoBox(box,k){
   box.addEventListener("click",e=>{
     if(e.target.closest(".ftpdel")) return;
+    /* 已经有图就看大图 —— **锁定之后也要能看**（lockGate 放行 img，
+       CSS 那条 .locked 规则也只关控件不关图片）。空格子才是上传入口。 */
+    if(box.classList.contains("has")) return ftLbOpen(k);
     if(!FT||FT.locked) return;
     ftPendingSlot=k; $("#ftpick").value=""; $("#ftpick").click();
   });
@@ -8463,14 +8571,184 @@ async function ftLoad(id, skipPhotos){
 function ftShow(view){
   $("#ftentryv").hidden = view!=="entry";
   $("#ftrec").hidden = view!=="rec";
+  $("#ftdash").hidden = view!=="dash";
   $("#ftrecbtn").classList.toggle("cur", view==="rec");
+  $("#ftdashbtn").classList.toggle("cur", view==="dash");
   backLevel("#ftback", view==="rec");
   statFor("#ftstat", view==="entry");
   $("#ftlockbtn").hidden = view!=="entry";
   if(view==="rec"){ ftrecDefaultRange(); ftrecRender(); }
+  if(view==="dash"){ ftDashDefaultRange(); ftdashRender(); }
   /* 记录表点行是 skipPhotos 进来的，真开录入屏时在这儿补拉（同装柜 oqcShow） */
   if(view==="entry" && FT && FT.id) ftHydrate(FT.id);
 }
+
+/* ── 防火数据分析 ──────────────────────────────────────────────────
+   围绕合格率 / PHRR / THR / 燃烧时间四件事。
+
+   **全程只读 metaAll() 这份轻索引，不逐条 dbGet** —— metaOf 的 cfr1633 分支
+   已经把 phrr / thr / result / productType / sku / testDate / ftVerdict 都存进
+   索引了，而记录本体带着照片 Blob，为了算个平均值把它们全拉进内存正是这个
+   索引设计出来要避免的浪费。 */
+const FT_PHRR_LIMIT=200, FT_THR_LIMIT=15;
+function ftDashDefaultRange(){ rollMonthRange("#ftd-from","#ftd-to"); }
+/* 燃烧时间是自由文本（「7min自然熄灭」「7 分钟」「7」都有人写），
+   取头一个数字当分钟；读不出来的单独归一档，不猜也不丢。 */
+function ftBurnMin(s){
+  const t=String(s||"").trim(); if(!t) return null;
+  const m=t.match(/(\d+(?:\.\d+)?)\s*(?:min|m|分)/i) || t.match(/^(\d+(?:\.\d+)?)$/);
+  return m?Number(m[1]):null;
+}
+/* 落在哪一档：edges 是各档上界，超出最后一个上界就是最后一档 */
+function ftBandOf(v, edges){
+  for(let i=0;i<edges.length;i++) if(v<=edges[i]) return i;
+  return edges.length;
+}
+const FT_PHRR_EDGES=[50,100,150,200], FT_PHRR_LABELS=["≤ 50","50–100","100–150","150–200","> 200"];
+const FT_THR_EDGES=[5,10,15],        FT_THR_LABELS=["≤ 5","5–10","10–15","> 15"];
+const FT_BURN_EDGES=[5,10,15],       FT_BURN_LABELS=["≤ 5 min","5–10 min","10–15 min","> 15 min"];
+
+async function ftDashAgg(){
+  const from=$("#ftd-from").value, to=$("#ftd-to").value, pt=$("#ftd-prodtype").value;
+  const sku=$("#ftd-sku").value.trim().toLowerCase();
+  let rows=(await metaAll()).filter(r=>r.type==="cfr1633");
+  if(from) rows=rows.filter(r=>toDateInput(r.testDate)>=from);
+  if(to)   rows=rows.filter(r=>toDateInput(r.testDate)<=to);
+  if(pt)   rows=rows.filter(r=>(r.productType||"")===pt);
+  if(sku)  rows=rows.filter(r=>String(r.sku||"").toLowerCase().includes(sku));
+
+  const out={ n:0, pass:0, fail:0, unrated:0,
+              phrrOnly:0, thrOnly:0, bothOver:0,
+              phrr:[], thr:[], burn:[], burnUnparsed:0,
+              phrrBands:new Array(FT_PHRR_LABELS.length).fill(0),
+              thrBands:new Array(FT_THR_LABELS.length).fill(0),
+              burnBands:new Array(FT_BURN_LABELS.length).fill(0),
+              from:null, to:null, byType:new Map(), bySku:new Map() };
+  for(const m of rows){
+    const phrr=lnum(m.phrr), thr=lnum(m.thr), v=m.ftVerdict||"";
+    /* 新建了没填的空记录不算进来（跟制程看板同一个规矩） */
+    if(phrr==null && thr==null && !String(m.sku||"").trim() && !String(m.result||"").trim()) continue;
+    out.n++;
+    if(v==="合格") out.pass++; else if(v==="不合格") out.fail++; else out.unrated++;
+
+    const po=phrr!=null && phrr>FT_PHRR_LIMIT, to2=thr!=null && thr>FT_THR_LIMIT;
+    if(po&&to2) out.bothOver++; else if(po) out.phrrOnly++; else if(to2) out.thrOnly++;
+
+    if(phrr!=null){ out.phrr.push(phrr); out.phrrBands[ftBandOf(phrr,FT_PHRR_EDGES)]++; }
+    if(thr!=null){  out.thr.push(thr);   out.thrBands[ftBandOf(thr,FT_THR_EDGES)]++; }
+    const b=ftBurnMin(m.result);
+    if(b!=null){ out.burn.push(b); out.burnBands[ftBandOf(b,FT_BURN_EDGES)]++; }
+    else if(String(m.result||"").trim()) out.burnUnparsed++;
+
+    const d=parseDMY(m.testDate);
+    if(d && (!out.from||d<out.from)) out.from=d;
+    if(d && (!out.to  ||d>out.to  )) out.to=d;
+
+    const tk=(m.productType||"").trim()||"（未填）";
+    let ts=out.byType.get(tk);
+    if(!ts) out.byType.set(tk,ts={k:tk,n:0,pass:0,fail:0,phrr:[],thr:[]});
+    ts.n++; if(v==="合格") ts.pass++; else if(v==="不合格") ts.fail++;
+    if(phrr!=null) ts.phrr.push(phrr);
+    if(thr!=null)  ts.thr.push(thr);
+
+    const sk=(m.sku||"").trim();
+    if(sk){
+      let ss=out.bySku.get(sk);
+      if(!ss) out.bySku.set(sk,ss={k:sk,n:0,fail:0});
+      ss.n++; if(v==="不合格") ss.fail++;
+    }
+  }
+  out.byType=[...out.byType.values()].sort((a,b)=>b.n-a.n);
+  out.bySku=[...out.bySku.values()].sort((a,b)=>b.fail-a.fail||b.n-a.n);
+  return out;
+}
+const ftAvg = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+const ftMax = a => a.length ? Math.max(...a) : null;
+const ftNum = v => v==null ? "—" : nfmt(v);
+
+async function ftdashRender(){
+  $("#ftd-kpis").innerHTML='<div class="ftan-kpi"><div class="n">…</div><div class="t">'+esc(tr("读取中"))+'</div></div>';
+  const a=await ftDashAgg();
+  const kpi=(n,t,c)=>'<div class="ftan-kpi'+(c?" "+c:"")+'"><div class="n">'+n+'</div><div class="t">'+esc(tr(t))+'</div></div>';
+  const rated=a.pass+a.fail;
+  $("#ftd-kpis").innerHTML=
+    kpi(a.n,"测试记录","")+
+    kpi(rated?pct(a.pass,rated)+"%":"—","合格率",a.fail?"bad":(a.pass?"good":""))+
+    kpi(a.fail,"不合格",a.fail?"bad":"")+
+    kpi(ftNum(ftAvg(a.phrr)),"PHRR 平均 (kW)","")+
+    kpi(ftNum(ftAvg(a.thr)),"THR 平均 (MJ)","")+
+    kpi(ftNum(ftAvg(a.burn)),"燃烧时间平均 (min)","");
+  $("#ftd-scope").textContent = a.n
+    ? tr("区间内")+" "+a.n+" "+tr("条记录，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
+        + (a.unrated?"　·　"+a.unrated+" "+tr("条未判定（PHRR / THR 没填全）"):"")
+    : tr("这个区间没有数据。");
+
+  /* 分布条：分母一律用「有这项数值的记录数」，不是最大那一档 —— 用最大档当
+     分母只能看出档与档的相对高低，看不出各档占多少。 */
+  /* classes 逐项给，不用「第 N 档起全红」那种粗判据 —— 判定构成里最后一档是
+     「未判定」，那是数据没填全，不是不合格，不能跟着标红。 */
+  const bars=(sel, labels, counts, total, classes)=>{
+    const el=$(sel);
+    if(!total){ el.innerHTML='<div class="ftempty">'+esc(tr("没有数据。"))+'</div>'; return; }
+    el.innerHTML=labels.map((lb,i)=>{
+      const c=counts[i], cls=(classes&&classes[i])?" "+classes[i]:"";
+      return '<div class="ftan-item'+cls+'"><span>'+esc(lb)+'</span>'+
+        '<span class="track"><span class="fill" style="width:'+Math.round(c/total*100)+'%"></span></span>'+
+        '<span class="num">'+c+'　'+pct(c,total)+'%</span></div>';
+    }).join('');
+  };
+  /* PHRR / THR 的分档天然就是「在限值内 = 合格」，所以照全站那套语义上色：
+     最后一档（超限）红，前面几档绿。燃烧时间没有限值，全中性。 */
+  const inLimit=n=>Array.from({length:n},(_,i)=>i===n-1?"over":"ok");
+
+  /* 判定构成：合格 / 只超 PHRR / 只超 THR / 两项都超 / 未判定 —— 直接解释合格率。
+     未判定是「数据没填全」，既不是合格也不是不合格，中性。 */
+  bars("#ftd-verdict",
+    [tr("合格"),tr("仅 PHRR 超标"),tr("仅 THR 超标"),tr("两项都超标"),tr("未判定")],
+    [a.pass,a.phrrOnly,a.thrOnly,a.bothOver,a.unrated],
+    a.n, ["ok","over","over","over",""]);
+
+  bars("#ftd-phrr", FT_PHRR_LABELS, a.phrrBands, a.phrr.length, inLimit(FT_PHRR_LABELS.length));
+  bars("#ftd-thr",  FT_THR_LABELS,  a.thrBands,  a.thr.length,  inLimit(FT_THR_LABELS.length));
+  bars("#ftd-burn", FT_BURN_LABELS, a.burnBands, a.burn.length, null);
+  if(a.burnUnparsed && a.burn.length){
+    $("#ftd-burn").insertAdjacentHTML("beforeend",
+      '<div class="ftempty">'+a.burnUnparsed+' '+esc(tr("条的燃烧时间读不出分钟数，未计入"))+'</div>');
+  }
+
+  $("#ftd-types").innerHTML = !a.byType.length
+    ? '<tbody><tr><td class="frec-empty" colspan="6">'+esc(tr("没有数据。"))+'</td></tr></tbody>'
+    : '<thead><tr><th>'+esc(tr("产品类型"))+'</th><th class="num">'+esc(tr("记录数"))+'</th>'+
+      '<th class="num">'+esc(tr("合格率"))+'</th><th class="num">PHRR '+esc(tr("平均"))+'</th>'+
+      '<th class="num">PHRR '+esc(tr("最大"))+'</th><th class="num">THR '+esc(tr("平均"))+'</th></tr></thead><tbody>'+
+      a.byType.map(t=>{
+        const r=t.pass+t.fail;
+        const mx=ftMax(t.phrr);
+        return '<tr><td>'+esc(tr(t.k))+'</td><td class="num">'+t.n+'</td>'+
+          '<td class="num'+(t.fail?" warn":"")+'">'+(r?pct(t.pass,r)+"%":"—")+'</td>'+
+          '<td class="num">'+ftNum(ftAvg(t.phrr))+'</td>'+
+          '<td class="num'+(mx!=null&&mx>FT_PHRR_LIMIT?" warn":"")+'">'+ftNum(mx)+'</td>'+
+          '<td class="num">'+ftNum(ftAvg(t.thr))+'</td></tr>';
+      }).join('')+'</tbody>';
+
+  const ts=a.bySku.slice(0,15);
+  $("#ftd-skus").innerHTML = !ts.length
+    ? '<tbody><tr><td class="frec-empty" colspan="4">'+esc(tr("没有数据。"))+'</td></tr></tbody>'
+    : '<thead><tr><th>SKU</th><th class="num">'+esc(tr("记录数"))+'</th>'+
+      '<th class="num">'+esc(tr("不合格"))+'</th><th class="num">'+esc(tr("合格率"))+'</th></tr></thead><tbody>'+
+      ts.map(s=>'<tr><td>'+esc(s.k)+'</td><td class="num">'+s.n+'</td>'+
+        '<td class="num'+(s.fail?" warn":"")+'">'+s.fail+'</td>'+
+        '<td class="num">'+(s.n?pct(s.n-s.fail,s.n)+"%":"—")+'</td></tr>').join('')+'</tbody>';
+}
+$("#ftdashbtn").addEventListener("click",()=>ftShow($("#ftdash").hidden?"dash":"entry"));
+$("#ftd-close").addEventListener("click",()=>ftShow("entry"));
+["#ftd-from","#ftd-to","#ftd-prodtype"].forEach(id=>$(id).addEventListener("change",ftdashRender));
+$("#ftd-sku").addEventListener("input",ftdashRender);   /* 文本框打一个字就重算 */
+$("#ftd-clear").addEventListener("click",()=>{
+  $("#ftd-prodtype").value=""; $("#ftd-sku").value="";
+  rollMonthRange("#ftd-from","#ftd-to", true);   /* force：连 RANGE_TOUCHED 一起复位 */
+  ftdashRender();
+});
 
 async function enterCfr1633(recordId){
   CURRENT="cfr1633";
@@ -8589,6 +8867,10 @@ async function ftrecRender(){
   if(pt) rows=rows.filter(r=>(r.productType||"")==pt);
   const vf=$("#ftrec-verdict").value;
   if(vf) rows=rows.filter(r=>(r.ftVerdict||"")==vf);
+  /* SKU 模糊匹配，跟装柜「柜号」/ 来料「品号」一个写法：SKU 很长，
+     现场多半只记得中间那几位。 */
+  const sku=$("#ftrec-sku").value.trim().toLowerCase();
+  if(sku) rows=rows.filter(r=>String(r.sku||"").toLowerCase().includes(sku));
   if(range!=="all") rows=rows.slice(0,200);
   $("#ftrec-scope").textContent=rows.length+" "+tr("条");
   const tbl=$("#ftrec-table");
@@ -8640,8 +8922,11 @@ async function ftrecRender(){
 ["ftrec-range","ftrec-prodtype","ftrec-verdict"].forEach(id=>{
   $("#"+id).addEventListener("change",ftrecRender);
 });
+/* 文本框走 input 不是 change —— 打一个字就筛，跟装柜柜号 / 来料品号一致 */
+$("#ftrec-sku").addEventListener("input",ftrecRender);
 $("#ftrec-clear").addEventListener("click",()=>{
   $("#ftrec-range").value="month"; $("#ftrec-prodtype").value=""; $("#ftrec-verdict").value="";
+  $("#ftrec-sku").value="";
   ftrecRender();
 });
 $("#ftrec-close").addEventListener("click",()=>ftShow("entry"));
@@ -9147,6 +9432,8 @@ async function pullAll(){
      属性上），所以还要看板块本身开着没有 */
   if(fqcChanged && !$("#mod").hidden && !$("#frec").hidden) await frecRender();
   if(ftChanged && !$("#cfr1633").hidden && !$("#ftrec").hidden) await ftrecRender();
+  /* 看板也吃同一批数据，开着的时候要跟着重算 */
+  if(ftChanged && !$("#cfr1633").hidden && !$("#ftdash").hidden) await ftdashRender();
 }
 
 /** Photos are fetched only when a report is actually opened. */
@@ -10276,6 +10563,36 @@ const I18N_ID={
   "新记录已建": "Catatan baru dibuat",
   "删除这条防火检验记录？不可撤销。": "Hapus catatan uji api ini? Tidak bisa dibatalkan.",
   "照片处理失败": "Gagal memproses foto",
+  /* 防火数据分析 */
+  "读取中": "Memuat",
+  "记录数": "Jumlah Catatan",
+  "平均": "Rata-rata",
+  "最大": "Maks",
+  /* 大图查看器的格子名 */
+  "上部": "Atas",
+  "侧面": "Samping",
+  "照片": "Foto",
+  "判定构成": "Komposisi Hasil",
+  "不合格是哪一项超的": "Item mana yang melebihi batas",
+  "峰值热释放率 PHRR 分布": "Sebaran Laju Pelepasan Panas Puncak PHRR",
+  "总热释放量 THR 分布": "Sebaran Total Pelepasan Panas THR",
+  "限值 ≤ 200 kW": "Batas ≤ 200 kW",
+  "限值 ≤ 15 MJ": "Batas ≤ 15 MJ",
+  "燃烧时间分布": "Sebaran Waktu Pembakaran",
+  "从「燃烧时间」里读出的分钟数": "Menit yang dibaca dari kolom Waktu Pembakaran",
+  "按产品类型": "Menurut Tipe Produk",
+  "按 SKU": "Menurut SKU",
+  "不合格最多的前 15 个": "15 teratas dengan NG terbanyak",
+  "测试记录": "Catatan Uji",
+  "PHRR 平均 (kW)": "Rata-rata PHRR (kW)",
+  "THR 平均 (MJ)": "Rata-rata THR (MJ)",
+  "燃烧时间平均 (min)": "Rata-rata Waktu Bakar (mnt)",
+  "仅 PHRR 超标": "Hanya PHRR melebihi",
+  "仅 THR 超标": "Hanya THR melebihi",
+  "两项都超标": "Keduanya melebihi",
+  "未判定": "Belum dinilai",
+  "条未判定（PHRR / THR 没填全）": "catatan belum dinilai (PHRR / THR belum lengkap)",
+  "条的燃烧时间读不出分钟数，未计入": "catatan waktu bakarnya tidak terbaca dalam menit, tidak dihitung",
 };
 /* 照片格里的「拍照 / 相册」要单独刷一遍。两个原因叠在一起让它翻不过来：
      · 这两个按钮是 mount() 在脚本执行早期建的，那时 I18N 还是空 Map
