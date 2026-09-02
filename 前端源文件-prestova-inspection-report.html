@@ -8976,6 +8976,7 @@ async function pushOne(rec){
       if(rec.mat==null) delete rec.mat;
       if(rec.oqc==null) delete rec.oqc;
       if(rec.ipqc==null) delete rec.ipqc;
+      if(rec.cfr1633==null) delete rec.cfr1633;
       resolvedStale=true;
       /* 名字取覆盖**之前**那份上的，报给用户的才是他认得的那条 */
       LOST.push({ id:rec.id, why:lostWhy, name:lostName });

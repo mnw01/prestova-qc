@@ -188,6 +188,7 @@ console.log("\n— /api/index?types= 按板块过滤 —");
   await mk("t-lab-2", "lab");
   await mk("t-ipqc-1", "ipqc");
   await mk("t-oqc-1", "oqc");
+  await mk("t-ft-1", "cfr1633");
 
   const idx = async (q) => (await (await hit("/api/index" + q, auth())).json()).reports;
   const typesIn = (rows) => [...new Set(rows.map((r) => r.type))].sort().join(",");
@@ -200,6 +201,24 @@ console.log("\n— /api/index?types= 按板块过滤 —");
   ok("types 支持多个", typesIn(await idx("?types=ipqc,oqc")) === "ipqc,oqc");
   ok("types 里的空格被忽略", typesIn(await idx("?types=ipqc%20,%20oqc")) === "ipqc,oqc");
   ok("重复的 type 不影响结果", typesIn(await idx("?types=lab,lab,lab")) === "lab");
+
+  /* 每个板块都必须在 SYNC_TYPES 里登记过，漏一个那个板块就永远拉不下来。
+     2026-09-02 cfr1633 就是这么漏的：客户端总会附带 CFG_TYPES，过滤后永远
+     非空，所以「全非法→回退全量」那条保险不会救场，QC 设备之间静默不同步。
+     这里对每个板块单独断言一次，加新板块时照抄一行。 */
+  /* 判据：没登记的类型会被 parseTypes 丢掉 → 回退全量 → 结果里混着别的类型；
+     登记过的只会回该类型（可能 0 行）。上面的固定数据是混合的，所以这个判据
+     不会假阳性。 */
+  for(const t of ["fqc","lab","ipqc","oqc","cfr1633"]){
+    const rows = await idx("?types=" + t);
+    ok("SYNC_TYPES 认得 " + t + "（漏登记会让该板块永远同步不到）",
+       rows.every((r) => r.type === t));
+  }
+  ok("types=cfr1633 只回 cfr1633", typesIn(await idx("?types=cfr1633")) === "cfr1633");
+  ok("防火跟别的板块一起筛也在", typesIn(await idx("?types=oqc,cfr1633")) === "cfr1633,oqc");
+  /* 客户端真实请求形状：板块 + 三个配置类型一起传 */
+  ok("带上 CFG_TYPES 时防火仍然回得来",
+     typesIn(await idx("?types=cfr1633,labstd,iqcmat,ipqcmat")).split(",").includes("cfr1633"));
 
   /* 非法值不能让人少看到数据：宁可退回全量 */
   ok("全是非法 type → 退回全量（宁可多读不能少给）", (await idx("?types=nonsense")).length === all.length);
