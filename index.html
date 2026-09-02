@@ -1009,6 +1009,7 @@ table.frec-table tbody tr.draft>td,#iqc table.irec-table tbody tr.draft>td,
 /* 锁了之后**照片仍然要能点开看大图**（跟另外两个板块一个规矩：lockGate 放行
    img，CSS 也只关控件不关图片），所以有图那格的 zoom-in 光标要留着。 */
 #ftentryv.locked .ftpbox.has img{cursor:zoom-in}
+#ftentryv.locked .ftpbox.has.pdf{cursor:pointer}   /* PDF 报告锁了也要能点开 */
 #lockbar,#ilockbar,#plockbar,#olockbar,#llockbar,#ftlockbar{
   /* 五个容器都是 column flex：align-self 让提示条收缩到内容宽再居中，
      不跟着卡片一起拉满。成品的 .wrap 本来就 align-items:center，这里是空操作。 */
@@ -1579,6 +1580,11 @@ table.frec-table tbody tr.draft .lockdot,
 #cfr1633 .ftpbox.has img{display:block;cursor:zoom-in}
 #cfr1633 .ftpbox .ftplabel{font-size:12px;color:var(--ink-3);text-align:center;pointer-events:none}
 #cfr1633 .ftpbox.has .ftplabel{display:none}
+/* 报告格装的是 PDF 时：没有图可显示，把 label 放回来当文件卡片
+   （「📄 PDF · 点击查看」），并保持 zoom-in 之外的 pointer 光标。 */
+#cfr1633 .ftpbox.has.pdf img{display:none}
+#cfr1633 .ftpbox.has.pdf .ftplabel{display:block;font-size:13px;color:var(--accent);font-weight:600}
+#cfr1633 .ftpbox.has.pdf{cursor:pointer}
 #cfr1633 .ftpbox .ftpdel{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;
   border:0;background:rgba(0,0,0,.55);color:#fff;font-size:13px;cursor:pointer;display:none;
   align-items:center;justify-content:center;line-height:1}
@@ -3345,11 +3351,11 @@ table.frec-table tbody tr.draft .lockdot,
 
   <section class="ftcard">
     <h2>测试报告</h2>
-    <div class="ftphotos">
-      <!-- data-ftslot 跟动态照片格一个规矩：ftPaintSlot 和 ftLbOpen 都靠它认格子 -->
-      <div class="ftpbox ftpbox-rpt" id="ft-pbox-report" data-ftslot="report" title="点击或拖入上传测试报告">
-        <img alt=""><span class="ftplabel">📄 测试报告</span>
-        <button type="button" class="ftpdel" title="删除">✕</button>
+    <!-- 跟测试照片一样是动态网格：格子由 ftBuildRptGrid 生成，末尾一个「＋」
+         可以再加一份（一次测试可能有燃烧报告 + 材料报告等好几份）。 -->
+    <div class="ftphotos" id="ft-rpt-wrap">
+      <div class="ftpbox ftpbox-add" id="ft-rpt-add" title="增加报告">
+        <span class="ftplabel">＋</span>
       </div>
     </div>
   </section>
@@ -3496,6 +3502,7 @@ table.frec-table tbody tr.draft .lockdot,
   </div>
 </div>
 
+<!-- accept 在点击时按格子改（报告格放开 PDF，照片格只收图片），见 ftBindPhotoBox -->
 <input type="file" id="ftpick" accept="image/*" hidden>
 </section>
 
@@ -8492,9 +8499,13 @@ function ftPaintVerdict(){
   ve.className="ftverdict"+(v==="合格"?" pass":v==="不合格"?" fail":"");
 }
 
+/* 两套槽位命名，必须分得开，否则报告会混进照片网格：
+     照片   ft_top / ft_side / ft_x<n>_<ts>
+     报告   ft_report（第一份，历史数据一直用这个键）/ ft_rpt<n>_<ts>（后加的） */
+const ftIsRptSlot = sk => sk==="ft_report" || sk.startsWith("ft_rpt");
 function ftPhotoKeys(){
   if(!FT) return [];
-  const keys=new Set(Object.keys(FT.photos).filter(k=>k.startsWith("ft_")&&k!=="ft_report").map(k=>k.slice(3)));
+  const keys=new Set(Object.keys(FT.photos).filter(k=>k.startsWith("ft_")&&!ftIsRptSlot(k)).map(k=>k.slice(3)));
   keys.add("top"); keys.add("side");
   return [...keys].sort((a,b)=>{
     const order={top:0,side:1}; const oa=order[a]??2, ob=order[b]??2;
@@ -8517,7 +8528,9 @@ function ftMakePhotoBox(k){
 const FT_SLOT_NAME={top:"上部",side:"侧面",report:"测试报告"};
 const ftSlotLabel = k => FT_SLOT_NAME[k] || (tr("照片")+" "+String(k).replace(/^x(\d+).*$/,"$1"));
 function ftLbOpen(k){
-  const cells=[...document.querySelectorAll("#ftentryv .ftpbox.has")];
+  /* PDF 那种格子没有 <img>，要先排掉 —— 否则它进了清单、lbShow 又按 src
+     过滤掉，findIndex 算出来的序号就跟实际清单错位。 */
+  const cells=[...document.querySelectorAll("#ftentryv .ftpbox.has:not(.pdf)")];
   lbShow(cells.map(b=>({
     src: b.querySelector("img").getAttribute("src"),
     cap: tr(ftSlotLabel(b.dataset.ftslot||"report"))
@@ -8526,11 +8539,16 @@ function ftLbOpen(k){
 function ftBindPhotoBox(box,k){
   box.addEventListener("click",e=>{
     if(e.target.closest(".ftpdel")) return;
-    /* 已经有图就看大图 —— **锁定之后也要能看**（lockGate 放行 img，
-       CSS 那条 .locked 规则也只关控件不关图片）。空格子才是上传入口。 */
-    if(box.classList.contains("has")) return ftLbOpen(k);
+    /* 已经有内容就打开看 —— **锁定之后也要能看**（只读动作）。
+       报告格可能是 PDF，走 ftOpenReport 分流；照片格一律看大图。
+       空格子才是上传入口。 */
+    const isRpt=ftIsRptSlot("ft_"+k);
+    if(box.classList.contains("has")) return isRpt ? ftOpenReport(k) : ftLbOpen(k);
     if(!FT||FT.locked) return;
-    ftPendingSlot=k; $("#ftpick").value=""; $("#ftpick").click();
+    ftPendingSlot=k;
+    /* 报告格才放开 PDF；照片格保持只收图片，免得有人往照片位塞 PDF */
+    $("#ftpick").accept = isRpt ? "image/*,application/pdf,.pdf" : "image/*";
+    $("#ftpick").value=""; $("#ftpick").click();
   });
   $(".ftpdel",box).addEventListener("click",e=>{
     e.stopPropagation();
@@ -8545,13 +8563,16 @@ function ftBindPhotoBox(box,k){
   box.addEventListener("drop",async e=>{
     e.preventDefault(); box.classList.remove("dragover");
     if(!FT||FT.locked) return;
-    const f=e.dataTransfer.files[0]; if(!f||!f.type.startsWith("image/")) return;
+    const f=e.dataTransfer.files[0]; if(!f) return;
+    /* 报告格也收 PDF，照片格仍然只收图片 */
+    const ok = f.type.startsWith("image/") || (ftIsRptSlot("ft_"+k) && ftIsPdf(f));
+    if(!ok) return;
     try{
-      const blob=await shrink(f), sk="ft_"+k;
+      const blob=await ftPrepFile(f), sk="ft_"+k;
       FT.photos[sk]=blob; FT.photoOps[sk]="put";
       ftSetURL(k, URL.createObjectURL(blob));
       ftBuildPhotoGrid(); ftSave();
-    }catch(err){ toast("照片处理失败"); }
+    }catch(err){ toast("文件处理失败"); }
   });
 }
 function ftBuildPhotoGrid(){
@@ -8569,27 +8590,93 @@ function ftBuildPhotoGrid(){
     wrap.insertBefore(box,addBtn);
   });
   addBtn.hidden=!!(FT&&FT.locked);
-  ftPaintReport();
+  ftBuildRptGrid();
 }
-function ftPaintReport(){
-  const box=$("#ft-pbox-report");
-  const blob=FT.photos["ft_report"];
-  if(blob){
-    const url=FT_URLS["report"]||(FT_URLS["report"]=URL.createObjectURL(blob));
-    $("img",box).src=url; box.classList.add("has");
+
+/* ── 测试报告网格（多份）───────────────────────────────────────── */
+function ftRptKeys(){
+  if(!FT) return ["report"];
+  const keys=new Set(Object.keys(FT.photos).filter(ftIsRptSlot).map(k=>k.slice(3)));
+  keys.add("report");                                   /* 第一格永远在 */
+  return [...keys].sort((a,b)=> a==="report" ? -1 : b==="report" ? 1 : (a<b?-1:a>b?1:0));
+}
+let ftRptCounter=0;
+function ftMakeRptBox(k){
+  const box=document.createElement("div");
+  box.className="ftpbox ftpbox-rpt";
+  box.dataset.ftslot=k;
+  /* data-lockok：锁定之后这一格仍要能点开看。PDF 没有 <img>，lockGate 那条
+     `closest("img")` 放行规则接不住它，只能靠这个标记。写操作各自在 handler
+     里有 FT.locked 守卫，放行 click 不会让人改到东西（实测过：锁定后能看、
+     删不掉、也传不上）。 */
+  box.setAttribute("data-lockok","");
+  box.title=tr("点击或拖入上传测试报告（图片或 PDF）");
+  box.innerHTML='<img alt=""><span class="ftplabel">📄 '+esc(tr("测试报告"))+'</span>'+
+    '<button type="button" class="ftpdel" title="'+esc(tr("删除"))+'">✕</button>';
+  ftBindPhotoBox(box,k);
+  return box;
+}
+function ftBuildRptGrid(){
+  const wrap=$("#ft-rpt-wrap"), addBtn=$("#ft-rpt-add");
+  if(!wrap||!addBtn) return;
+  wrap.querySelectorAll(".ftpbox:not(.ftpbox-add)").forEach(el=>el.remove());
+  ftRptKeys().forEach(k=>{ wrap.insertBefore(ftMakeRptBox(k),addBtn); ftPaintRptBox(k); });
+  addBtn.hidden=!!(FT&&FT.locked);
+}
+function ftPaintRptBox(k){
+  const box=$('#ft-rpt-wrap .ftpbox[data-ftslot="'+CSS.escape(k)+'"]');
+  if(!box||!FT) return;
+  const blob=FT.photos["ft_"+k];
+  const lab=$(".ftplabel",box);
+  if(!blob){
+    ftSetURL(k,null);
+    $("img",box).src=""; box.classList.remove("has","pdf");
+    lab.textContent="📄 "+tr("测试报告");
+    return;
+  }
+  const url=FT_URLS[k]||(FT_URLS[k]=URL.createObjectURL(blob));
+  box.classList.add("has");
+  if(ftIsPdf(blob)){
+    /* PDF 没法塞进 <img>，画成一张文件卡片：图标 + 「PDF · 点击查看」。
+       .pdf 这个 class 让 CSS 把 img 收起来、把 label 重新显示出来
+       （.has 默认是藏 label 的，那是给图片格用的）。 */
+    $("img",box).src=""; box.classList.add("pdf");
+    lab.textContent="📄 PDF · "+tr("点击查看");
   }else{
-    ftSetURL("report",null);
-    $("img",box).src=""; box.classList.remove("has");
+    box.classList.remove("pdf");
+    $("img",box).src=url;
   }
 }
 function ftPaintPhotos(){ ftBuildPhotoGrid(); }
+
+/* ── 测试报告：图片或 PDF ──────────────────────────────────────────
+   现场给的报告多半是实验室出的 PDF，原来这一格 accept="image/*" 选都选不中，
+   拖进去又会栽在 shrink()（canvas 缩图，PDF 到 createImageBitmap 就抛），
+   弹一句「照片处理失败」—— 线上 13 条记录一个 ft_report 都没有就是这么来的。
+
+   服务端本来就存得下：photos 表按 (report_id,slot) 存，content-type 照请求头
+   记、取的时候原样发回；R2 的 key 虽然拼了 .jpg，那只是个键名不影响内容。
+   所以这里只要**别把 PDF 当图片处理**就行。 */
+const ftIsPdf = b => !!b && (b.type==="application/pdf" ||
+                             /\.pdf$/i.test(b.name||""));
+/* PDF 不缩、原样存；图片照旧走 shrink 压到 1400px */
+async function ftPrepFile(file){ return ftIsPdf(file) ? file : await shrink(file); }
+/* 点开看：图片走共用的全屏查看器，PDF 用浏览器自带的阅读器开新标签页。
+   两者锁定之后都要能用 —— 只读动作，不受提交锁限制。 */
+function ftOpenReport(k){
+  const blob=FT && FT.photos["ft_"+k];
+  if(!blob) return;
+  if(!ftIsPdf(blob)) return ftLbOpen(k);
+  const url=FT_URLS[k]||(FT_URLS[k]=URL.createObjectURL(blob));
+  window.open(url,"_blank","noopener");
+}
 /* 逐格更新：hydratePhotos 一张到就补一格，跟成品 paintSlot / 装柜 oqcPaintSlot
    同一个形状。不这么做的话，慢网下几张图会一直空着，等全部下完才一起出现。
    slot 是带 ft_ 前缀的（ft_top / ft_side / ft_report / ft_x1_…）。
    格子还不存在（别的设备加拍的动态格）就整块重建一次，重建本身会把图带上。 */
 function ftPaintSlot(slot){
   if(!FT) return;
-  if(slot==="ft_report") return ftPaintReport();
+  if(ftIsRptSlot(slot)) return ftPaintRptBox(slot.slice(3));
   const k=slot.slice(3);
   const box=$('#ft-photo-wrap .ftpbox[data-ftslot="'+CSS.escape(k)+'"]');
   if(!box) return ftBuildPhotoGrid();
@@ -8910,16 +8997,24 @@ $("#ft-photo-add").addEventListener("click",()=>{
   FT.photos["ft_"+k]=null;
   ftPendingSlot=k; $("#ftpick").value=""; $("#ftpick").click();
 });
-ftBindPhotoBox($("#ft-pbox-report"),"report");
+/* 报告格由 ftBuildRptGrid 动态生成并逐个绑定，这里不用再静态绑一次 */
+$("#ft-rpt-add").addEventListener("click",()=>{
+  if(!FT||FT.locked) return;
+  const k="rpt"+(++ftRptCounter)+"_"+Date.now();
+  FT.photos["ft_"+k]=null;                 /* 占位，ftRptKeys 才认得出这一格 */
+  ftPendingSlot=k;
+  $("#ftpick").accept="image/*,application/pdf,.pdf";
+  $("#ftpick").value=""; $("#ftpick").click();
+});
 $("#ftpick").addEventListener("change",async e=>{
   const f=e.target.files[0]; if(!f||!ftPendingSlot) return;
   try{
-    const blob=await shrink(f);
+    const blob=await ftPrepFile(f);   /* PDF 原样存，图片压到 1400px */
     const sk="ft_"+ftPendingSlot;
     FT.photos[sk]=blob; FT.photoOps[sk]="put";
     ftSetURL(ftPendingSlot, URL.createObjectURL(blob));
     ftPaintPhotos(); ftSave();
-  }catch(err){ toast("照片处理失败"); }
+  }catch(err){ toast("文件处理失败"); }
   ftPendingSlot=null;
 });
 
@@ -8994,7 +9089,10 @@ async function ftrecRender(){
       '<td>'+esc(r.remark||"")+'</td>'+
       '<td>'+vbadge+'</td>'+
       '<td><span class="lockdot" aria-hidden="true"></span><button type="button" class="frec-open">'+esc(viewLabel)+'</button></td>';
-    $("button",row).addEventListener("click",async()=>{ await ftLoad(r.id); ftShow("entry"); });
+    /* skipPhotos=true：紧接着的 ftShow("entry") 会补拉。不传的话
+       ftLoad 拉一遍、ftShow 再拉一遍，同一个槽位请求两次（实测 ft_top /
+       ft_report 各发了 2 次）—— 装柜那边的注释专门记过这个坑。 */
+    $("button",row).addEventListener("click",async()=>{ await ftLoad(r.id,true); ftShow("entry"); });
     body.appendChild(row);
   });
   tbl.appendChild(body);
@@ -9046,7 +9144,7 @@ async function ftRenderPick(){
       const b=el("button","plrow"+(FT&&m.id===FT.id?" cur":"")); b.type="button";
       b.innerHTML='<span class="plnm">'+esc(ftPickLabel(m))+'</span>'+pickTime(m.updatedAt);
       b.addEventListener("click",async()=>{
-        $("#ftpicklist").hidden=true; await ftLoad(m.id); ftShow("entry");
+        $("#ftpicklist").hidden=true; await ftLoad(m.id,true); ftShow("entry");   /* 同上，交给 ftShow 拉一次 */
       });
       host.appendChild(b);
     });
@@ -10633,7 +10731,10 @@ const I18N_ID={
   "点击上传或拖入照片": "Klik untuk upload atau tarik foto ke sini",
   "删除照片": "Hapus Foto",
   "测试报告": "Laporan Pengujian",
-  "点击或拖入上传测试报告": "Klik atau tarik untuk upload laporan pengujian",
+  "点击或拖入上传测试报告（图片或 PDF）": "Klik atau tarik untuk upload laporan pengujian (gambar atau PDF)",
+  "点击查看": "Klik untuk lihat",
+  "增加报告": "Tambah Laporan",
+  "文件处理失败": "Gagal memproses berkas",
   "📷 照片": "📷 Foto",
   "📄 测试报告": "📄 Laporan Pengujian",
   "测试结果": "Hasil Pengujian",
