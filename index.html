@@ -112,7 +112,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
    那段注释警告过、用户报过两次的坑。
    同理 --accent 系列只加在这个模块列表上，不动 :root：报告表单里那些
    background:var(--accent-soft) 的输入格是打印件的一部分。 */
-#home,#lab,#iqc,#ipqc,#oqc,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar{
+#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar{
   --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
   --hairline:#e6eaf1; --rule-2:#cdd5e0;
   --ok:#0f7a52; --no:#b0342a; --okbg:#e6f5ee; --nobg:#fdecea;
@@ -127,7 +127,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
   color:var(--ink);
 }
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]) :is(#home,#lab,#iqc,#ipqc,#oqc,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
+  :root:not([data-theme="light"]) :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
     --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
     --hairline:#232a34; --rule-2:#333c48;
     --ok:#4fbb8a; --no:#e08c82; --okbg:#12291f; --nobg:#2b1a18;
@@ -139,7 +139,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
     --sh-1:0 1px 2px rgba(0,0,0,.5);
   }
 }
-:root[data-theme="dark"] :is(#home,#lab,#iqc,#ipqc,#oqc,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
+:root[data-theme="dark"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
   --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
   --hairline:#232a34; --rule-2:#333c48;
   --ok:#4fbb8a; --no:#e08c82; --okbg:#12291f; --nobg:#2b1a18;
@@ -150,7 +150,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
   --deck:#0d1014; --bar-bg:#141920; --seg-bg:#0f141a; --seg-on:#272f3a; --sunk:#1c2129;
   --sh-1:0 1px 2px rgba(0,0,0,.5);
 }
-:root[data-theme="light"] :is(#home,#lab,#iqc,#ipqc,#oqc,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
+:root[data-theme="light"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
   --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
   --hairline:#e6eaf1; --rule-2:#cdd5e0;
   --ok:#0f7a52; --no:#b0342a; --okbg:#e6f5ee; --nobg:#fdecea;
@@ -350,7 +350,7 @@ html[lang="id"] .hhead h1 .cn{display:none}
    "样式不好看"，是功能坏掉：容器不铺满屏就没有点击捕捉层，各板块那句
    `if(e.target.id==="xxpicklist") 关掉` 永远不成立，弹层只能靠 ✕ 关。
    ipqc / oqc 上线时就是漏在这里，实测两个容器一直是 static + 高度 0。 */
-#picklist,#lpicklist,#ipicklist,#ppicklist,#opicklist{
+#picklist,#lpicklist,#ipicklist,#ppicklist,#opicklist,#ftpicklist{
   position:fixed;inset:0;z-index:95;background:transparent}
 .plbox{
   position:absolute;
@@ -819,7 +819,7 @@ body.dropping::after{
   :root{--paper:#fff;--ink:#000;--accent-soft:transparent}
   html,body{background:#fff;color:#000}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .bar,.prtfoot,#toast,.padd,.pcam,.pdel,.pflag,.pfit,.tol,#lockbar,#ilockbar,#plockbar,#olockbar,#llockbar,#picksheet,#lightbox,#picklist,#frec,#iqc,#ipqc,#fdash,#pmpop{display:none!important}
+  .bar,.prtfoot,#toast,.padd,.pcam,.pdel,.pflag,.pfit,.tol,#lockbar,#ilockbar,#plockbar,#olockbar,#llockbar,#ftlockbar,#picksheet,#lightbox,#picklist,#frec,#iqc,#ipqc,#fdash,#pmpop,#cfr1633{display:none!important}
   /* 日期：纸上不要浏览器区域格式，换成存的那份 DD/MM/YYYY */
   .val > input[type="date"]{display:none!important}
   .val > .dpr{display:block;padding:1.4mm 1.8mm;font-size:9.6pt;
@@ -1002,7 +1002,7 @@ table.frec-table tbody tr.draft>td,#iqc table.irec-table tbody tr.draft>td,
 :is(#iqcv,#ipqcv,#oqcv,#labv).locked :is(input,textarea,select,button):not([data-lockok]){
   pointer-events:none;cursor:default;
 }
-#lockbar,#ilockbar,#plockbar,#olockbar,#llockbar{
+#lockbar,#ilockbar,#plockbar,#olockbar,#llockbar,#ftlockbar{
   /* 五个容器都是 column flex：align-self 让提示条收缩到内容宽再居中，
      不跟着卡片一起拉满。成品的 .wrap 本来就 align-items:center，这里是空操作。 */
   align-self:center;max-width:100%;text-align:center;
@@ -1523,6 +1523,43 @@ table.frec-table tbody tr.draft .lockdot,
 #ipqc .ipan-item .track{height:13px;background:var(--rule-2);border-radius:3px;overflow:hidden}
 #ipqc .ipan-item .fill{display:block;height:100%;background:#c9483c}
 #ipqc .ipan-item .num{text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ── 16 CFR 1633 防火检测 ───────────────────────────────────────── */
+#cfr1633 .ftwrap{max-width:1180px;margin:0 auto;padding:14px 10px 60px}
+#cfr1633 .ftcard{background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-card);
+  padding:16px 18px;margin-bottom:14px;box-shadow:var(--sh-1)}
+#cfr1633 .ftcard>h2{font-size:15px;font-weight:700;color:var(--ink);margin:0 0 12px;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#cfr1633 .ftcard>h2 .fthint{font-weight:400;font-size:12px;color:var(--ink-3)}
+#cfr1633 .fthead{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px 14px}
+#cfr1633 .ftfield{display:flex;flex-direction:column;gap:4px}
+#cfr1633 .ftfield>span{font-size:11px;color:var(--ink-3);letter-spacing:.03em}
+#cfr1633 .ftfield input,#cfr1633 .ftfield select{font:inherit;font-size:13px;padding:5px 8px;
+  border:1px solid var(--field-line);border-radius:var(--r-ctl);background:var(--field);color:var(--ink)}
+#cfr1633 .ftfield input:focus,#cfr1633 .ftfield select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+#cfr1633 .ftphotos{display:flex;gap:14px;flex-wrap:wrap;margin-top:4px}
+#cfr1633 .ftpbox{width:180px;height:140px;border:2px dashed var(--hairline);border-radius:var(--r-ctl);
+  position:relative;overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  background:var(--field);transition:border-color .15s}
+#cfr1633 .ftpbox:hover{border-color:var(--accent)}
+#cfr1633 .ftpbox.dragover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--field))}
+#cfr1633 .ftpbox.has{border-style:solid}
+#cfr1633 .ftpbox img{width:100%;height:100%;object-fit:cover;display:none}
+#cfr1633 .ftpbox.has img{display:block}
+#cfr1633 .ftpbox .ftplabel{font-size:12px;color:var(--ink-3);text-align:center;pointer-events:none}
+#cfr1633 .ftpbox.has .ftplabel{display:none}
+#cfr1633 .ftpbox .ftpdel{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;
+  border:0;background:rgba(0,0,0,.55);color:#fff;font-size:13px;cursor:pointer;display:none;
+  align-items:center;justify-content:center;line-height:1}
+#cfr1633 .ftpbox.has .ftpdel{display:flex}
+#cfr1633 .ftpbox-add{border-style:dashed;cursor:pointer}
+#cfr1633 .ftpbox-add .ftplabel{font-size:28px;color:var(--ink-3);pointer-events:none}
+#cfr1633 .ftsum{display:flex;flex-direction:column;gap:6px;margin-top:10px;font-size:13px}
+#cfr1633 .ftmetrics{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+#cfr1633 .ftsum .unit{font-size:11px;color:var(--ink-3);margin-left:2px}
+#cfr1633 .ftsum .pass{color:var(--ok);font-weight:600}
+#cfr1633 .ftsum .fail{color:var(--no);font-weight:600}
+#cfr1633 .ftverdict{font-size:14px;font-weight:700}
 
 /* ── 装柜检验：录入界面 ────────────────────────────────────────────
    自成一屏（跟 #lab/#iqc 一样），不走 fqc 的 #mod/CHECKS 引擎：这个板块
@@ -3157,6 +3194,144 @@ table.frec-table tbody tr.draft .lockdot,
 <input type="file" id="oqcam" accept="image/*" capture="environment" hidden>
 </section>
 
+<!-- ══ 16 CFR 1633 防火检测 ═══════════════════════════════════════════ -->
+<section id="cfr1633" hidden>
+<div class="bar">
+  <span class="grp">
+    <button type="button" id="ftback" title="返回板块">← 板块</button>
+    <span class="brand">16 CFR 1633 防火检验</span>
+    <button type="button" id="ftpickbtn" aria-haspopup="dialog" title="切换记录"><span id="ftpicklabel">—</span><span class="caret">▾</span></button>
+    <button type="button" id="ftdel" class="danger">删除</button>
+  </span>
+  <span class="grp">
+    <button type="button" class="sync" id="ftsync" hidden title="同步状态 — 点一下立即同步"></button>
+    <span class="stat" id="ftstat">—</span>
+    <span class="segnav">
+      <button type="button" id="ftrecbtn">记录表</button>
+    </span>
+    <button type="button" id="ftlockbtn">提交并锁定</button>
+  </span>
+</div>
+
+<div class="ftwrap" id="ftentryv">
+<div id="ftlockbar" hidden></div>
+  <section class="ftcard">
+    <h2>测试信息</h2>
+    <div class="fthead">
+      <label class="ftfield"><span>产品类型</span>
+        <select id="ft-prodtype">
+          <option value="">—</option>
+          <option value="弹簧床垫">弹簧床垫</option>
+          <option value="海绵床垫">海绵床垫</option>
+        </select></label>
+      <label class="ftfield"><span>SKU</span>
+        <input id="ft-sku" placeholder="B-2503M01905-14-Q"></label>
+      <label class="ftfield"><span>测试日期</span>
+        <input type="date" id="ft-testdate"></label>
+      <label class="ftfield"><span>生产日期</span>
+        <input type="date" id="ft-proddate"></label>
+      <label class="ftfield"><span>测试视频编号</span>
+        <input id="ft-videono" placeholder="2026033103"></label>
+      <label class="ftfield"><span>检测人员</span>
+        <input id="ft-inspector"></label>
+      <label class="ftfield" style="grid-column:1/-1"><span>工艺要求</span>
+        <input id="ft-craft" placeholder="阻燃布套 / 防火棉 / 包边工艺等"></label>
+    </div>
+  </section>
+
+  <section class="ftcard">
+    <h2>测试照片</h2>
+    <div class="ftphotos" id="ft-photo-wrap">
+      <div class="ftpbox ftpbox-add" id="ft-photo-add" title="增加照片">
+        <span class="ftplabel">＋</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="ftcard">
+    <h2>测试报告</h2>
+    <div class="ftphotos">
+      <div class="ftpbox ftpbox-rpt" id="ft-pbox-report" title="点击或拖入上传测试报告">
+        <img alt=""><span class="ftplabel">📄 测试报告</span>
+        <button type="button" class="ftpdel" title="删除">✕</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="ftcard">
+    <h2>测试结果</h2>
+    <div class="fthead">
+      <label class="ftfield"><span>峰值热释放率 PHRR（kW）</span>
+        <input id="ft-phrr" inputmode="decimal" placeholder="≤ 200"></label>
+      <label class="ftfield"><span>总热释放量 THR（MJ）</span>
+        <input id="ft-thr" inputmode="decimal" placeholder="≤ 15"></label>
+      <label class="ftfield"><span>燃烧时间</span>
+        <input id="ft-result" placeholder="7min自然熄灭"></label>
+      <label class="ftfield" style="grid-column:1/-1"><span>备注</span>
+        <input id="ft-remark" placeholder="测试合格"></label>
+    </div>
+    <div class="ftsum" id="ft-verdict-bar">
+      <div class="ftverdict" id="ft-verdict">—</div>
+      <div class="ftmetrics">
+        <span>PHRR: <b id="ft-phrr-v">—</b><span class="unit">kW</span></span>
+        <span>THR: <b id="ft-thr-v">—</b><span class="unit">MJ</span></span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 记录表 -->
+<div id="ftrec" hidden>
+<section class="frec-card">
+  <div class="frec-head">
+    <h2>成品防火检验记录 <span id="ftrec-scope"></span></h2>
+    <button type="button" class="recnew" id="ftnew">+ 新记录</button>
+    <button type="button" class="plx" id="ftrec-close" title="关闭">✕</button>
+  </div>
+  <div class="frec-bar">
+    <label class="frec-field"><span>产品类型</span>
+      <select id="ftrec-prodtype">
+        <option value="">全部</option>
+        <option value="弹簧床垫">弹簧床垫</option>
+        <option value="海绵床垫">海绵床垫</option>
+      </select></label>
+    <label class="frec-field"><span>范围</span>
+      <select id="ftrec-range">
+        <option value="day">当天</option>
+        <option value="month" selected>当月</option>
+        <option value="1">上个月</option>
+        <option value="3">近 3 个月</option>
+        <option value="6">近 6 个月</option>
+        <option value="12">近 12 个月</option>
+        <option value="all">全部（最近 200 条）</option>
+      </select></label>
+    <label class="frec-field"><span>判定</span>
+      <select id="ftrec-verdict">
+        <option value="">全部</option>
+        <option value="合格">合格</option>
+        <option value="不合格">不合格</option>
+      </select></label>
+    <button type="button" class="recbtn" id="ftrec-clear">清除筛选</button>
+  </div>
+  <div class="frec-wrap"><table class="frec-table" id="ftrec-table"></table></div>
+</section>
+</div>
+
+<!-- 记录选择器 -->
+<div id="ftpicklist" hidden>
+  <div class="plbox" role="dialog" aria-label="选择记录">
+    <div class="plhead">
+      <span class="plt">记录</span>
+      <span class="pln" id="ftplcount"></span>
+      <button type="button" class="plx" id="ftpl-close" title="关闭">✕</button>
+    </div>
+    <div class="plbody" id="ftplbody"></div>
+  </div>
+</div>
+
+<input type="file" id="ftpick" accept="image/*" hidden>
+</section>
+
 <!-- ══ 实验室 ════════════════════════════════════════════════════════ -->
 <section id="lab" hidden>
 <div class="bar">
@@ -3499,7 +3674,9 @@ const MODULES=[
   { id:"fqc",  zh:"成品检验", en:"Finished Product",   ready:true,
     reportZh:"成品检查报告", desc:"每柜成品抽检，出 A4 两页报告" },
   { id:"oqc",  zh:"装柜检验", en:"Loading Inspection", ready:true,
-    reportZh:"装柜检验记录", desc:"装柜现场核对与封柜记录，出提货清单" }
+    reportZh:"装柜检验记录", desc:"装柜现场核对与封柜记录，出提货清单" },
+  { id:"cfr1633", zh:"防火检验", en:"16 CFR 1633", ready:true,
+    reportZh:"16 CFR 1633 防火检验", desc:"成品燃烧测试，峰值热释放率/总热释放量" }
 ];
 const moduleById = id => MODULES.find(m=>m.id===id);
 let CURRENT="fqc";
@@ -3738,6 +3915,20 @@ function metaOf(r){
     m.inspector=(f.inspector||"").trim();
     m.verdict=oqcVerdict(r);
     m.override=(r.oqc||{}).override||"";
+  }
+  if(type==="cfr1633"){
+    m.productType=(f.productType||"").trim();
+    m.sku=(f.sku||"").trim();
+    m.testDate=(f.testDate||"").trim();
+    m.videoNo=(f.videoNo||"").trim();
+    m.prodDate=(f.prodDate||"").trim();
+    m.craft=(f.craft||"").trim();
+    m.phrr=(f.phrr||"").trim();
+    m.thr=(f.thr||"").trim();
+    m.remark=(f.remark||"").trim();
+    m.result=(f.result||"").trim();
+    m.inspector=(f.inspector||"").trim();
+    m.ftVerdict=ftVerdict(r);
   }
   return m;
 }
@@ -5215,7 +5406,7 @@ async function iqcLoad(id){
 async function enterIqc(recordId){
   CURRENT="iqc";
   $("#home").hidden=true; $("#mod").hidden=true; $("#lab").hidden=true;
-  $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#iqc").hidden=false;
+  $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true; $("#iqc").hidden=false;
   /* 落在哪一屏必须在**第一个 await 之前**就定下来（见 enterModule 的注释）：
      先显示录入页、等数据读完再切到记录表，用户会看见录入页闪一下。 */
   irecShow(!recordId);
@@ -6586,7 +6777,7 @@ function ipqcShow(view){
 async function enterIpqc(recordId){
   CURRENT="ipqc";
   $("#home").hidden=true; $("#mod").hidden=true; $("#lab").hidden=true;
-  $("#iqc").hidden=true; $("#oqc").hidden=true; $("#ipqc").hidden=false;
+  $("#iqc").hidden=true; $("#oqc").hidden=true; $("#cfr1633").hidden=true; $("#ipqc").hidden=false;
   ipqcShow(recordId?"entry":"rec");
   document.title=tr("荣升家居 · 制程检验");
   ipqcFillFilters();
@@ -7331,7 +7522,7 @@ function oqcShow(view){
 async function enterOqc(recordId){
   CURRENT="oqc";
   $("#home").hidden=true; $("#mod").hidden=true; $("#lab").hidden=true;
-  $("#iqc").hidden=true; $("#ipqc").hidden=true; $("#oqc").hidden=false;
+  $("#iqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true; $("#oqc").hidden=false;
   /* 落地屏在第一个 await 之前定，不然录入页会闪一下（见 enterModule 的注释） */
   oqcShow(recordId?"entry":"rec");
   document.title=tr("荣升家居 · 装柜检验");
@@ -7919,6 +8110,7 @@ function isBlankReport(rec){
        计划表填的，导完还没验的柜子要留着，别被清理端走。判据是下面的勾选项、
        实际数量、备注。 */
     oqc:  ["date"],
+    cfr1633: ["testDate","itemNo","po"],
   };
   const auto = AUTO_FIELDS[rec.type] || [];
   for(const k of Object.keys(f)){
@@ -7995,6 +8187,7 @@ async function cleanupBlanks(){
     if(IR && m.id===IR.id) continue;
     if(OR && m.id===OR.id) continue;
     if(PR && m.id===PR.id) continue;
+    if(FT && m.id===FT.id) continue;
     if(m.type==="labstd") continue;   /* shared config, not a report — never collect */
     if(m.type==="iqcmat") continue;   /* shared config, not a report — never collect */
     if(m.type==="ipqcmat") continue;  /* shared config, not a report — never collect */
@@ -8023,6 +8216,421 @@ async function cleanupBlanks(){
   }
   return removed;
 }
+
+/* ── 16 CFR 1633 防火检测 ──────────────────────────────────────────── */
+let FT = null;
+const FT_URLS = {};
+
+function ftBlank(){
+  return {
+    id:uid(), type:"cfr1633", updatedAt:Date.now(), syncedAt:0,
+    fields:{ productType:"", sku:"",
+             testDate:today(), videoNo:"", prodDate:"", craft:"",
+             phrr:"", thr:"", remark:"", result:"", inspector:"",
+             itemNo:"", po:"" },
+    cfr1633:{},
+    locked:0,
+    caps:{}, flags:{}, fits:{}, photos:{}, photoOps:{}, serverPhotos:{}, photosChecked:false
+  };
+}
+function ftNorm(rec){
+  rec.fields=rec.fields||{};
+  if(!rec.cfr1633) rec.cfr1633={};
+  return rec;
+}
+
+function ftVerdict(rec){
+  const f=rec.fields||{};
+  const phrr=lnum(f.phrr), thr=lnum(f.thr);
+  if(phrr==null && thr==null) return "";
+  if(phrr!=null && phrr>200) return "不合格";
+  if(thr!=null && thr>15) return "不合格";
+  if(phrr!=null && thr!=null) return "合格";
+  return "";
+}
+
+let ftSaveTimer;
+function ftSave(){
+  if(!FT) return;
+  FT.fields.itemNo=FT.fields.sku||"";
+  FT.fields.po=FT.fields.videoNo||"";
+  FT.updatedAt=Date.now();
+  clearTimeout(ftSaveTimer);
+  ftSaveTimer=setTimeout(async()=>{
+    try{
+      await dbPut(FT);
+      ftMarkSaved(); scheduleSync();
+    }catch(e){ toast("保存失败"); }
+  },400);
+}
+
+function ftMarkSaved(){
+  if(!FT) return;
+  const d=new Date(FT.updatedAt), p=n=>String(n).padStart(2,"0");
+  const v=ftVerdict(FT);
+  const txt=v?(v==="合格"?tr("合格"):tr("不合格")):"—";
+  $("#ftstat").innerHTML='<span>'+esc(txt)+' · '+esc(tr("已存"))+" "+
+    p(d.getHours())+":"+p(d.getMinutes())+'</span>';
+  const lb=$("#ftpicklabel"); if(lb) lb.textContent=ftPickLabel(FT);
+}
+
+function ftPickLabel(r){
+  const f=r.fields||r;
+  const a=(f.sku||f.itemNo||"").trim()||tr("未命名");
+  const b=(f.productType||"").trim();
+  return a+(b?" · "+b:"");
+}
+
+function ftPaintAll(){
+  if(!FT) return;
+  const f=FT.fields;
+  $("#ft-prodtype").value=f.productType||"";
+  $("#ft-sku").value=f.sku||"";
+  $("#ft-testdate").value=toDateInput(f.testDate);
+  $("#ft-proddate").value=toDateInput(f.prodDate);
+  $("#ft-videono").value=f.videoNo||"";
+  $("#ft-inspector").value=f.inspector||"";
+  $("#ft-craft").value=f.craft||"";
+  $("#ft-phrr").value=f.phrr||"";
+  $("#ft-thr").value=f.thr||"";
+  $("#ft-result").value=f.result||"";
+  $("#ft-remark").value=f.remark||"";
+  ftPaintVerdict();
+  ftPaintPhotos();
+  ftPaintLock();
+  ftMarkSaved();
+}
+
+function ftPaintVerdict(){
+  if(!FT) return;
+  const f=FT.fields, phrr=lnum(f.phrr), thr=lnum(f.thr);
+  $("#ft-phrr-v").textContent=phrr!=null?nfmt(phrr):"—";
+  $("#ft-thr-v").textContent=thr!=null?nfmt(thr):"—";
+  const pEl=$("#ft-phrr-v"), tEl=$("#ft-thr-v");
+  pEl.className=phrr!=null?(phrr<=200?"pass":"fail"):"";
+  tEl.className=thr!=null?(thr<=15?"pass":"fail"):"";
+  const v=ftVerdict(FT);
+  const ve=$("#ft-verdict");
+  ve.textContent=v?(v==="合格"?tr("合格"):tr("不合格")):"—";
+  ve.className="ftverdict"+(v==="合格"?" pass":v==="不合格"?" fail":"");
+}
+
+function ftPhotoKeys(){
+  if(!FT) return [];
+  const keys=new Set(Object.keys(FT.photos).filter(k=>k.startsWith("ft_")&&k!=="ft_report").map(k=>k.slice(3)));
+  keys.add("top"); keys.add("side");
+  return [...keys].sort((a,b)=>{
+    const order={top:0,side:1}; const oa=order[a]??2, ob=order[b]??2;
+    return oa!==ob?oa-ob:(a<b?-1:a>b?1:0);
+  });
+}
+let ftPhotoCounter=0;
+function ftMakePhotoBox(k){
+  const box=document.createElement("div");
+  box.className="ftpbox"; box.title="点击上传或拖入照片";
+  box.innerHTML='<img alt=""><span class="ftplabel">📷 照片</span><button type="button" class="ftpdel" title="删除照片">✕</button>';
+  ftBindPhotoBox(box,k);
+  return box;
+}
+function ftBindPhotoBox(box,k){
+  box.addEventListener("click",e=>{
+    if(e.target.closest(".ftpdel")) return;
+    if(!FT||FT.locked) return;
+    ftPendingSlot=k; $("#ftpick").value=""; $("#ftpick").click();
+  });
+  $(".ftpdel",box).addEventListener("click",e=>{
+    e.stopPropagation();
+    if(!FT||FT.locked) return;
+    const sk="ft_"+k;
+    delete FT.photos[sk]; FT.photoOps[sk]="del";
+    if(FT_URLS[k]){ URL.revokeObjectURL(FT_URLS[k]); FT_URLS[k]=null; }
+    ftBuildPhotoGrid(); ftSave();
+  });
+  box.addEventListener("dragover",e=>{ e.preventDefault(); if(!FT||FT.locked) return; box.classList.add("dragover"); });
+  box.addEventListener("dragleave",()=>{ box.classList.remove("dragover"); });
+  box.addEventListener("drop",async e=>{
+    e.preventDefault(); box.classList.remove("dragover");
+    if(!FT||FT.locked) return;
+    const f=e.dataTransfer.files[0]; if(!f||!f.type.startsWith("image/")) return;
+    try{
+      const blob=await shrink(f), sk="ft_"+k;
+      FT.photos[sk]=blob; FT.photoOps[sk]="put";
+      if(FT_URLS[k]) URL.revokeObjectURL(FT_URLS[k]);
+      FT_URLS[k]=URL.createObjectURL(blob);
+      ftBuildPhotoGrid(); ftSave();
+    }catch(err){ toast("照片处理失败"); }
+  });
+}
+function ftBuildPhotoGrid(){
+  const wrap=$("#ft-photo-wrap");
+  const addBtn=$("#ft-photo-add");
+  wrap.querySelectorAll(".ftpbox:not(.ftpbox-add)").forEach(el=>el.remove());
+  const keys=ftPhotoKeys();
+  keys.forEach(k=>{
+    const box=ftMakePhotoBox(k);
+    const blob=FT.photos["ft_"+k];
+    if(blob){
+      const url=FT_URLS[k]||(FT_URLS[k]=URL.createObjectURL(blob));
+      $("img",box).src=url; box.classList.add("has");
+    }
+    wrap.insertBefore(box,addBtn);
+  });
+  addBtn.hidden=!!(FT&&FT.locked);
+  ftPaintReport();
+}
+function ftPaintReport(){
+  const box=$("#ft-pbox-report");
+  const blob=FT.photos["ft_report"];
+  if(blob){
+    const url=FT_URLS["report"]||(FT_URLS["report"]=URL.createObjectURL(blob));
+    $("img",box).src=url; box.classList.add("has");
+  }else{
+    if(FT_URLS["report"]){ URL.revokeObjectURL(FT_URLS["report"]); FT_URLS["report"]=null; }
+    $("img",box).src=""; box.classList.remove("has");
+  }
+}
+function ftPaintPhotos(){ ftBuildPhotoGrid(); }
+
+function ftPaintLock(){
+  if(!FT) return;
+  const bar=$("#ftlockbar");
+  if(FT.locked){
+    bar.hidden=false;
+    bar.innerHTML='<span class="lockinfo">已提交 · '+new Date(FT.locked).toLocaleString("zh-CN")+'</span>';
+  }else{ bar.hidden=true; }
+  const ro=!!FT.locked;
+  $("#ftentryv").querySelectorAll("input,select").forEach(el=>{ el.disabled=ro; });
+  $("#ftentryv").querySelectorAll(".ftpbox").forEach(el=>{ el.style.pointerEvents=ro?"none":""; });
+  $("#ftlockbtn").textContent=ro?tr("已提交"):tr("提交并锁定");
+}
+
+async function ftLoad(id){
+  const rec=await dbGet(id);
+  FT=ftNorm(rec||ftBlank());
+  ftPaintAll();
+  if(SYNC.enabled && !FT.photosChecked) hydratePhotos(FT.id).then(()=>{
+    if(FT && FT.id===id){ dbGet(id).then(r=>{ if(r){ FT.photos=r.photos; FT.serverPhotos=r.serverPhotos; FT.photosChecked=true; ftPaintPhotos(); } }); }
+  });
+}
+
+function ftShow(view){
+  $("#ftentryv").hidden = view!=="entry";
+  $("#ftrec").hidden = view!=="rec";
+  $("#ftrecbtn").classList.toggle("cur", view==="rec");
+  backLevel("#ftback", view==="rec");
+  statFor("#ftstat", view==="entry");
+  $("#ftlockbtn").hidden = view!=="entry";
+  if(view==="rec"){ ftrecDefaultRange(); ftrecRender(); }
+}
+
+async function enterCfr1633(recordId){
+  CURRENT="cfr1633";
+  $("#home").hidden=true; $("#mod").hidden=true; $("#lab").hidden=true;
+  $("#iqc").hidden=true; $("#oqc").hidden=true; $("#ipqc").hidden=true;
+  $("#cfr1633").hidden=false;
+  ftShow(recordId?"entry":"rec");
+  document.title=tr("荣升家居 · 16 CFR 1633 防火检验");
+  try{
+    if(recordId){ await ftLoad(recordId); }
+    else{
+      const mine=(await metaAll()).filter(m=>m.type==="cfr1633")
+        .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+      if(mine.length) await ftLoad(mine[0].id);
+      else { FT=ftBlank(); ftPaintAll(); await dbPut(FT); await ftrecRender(); }
+    }
+  }catch(e){ FT=ftBlank(); ftPaintAll(); }
+  if(!$("#ftrec").hidden) await ftrecRender();
+  paintSync(); scheduleSync(300);
+}
+
+/* ── wiring ─────────────────────────────────────────────────────────── */
+$("#ftback").addEventListener("click",()=>{
+  if($("#ftrec").hidden) ftShow("rec");
+  else location.hash="#/";
+});
+$("#ftsync").addEventListener("click",()=>{ SYNC.err=null; syncNow(); });
+$("#ftnew").addEventListener("click",async()=>{
+  FT=ftBlank();
+  ftPaintAll(); await dbPut(FT);
+  ftShow("entry");
+  toast("新记录已建");
+});
+$("#ftdel").addEventListener("click",async()=>{
+  if(!FT) return;
+  if(!confirm("删除这条防火检验记录？不可撤销。")) return;
+  await deleteEverywhere(FT);
+  const mine=(await metaAll()).filter(m=>m.type==="cfr1633")
+    .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  if(mine.length) await ftLoad(mine[0].id);
+  else { FT=ftBlank(); ftPaintAll(); await dbPut(FT); }
+  if(!$("#ftrec").hidden) await ftrecRender();
+  toast("已删除");
+});
+$("#ftlockbtn").addEventListener("click",async()=>{
+  if(!FT) return;
+  if(FT.locked){ toast(tr("已经提交过了")); return; }
+  if(!confirm(tr("提交并锁定这条记录？提交后不可修改。"))) return;
+  FT.locked=Date.now(); ftSave(); ftPaintLock();
+});
+
+/* head fields */
+const FT_FIELDS=[
+  ["ft-prodtype","productType"],["ft-sku","sku"],
+  ["ft-videono","videoNo"],["ft-inspector","inspector"],["ft-craft","craft"],
+  ["ft-phrr","phrr"],["ft-thr","thr"],["ft-result","result"],["ft-remark","remark"]
+];
+FT_FIELDS.forEach(([id,k])=>{
+  const ev=$("#"+id).tagName==="SELECT"?"change":"input";
+  $("#"+id).addEventListener(ev,e=>{ FT.fields[k]=e.target.value; if(k==="phrr"||k==="thr") ftPaintVerdict(); ftSave(); });
+});
+$("#ft-testdate").addEventListener("change",e=>{ FT.fields.testDate=fromDateInput(e.target.value); ftSave(); });
+$("#ft-proddate").addEventListener("change",e=>{ FT.fields.prodDate=fromDateInput(e.target.value); ftSave(); });
+
+/* photos */
+let ftPendingSlot=null;
+$("#ft-photo-add").addEventListener("click",()=>{
+  if(!FT||FT.locked) return;
+  const k="x"+(++ftPhotoCounter)+"_"+Date.now();
+  FT.photos["ft_"+k]=null;
+  ftPendingSlot=k; $("#ftpick").value=""; $("#ftpick").click();
+});
+ftBindPhotoBox($("#ft-pbox-report"),"report");
+$("#ftpick").addEventListener("change",async e=>{
+  const f=e.target.files[0]; if(!f||!ftPendingSlot) return;
+  try{
+    const blob=await shrink(f);
+    const sk="ft_"+ftPendingSlot;
+    FT.photos[sk]=blob; FT.photoOps[sk]="put";
+    if(FT_URLS[ftPendingSlot]) URL.revokeObjectURL(FT_URLS[ftPendingSlot]);
+    FT_URLS[ftPendingSlot]=URL.createObjectURL(blob);
+    ftPaintPhotos(); ftSave();
+  }catch(err){ toast("照片处理失败"); }
+  ftPendingSlot=null;
+});
+
+/* record table */
+function ftrecDefaultRange(){
+  const sel=$("#ftrec-range");
+  if(!sel.value) sel.value="month";
+}
+
+async function ftrecRender(){
+  let rows=[];
+  try{ rows=(await metaAll()).filter(m=>m.type==="cfr1633"); }catch(e){}
+  rows.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  const range=$("#ftrec-range").value;
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth(), d=now.getDate();
+  let from=0;
+  if(range==="day") from=new Date(y,m,d).getTime();
+  else if(range==="month") from=new Date(y,m,1).getTime();
+  else if(/^\d+$/.test(range)) from=new Date(y,m-Number(range),1).getTime();
+  if(from) rows=rows.filter(r=>(r.updatedAt||0)>=from);
+  const pt=$("#ftrec-prodtype").value;
+  if(pt) rows=rows.filter(r=>(r.productType||"")==pt);
+  const vf=$("#ftrec-verdict").value;
+  if(vf) rows=rows.filter(r=>(r.ftVerdict||"")==vf);
+  if(range!=="all") rows=rows.slice(0,200);
+  $("#ftrec-scope").textContent=rows.length+" "+tr("条");
+  const tbl=$("#ftrec-table");
+  tbl.innerHTML='<thead><tr>'+
+    '<th class="seq">序号</th>'+
+    '<th>产品类型</th>'+
+    '<th>SKU</th>'+
+    '<th>测试日期</th>'+
+    '<th>生产日期</th>'+
+    '<th class="num">PHRR(kW)</th>'+
+    '<th class="num">THR(MJ)</th>'+
+    '<th>燃烧时间</th>'+
+    '<th>视频编号</th>'+
+    '<th>备注</th>'+
+    '<th>判定</th>'+
+    '<th>状态/操作</th>'+
+    '</tr></thead>';
+  const body=document.createElement("tbody");
+  const viewLabel=tr("查看");
+  rows.forEach((r,i)=>{
+    const row=document.createElement("tr");
+    if(!r.locked) row.classList.add("draft");
+    if(FT && r.id===FT.id) row.classList.add("cur");
+    const v=r.ftVerdict||"";
+    const vbadge=v?('<span class="frec-badge '+(v==="合格"?"ok":"no")+'">'+esc(v)+'</span>'):"—";
+    const skuFull=r.sku||"";
+    const phrr=r.phrr||"";
+    const thrVal=r.thr||"";
+    row.innerHTML='<td class="seq">'+(i+1)+'</td>'+
+      '<td>'+esc(r.productType||"")+'</td>'+
+      '<td>'+esc(skuFull)+'</td>'+
+      '<td>'+esc(r.testDate||"")+'</td>'+
+      '<td>'+esc(r.prodDate||"")+'</td>'+
+      '<td class="num'+(lnum(phrr)!=null&&lnum(phrr)>200?" warn":"")+'">'+esc(phrr)+'</td>'+
+      '<td class="num'+(lnum(thrVal)!=null&&lnum(thrVal)>15?" warn":"")+'">'+esc(thrVal)+'</td>'+
+      '<td>'+esc(r.result||"")+'</td>'+
+      '<td>'+esc(r.videoNo||"")+'</td>'+
+      '<td>'+esc(r.remark||"")+'</td>'+
+      '<td>'+vbadge+'</td>'+
+      '<td><span class="lockdot" aria-hidden="true"></span><button type="button" class="frec-open">'+esc(viewLabel)+'</button></td>';
+    $("button",row).addEventListener("click",async()=>{ await ftLoad(r.id); ftShow("entry"); });
+    body.appendChild(row);
+  });
+  tbl.appendChild(body);
+}
+["ftrec-range","ftrec-prodtype","ftrec-verdict"].forEach(id=>{
+  $("#"+id).addEventListener("change",ftrecRender);
+});
+$("#ftrec-clear").addEventListener("click",()=>{
+  $("#ftrec-range").value="month"; $("#ftrec-prodtype").value=""; $("#ftrec-verdict").value="";
+  ftrecRender();
+});
+$("#ftrec-close").addEventListener("click",()=>ftShow("entry"));
+$("#ftrecbtn").addEventListener("click",()=>ftShow("rec"));
+
+/* picker */
+let FT_PICK_OPEN={};
+function ftDayKey(m){
+  const t=parseDMY(m.testDate);
+  const dd=t||new Date(m.updatedAt||Date.now()), p=n=>String(n).padStart(2,"0");
+  return dd.getFullYear()+"-"+p(dd.getMonth()+1)+"-"+p(dd.getDate());
+}
+async function ftRenderPick(){
+  const host=$("#ftplbody"); host.innerHTML="";
+  let rows=[];
+  try{ rows=(await metaAll()).filter(m=>m.type==="cfr1633"); }catch(e){}
+  rows.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  $("#ftplcount").textContent=rows.length;
+  if(!rows.length){ host.innerHTML='<div class="frec-empty">还没有记录。</div>'; return; }
+  const groups=new Map();
+  rows.forEach(m=>{ const k=ftDayKey(m); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(m); });
+  [...groups.keys()].sort().reverse().forEach((k,i)=>{
+    const list=groups.get(k);
+    if(FT_PICK_OPEN[k]===undefined) FT_PICK_OPEN[k]= i===0 || list.some(r=>FT&&r.id===FT.id);
+    const open=FT_PICK_OPEN[k];
+    const h=el("button","plday"); h.type="button";
+    h.innerHTML='<span class="plarrow">'+(open?"▾":"▸")+'</span><span class="pldate">'+dayLabel(k)+
+      '</span><span class="pln">'+list.length+'</span>';
+    h.addEventListener("click",()=>{ FT_PICK_OPEN[k]=!open; ftRenderPick(); });
+    host.appendChild(h);
+    if(!open) return;
+    list.forEach(m=>{
+      const b=el("button","plrow"+(FT&&m.id===FT.id?" cur":"")); b.type="button";
+      b.innerHTML='<span class="plnm">'+esc(ftPickLabel(m))+'</span>'+pickTime(m.updatedAt);
+      b.addEventListener("click",async()=>{
+        $("#ftpicklist").hidden=true; await ftLoad(m.id); ftShow("entry");
+      });
+      host.appendChild(b);
+    });
+  });
+}
+function ftPlacePick(){
+  const btn=$("#ftpickbtn"), box=$(".plbox",$("#ftpicklist"));
+  if(!btn||!box) return;
+  const r=btn.getBoundingClientRect();
+  box.style.top=(r.bottom+6)+"px";
+  box.style.left=Math.max(8,Math.min(r.left,window.innerWidth-box.offsetWidth-8))+"px";
+}
+$("#ftpickbtn").addEventListener("click",()=>{ $("#ftpicklist").hidden=false; ftRenderPick(); ftPlacePick(); });
+$("#ftpl-close").addEventListener("click",()=>{ $("#ftpicklist").hidden=true; });
+$("#ftpicklist").addEventListener("click",e=>{ if(e.target.id==="ftpicklist") $("#ftpicklist").hidden=true; });
+lockGate("#ftentryv", ()=>!!(FT && FT.locked));
 
 /* ── 一级：模块首页 + 路由 ────────────────────────────────────────── */
 function resetToBlank(){
@@ -8089,7 +8697,7 @@ $("#logout").addEventListener("click",async()=>{
   location.reload();
 });
 async function showHome(){
-  $("#mod").hidden=true; $("#lab").hidden=true; $("#iqc").hidden=true; $("#oqc").hidden=true; $("#ipqc").hidden=true;
+  $("#mod").hidden=true; $("#lab").hidden=true; $("#iqc").hidden=true; $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true;
   $("#home").hidden=false;
   paintLangSw();
   document.title=tr("荣升家居 · 质检报告系统");
@@ -8113,10 +8721,11 @@ async function enterModule(id,reportId){
   if(id==="iqc") return enterIqc(reportId);
   if(id==="oqc") return enterOqc(reportId);
   if(id==="ipqc") return enterIpqc(reportId);
+  if(id==="cfr1633") return enterCfr1633(reportId);
   CURRENT=id;
   $("#modname").textContent = m.reportZh;
   const cap=$("#s1 .head h2 .cn"); if(cap) cap.textContent="/ "+m.reportZh;
-  $("#home").hidden=true; $("#lab").hidden=true; $("#iqc").hidden=true; $("#oqc").hidden=true; $("#ipqc").hidden=true;
+  $("#home").hidden=true; $("#lab").hidden=true; $("#iqc").hidden=true; $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true;
   $("#mod").hidden=false;
   /* Land on the 记录表, NOT on whatever report happens to be newest. Dropping
      straight into an editable form was how a finished report from days ago (or,
@@ -8287,7 +8896,7 @@ function payloadOf(r){
            /* 「提交并锁定」的时间戳，0/缺省 = 还是草稿。放 payload 里跟着正常
               同步走，所以离线也能提交；服务端会把它抽成一列用来拦写入。 */
            locked:r.locked||0,
-           lab:r.lab, std:r.std, iqc:r.iqc, mat:r.mat, oqc:r.oqc, ipqc:r.ipqc };
+           lab:r.lab, std:r.std, iqc:r.iqc, mat:r.mat, oqc:r.oqc, ipqc:r.ipqc, cfr1633:r.cfr1633 };
 }
 
 /* write straight to storage without touching updatedAt — used when applying
@@ -8372,6 +8981,7 @@ async function pushOne(rec){
        接着再改就是在一份已经不存在的数据上改。 */
     if(!$("#ipqc").hidden && PR && PR.id===rec.id) await ipqcLoad(rec.id);
     if(!$("#oqc").hidden  && OR && OR.id===rec.id) await oqcLoad(rec.id);
+    if(!$("#cfr1633").hidden && FT && FT.id===rec.id) await ftLoad(rec.id);
   }
 }
 
@@ -8412,7 +9022,7 @@ async function pullAll(){
     if(stale) toFetch.push(row);
   }
 
-  let labChanged=false, iqcChanged=false, oqcChanged=false, ipqcChanged=false, fqcChanged=false;
+  let labChanged=false, iqcChanged=false, oqcChanged=false, ipqcChanged=false, fqcChanged=false, ftChanged=false;
   await withPool(toFetch, SYNC_CONCURRENCY, async row=>{
     const full = await (await api("/api/report/"+encodeURIComponent(row.id))).json();
     const existing = (await dbGet(row.id)) || {};
@@ -8431,6 +9041,7 @@ async function pullAll(){
     if(rec.mat==null) delete rec.mat;
     if(rec.oqc==null) delete rec.oqc;
     if(rec.ipqc==null) delete rec.ipqc;
+    if(rec.cfr1633==null) delete rec.cfr1633;
     await persistQuiet(rec);
     if(R && R.id===row.id){ R=rec; paintAll(); }
     /* 成品原来没有这个标记，记录表（=落地屏）在同步后不会重画 */
@@ -8454,6 +9065,10 @@ async function pullAll(){
       else if(PR && PR.id===row.id){ await ipqcLoad(row.id); }
       else if(rec.type==="ipqc"){ ipqcChanged=true; }
     }
+    if(!$("#cfr1633").hidden){
+      if(FT && FT.id===row.id){ await ftLoad(row.id); }
+      else if(rec.type==="cfr1633"){ ftChanged=true; }
+    }
   });
   if(labChanged){
     await labRefreshList();
@@ -8467,6 +9082,7 @@ async function pullAll(){
   /* #frec 自己的 hidden 挡不住"人在首页"这种情况（祖先隐藏不会传染到 hidden
      属性上），所以还要看板块本身开着没有 */
   if(fqcChanged && !$("#mod").hidden && !$("#frec").hidden) await frecRender();
+  if(ftChanged && !$("#cfr1633").hidden && !$("#ftrec").hidden) await ftrecRender();
 }
 
 /** Photos are fetched only when a report is actually opened. */
@@ -8610,7 +9226,7 @@ async function refreshPending(){
 }
 
 function paintSync(){
-  [$("#sync"),$("#lsync"),$("#isync"),$("#osync"),$("#psync")].forEach(n=>n&&paintSyncInto(n));
+  [$("#sync"),$("#lsync"),$("#isync"),$("#osync"),$("#psync"),$("#ftsync")].forEach(n=>n&&paintSyncInto(n));
 }
 function paintSyncInto(el){
   if(!SYNC.enabled){ el.hidden=true; return; }
@@ -9563,6 +10179,43 @@ const I18N_ID={
   "＋ 加一张": "＋ Tambah 1 Foto",
   "＋ 增加一行": "＋ Tambah Baris",
   "＋ 记一条不良": "＋ Catat 1 NG",
+  /* ── 16 CFR 1633 防火检验 ── */
+  "防火检验": "Uji Ketahanan Api",
+  "16 CFR 1633 防火检验": "16 CFR 1633 Uji Ketahanan Api",
+  "成品燃烧测试，峰值热释放率/总热释放量": "Uji bakar produk jadi, PHRR / THR",
+  "测试信息": "Info Pengujian",
+  "产品类型": "Tipe Produk",
+  "弹簧床垫": "Kasur Spring",
+  "海绵床垫": "Kasur Busa",
+  "测试日期": "Tanggal Uji",
+  "生产日期": "Tanggal Produksi",
+  "测试视频编号": "No. Video Pengujian",
+  "检测人员": "Penguji",
+  "工艺要求": "Persyaratan Proses",
+  "阻燃布套 / 防火棉 / 包边工艺等": "Kain tahan api / busa tahan api / proses jahit tepi dll.",
+  "测试照片": "Foto Pengujian",
+  "增加照片": "Tambah Foto",
+  "点击上传或拖入照片": "Klik untuk upload atau tarik foto ke sini",
+  "删除照片": "Hapus Foto",
+  "测试报告": "Laporan Pengujian",
+  "点击或拖入上传测试报告": "Klik atau tarik untuk upload laporan pengujian",
+  "📷 照片": "📷 Foto",
+  "📄 测试报告": "📄 Laporan Pengujian",
+  "测试结果": "Hasil Pengujian",
+  "峰值热释放率 PHRR（kW）": "Laju Pelepasan Panas Puncak PHRR (kW)",
+  "总热释放量 THR（MJ）": "Total Pelepasan Panas THR (MJ)",
+  "燃烧时间": "Waktu Pembakaran",
+  "测试合格": "Lulus uji",
+  "成品防火检验记录": "Catatan Uji Ketahanan Api Produk Jadi",
+  "荣升家居 · 16 CFR 1633 防火检验": "Prestova · 16 CFR 1633 Uji Ketahanan Api",
+  "视频编号": "No. Video",
+  "还没有记录。": "Belum ada catatan.",
+  "新记录已建": "Catatan baru dibuat",
+  "删除这条防火检验记录？不可撤销。": "Hapus catatan uji api ini? Tidak bisa dibatalkan.",
+  "已经提交过了": "Sudah dikirim sebelumnya",
+  "提交并锁定这条记录？提交后不可修改。": "Kirim dan kunci catatan ini? Setelah dikunci tidak bisa diubah.",
+  "已提交": "Terkirim",
+  "照片处理失败": "Gagal memproses foto",
 };
 /* 照片格里的「拍照 / 相册」要单独刷一遍。两个原因叠在一起让它翻不过来：
      · 这两个按钮是 mount() 在脚本执行早期建的，那时 I18N 还是空 Map
@@ -9590,7 +10243,7 @@ function i18nFillDomain(){
 async function enterLab(recordId){
   CURRENT="lab";
   $("#home").hidden=true; $("#mod").hidden=true; $("#iqc").hidden=true;
-  $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#lab").hidden=false;
+  $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true; $("#lab").hidden=false;
   /* Land on the 记录表 rather than the newest batch's entry grid — same
      reasoning as enterModule()'s frecShow(), see there. Opening a specific
      batch (home screen's 最近的报告) still goes straight to the grid.
@@ -10808,34 +11461,39 @@ applyRole();
   if(m && m.ready && m.id==="lab"){
     CURRENT="lab";
     $("#home").hidden=true; $("#mod").hidden=true; $("#iqc").hidden=true;
-    $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#lab").hidden=false;
+    $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true; $("#lab").hidden=false;
     labShow("sheet");
   }else if(m && m.ready && m.id==="iqc"){
     CURRENT="iqc";
     $("#home").hidden=true; $("#mod").hidden=true; $("#lab").hidden=true;
-    $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#iqc").hidden=false;
+    $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true; $("#iqc").hidden=false;
     irecShow(true);
   }else if(m && m.ready && m.id==="ipqc"){
     CURRENT="ipqc";
     $("#home").hidden=true; $("#mod").hidden=true; $("#lab").hidden=true;
-    $("#iqc").hidden=true; $("#oqc").hidden=true; $("#ipqc").hidden=false;
+    $("#iqc").hidden=true; $("#oqc").hidden=true; $("#cfr1633").hidden=true; $("#ipqc").hidden=false;
     ipqcShow("rec");
   }else if(m && m.ready && m.id==="oqc"){
     CURRENT="oqc";
     $("#home").hidden=true; $("#mod").hidden=true; $("#lab").hidden=true;
-    $("#iqc").hidden=true; $("#ipqc").hidden=true; $("#oqc").hidden=false;
+    $("#iqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true; $("#oqc").hidden=false;
     oqcShow("rec");
+  }else if(m && m.ready && m.id==="cfr1633"){
+    CURRENT="cfr1633";
+    $("#home").hidden=true; $("#mod").hidden=true; $("#lab").hidden=true;
+    $("#iqc").hidden=true; $("#ipqc").hidden=true; $("#oqc").hidden=true; $("#cfr1633").hidden=false;
+    ftShow("rec");
   }else if(m && m.ready){
     CURRENT=m.id;
     $("#modname").textContent=m.reportZh;
     const cap=$("#s1 .head h2 .cn"); if(cap) cap.textContent="/ "+m.reportZh;
     $("#home").hidden=true; $("#lab").hidden=true; $("#iqc").hidden=true;
-    $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#mod").hidden=false;
+    $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true; $("#mod").hidden=false;
     frecShow(true);
   }else{
     renderCards([]); renderRecent([]);
     $("#mod").hidden=true; $("#lab").hidden=true; $("#iqc").hidden=true;
-    $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#home").hidden=false;
+    $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true; $("#home").hidden=false;
   }
 })();
 
