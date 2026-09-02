@@ -1529,9 +1529,14 @@ table.frec-table tbody tr.draft .lockdot,
 #ipqc .ipan-item .num{text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* ── 16 CFR 1633 防火检测 ───────────────────────────────────────── */
-#cfr1633 .ftwrap{max-width:1180px;margin:0 auto;padding:14px 10px 60px}
+/* column flex + gap，跟另外四个板块一字不差。原来是普通块 + .ftcard 各自
+   margin-bottom:14px —— 间距看着一样，但**共用的锁定提示条靠 align-self:center
+   收缩居中**（见 #lockbar 那条规则），容器不是 flex 的话那句是空操作，提示条
+   会摊满整行，跟别的板块不一样（用户截图报的）。padding 也对齐成 18px 14px。 */
+#cfr1633 .ftwrap{max-width:1180px;margin:0 auto;padding:18px 14px 60px;
+  display:flex;flex-direction:column;gap:14px}
 #cfr1633 .ftcard{background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-card);
-  padding:16px 18px;margin-bottom:14px;box-shadow:var(--sh-1)}
+  padding:16px 18px;box-shadow:var(--sh-1)}
 #cfr1633 .ftcard>h2{font-size:15px;font-weight:700;color:var(--ink);margin:0 0 12px;
   display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 #cfr1633 .ftcard>h2 .fthint{font-weight:400;font-size:12px;color:var(--ink-3)}
@@ -3287,9 +3292,12 @@ table.frec-table tbody tr.draft .lockdot,
   <section class="ftcard">
     <h2>测试结果</h2>
     <div class="fthead">
-      <label class="ftfield"><span>峰值热释放率 PHRR（kW）</span>
+      <!-- 单位用半角括号：全角（）两个就占 25px，整条标签要 155px、
+           而单栏只有 148px，正好折行把 (kW) 顶到第二排。半角只要 141px，
+           一行放得下。括号里是拉丁字母，本来也该配半角。 -->
+      <label class="ftfield"><span>峰值热释放率 PHRR (kW)</span>
         <input id="ft-phrr" inputmode="decimal" placeholder="≤ 200"></label>
-      <label class="ftfield"><span>总热释放量 THR（MJ）</span>
+      <label class="ftfield"><span>总热释放量 THR (MJ)</span>
         <input id="ft-thr" inputmode="decimal" placeholder="≤ 15"></label>
       <label class="ftfield"><span>燃烧时间</span>
         <input id="ft-result" placeholder="7min自然熄灭"></label>
@@ -10243,8 +10251,8 @@ const I18N_ID={
   "📷 照片": "📷 Foto",
   "📄 测试报告": "📄 Laporan Pengujian",
   "测试结果": "Hasil Pengujian",
-  "峰值热释放率 PHRR（kW）": "Laju Pelepasan Panas Puncak PHRR (kW)",
-  "总热释放量 THR（MJ）": "Total Pelepasan Panas THR (MJ)",
+  "峰值热释放率 PHRR (kW)": "Laju Pelepasan Panas Puncak PHRR (kW)",
+  "总热释放量 THR (MJ)": "Total Pelepasan Panas THR (MJ)",
   "燃烧时间": "Waktu Pembakaran",
   "测试合格": "Lulus uji",
   "成品防火检验记录": "Catatan Uji Ketahanan Api Produk Jadi",
