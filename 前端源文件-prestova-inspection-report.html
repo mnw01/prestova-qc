@@ -2429,6 +2429,17 @@ table.frec-table tbody tr.draft .lockdot,
   .frec-card > h2 .note,#cfr1633 .ftcard > h2 .fthint{
     font-size:12.5px;font-weight:400;color:var(--ink-3);
   }
+  /* 区块标题后面那句小注（「不良最多的前 15 个」「不合格是哪一项超的」这类）
+     ——**五个看板统一 11.5px / 400**。原来三种字号并存：
+       实验室 .lhint  11.5px/600（它自己那条没写 font-weight，继承了 h2 的粗体）
+       制程 .iphint / 来料 .iqhint  11.5px/400
+       成品 .note / 防火 .fthint    12.5px/400（上面那条共用规则给的）
+     这条写在后面，压过上面那条里的 .note / .fthint。 */
+  #lab .lcard > h2 .lhint,#lab .lcard > h2 .note,
+  #iqc .iqcard > h2 .iqhint,#ipqc .ipcard > h2 .iphint,
+  .frec-card > h2 .note,#cfr1633 .ftcard > h2 .fthint{
+    font-size:11.5px;font-weight:400;
+  }
 
   /* 记录表卡片头上的「+ 新建」（从工具栏挪过来的：创建属于列表，不属于导航） */
   .recnew{
