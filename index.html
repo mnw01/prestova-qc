@@ -1007,8 +1007,12 @@ table.frec-table tbody tr.draft>td,#iqc table.irec-table tbody tr.draft>td,
    这条只管光标。 */
 /* 锁了之后，「会改记录」的那些操作键一律**藏起来**，不只是点不动 ——
    照片角上留一个按不下去的 ✕，看的人只会以为坏了（用户报的）。
-   五个板块一条规则收掉：删除 / 加图 / 拍照 / 标记不良 / 适应窗口，
-   以及各板块照片网格末尾那个「＋」。
+   五个板块一条规则收掉，凡是「点了会改这条记录」的都在内：
+     成品  删除照片 / 加图 / 拍照 / 标记不良 / 适应窗口
+     来料  检查项的「＋ 增加一行」和行尾 ✕
+     制程  「＋ 记一条不良」和不良卡片的 ✕
+     装柜  照片的 ✕ / 拍照 / 加图，货物明细的「＋ 增加一行」和行尾 ✕
+     防火  照片和报告的 ✕，两个网格末尾的「＋」
 
    只读的一律不动：照片和 PDF 仍然点得开，打印 / 出报告那些带 data-lockok
    的照常 —— 那才是锁定态该保留的东西。
@@ -1025,9 +1029,15 @@ table.frec-table tbody tr.draft>td,#iqc table.irec-table tbody tr.draft>td,
 .wrap.locked .pcam,
 .wrap.locked .pflag,
 .wrap.locked .pfit,
+#iqcv.locked .iqadd,
+#iqcv.locked .iqdel,
+#ipqcv.locked .ipadd,
+#ipqcv.locked .ipdx,
 #oqcv.locked .oqx,
 #oqcv.locked .oqcam,
 #oqcv.locked .oqadd,
+#oqcv.locked .oqgdel,
+#oqcv.locked #oq-gadd,
 #ftentryv.locked .ftpdel,
 #ftentryv.locked .ftpbox-add{
   display:none!important;
