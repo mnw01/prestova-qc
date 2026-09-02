@@ -1602,7 +1602,15 @@ table.frec-table tbody tr.draft .lockdot,
    条形填充这四处历来用的是 #3f9d67 这个字面值。
    第一版把普通档写成 var(--accent-fill) 是错的：那是"主操作"按钮的蓝
    （全站 13 处全是按钮），拿来当图表填充等于凭空多一种图表色。 */
-#cfr1633 .ftan-item .fill{display:block;height:100%;background:var(--ink-3)}
+/* 看板条形图**只有三种颜色**：
+     蓝 var(--accent)  默认 —— 没有合格/不合格语义的一切（燃烧时间各档、未判定）
+     绿 #3f9d67        合格 / 在限值内
+     红 #c9483c        不合格 / 超限
+   蓝用的是全站通用的那个 accent（浅 #1f4fa8 / 深 #5b93ea），跟语言切换选中态、
+   卡片链接、记录表行高亮同一个 token，跟着主题走。
+   **不是 --accent-fill** —— 那个是「主操作」按钮专用的填充（全站 13 处全是
+   按钮），拿来当图表色会跟按钮抢语义。 */
+#cfr1633 .ftan-item .fill{display:block;height:100%;background:var(--accent)}
 #cfr1633 .ftan-item.ok .fill{background:#3f9d67}
 #cfr1633 .ftan-item.over .fill{background:#c9483c}
 #cfr1633 .ftan-item .num{text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -8631,7 +8639,10 @@ function ftBandOf(v, edges){
 }
 const FT_PHRR_EDGES=[50,100,150,200], FT_PHRR_LABELS=["≤ 50","50–100","100–150","150–200","> 200"];
 const FT_THR_EDGES=[5,10,15],        FT_THR_LABELS=["≤ 5","5–10","10–15","> 15"];
-const FT_BURN_EDGES=[5,10,15],       FT_BURN_LABELS=["≤ 5 min","5–10 min","10–15 min","> 15 min"];
+/* 燃烧时间分到 30 分钟：现场有烧十几二十分钟才自然熄灭的，原来 >15 一档
+   把它们全糊在一起，看不出是 16 分钟还是半小时。 */
+const FT_BURN_EDGES=[5,10,15,20,25,30];
+const FT_BURN_LABELS=["≤ 5 min","5–10 min","10–15 min","15–20 min","20–25 min","25–30 min","> 30 min"];
 
 async function ftDashAgg(){
   const from=$("#ftd-from").value, to=$("#ftd-to").value, pt=$("#ftd-prodtype").value;
@@ -8735,6 +8746,7 @@ async function ftdashRender(){
 
   bars("#ftd-phrr", FT_PHRR_LABELS, a.phrrBands, a.phrr.length, inLimit(FT_PHRR_LABELS.length));
   bars("#ftd-thr",  FT_THR_LABELS,  a.thrBands,  a.thr.length,  inLimit(FT_THR_LABELS.length));
+  /* 燃烧时间没有限值，不套合格/不合格的语义 —— 不给 class，走默认的蓝 */
   bars("#ftd-burn", FT_BURN_LABELS, a.burnBands, a.burn.length, null);
   if(a.burnUnparsed && a.burn.length){
     $("#ftd-burn").insertAdjacentHTML("beforeend",
