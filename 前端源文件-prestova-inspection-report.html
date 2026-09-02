@@ -1514,10 +1514,18 @@ table.frec-table tbody tr.draft .lockdot,
    会摊满整行，跟别的板块不一样（用户截图报的）。padding 也对齐成 18px 14px。 */
 #cfr1633 .ftwrap{max-width:1180px;margin:0 auto;padding:18px 14px 60px;
   display:flex;flex-direction:column;gap:14px}
-#cfr1633 .ftcard{background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-card);
+/* position:relative 是给标题右上角那个 ✕ 当定位基准的（下面 button.plx 那条）。
+   缺了它 ✕ 就只能挤在标题文字后面 —— 另外四个板块的卡片都写了。 */
+#cfr1633 .ftcard{position:relative;background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-card);
   padding:16px 18px;box-shadow:var(--sh-1)}
 #cfr1633 .ftcard>h2{font-size:15px;font-weight:700;color:var(--ink);margin:0 0 12px;
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-right:26px}
+/* ✕ 钉在卡片右上角，照抄制程 #ipqc .ipcard > h2 button.plx。
+   不写这条它就是个普通 flex 子元素，挤在标题文字后面（用户报的）；
+   上面 h2 的 padding-right:26px 是给它让位，同另外四个板块。 */
+#cfr1633 .ftcard>h2 button.plx{position:absolute;top:10px;right:10px;margin:0;border:0;
+  background:transparent;padding:3px 7px;font-size:15px}
+#cfr1633 .ftcard>h2 button.plx:hover{background:color-mix(in srgb,currentColor 10%,transparent)}
 /* 通用的一条，照抄制程 .iphint —— 原来只有下面那条 `h2 .fthint`（限定在标题
    里面），所以看板那个独立的 <p class="fthint" id="ftd-scope">「区间内 N 条
    记录…」一条规则都不匹配，直接继承正文字号，比周围大一大截（用户报的）。 */
@@ -3356,7 +3364,10 @@ table.frec-table tbody tr.draft .lockdot,
     <button type="button" class="recnew" id="ftnew">+ 新记录</button>
     <button type="button" class="plx" id="ftrec-close" title="关闭">✕</button>
   </div>
+  <!-- 字段顺序照另外三张记录表：标识 → 分类 → 范围 → 日期 → 判定 → 清除筛选。
+       「判定」一律压在最后（成品 / 来料 / 装柜都是），别插在范围和日期中间。 -->
   <div class="frec-bar">
+    <label class="frec-field"><span>SKU</span><input type="text" id="ftrec-sku" placeholder="全部"></label>
     <label class="frec-field"><span>产品类型</span>
       <select id="ftrec-prodtype">
         <option value="">全部</option>
@@ -3373,14 +3384,13 @@ table.frec-table tbody tr.draft .lockdot,
         <option value="12">近 12 个月</option>
         <option value="all">全部（最近 200 条）</option>
       </select></label>
+    <label class="frec-field"><span>测试日期</span><input type="date" id="ftrec-date"></label>
     <label class="frec-field"><span>判定</span>
       <select id="ftrec-verdict">
         <option value="">全部</option>
         <option value="合格">合格</option>
         <option value="不合格">不合格</option>
       </select></label>
-    <label class="frec-field"><span>测试日期</span><input type="date" id="ftrec-date"></label>
-    <label class="frec-field"><span>SKU</span><input type="text" id="ftrec-sku" placeholder="全部"></label>
     <button type="button" class="recbtn" id="ftrec-clear">清除筛选</button>
   </div>
   <div class="frec-wrap"><table class="frec-table" id="ftrec-table"></table></div>
