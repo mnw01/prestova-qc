@@ -9416,8 +9416,28 @@ function indexUrl(){
 }
 try{ window.__SYNC = SYNC; }catch(e){}   /* read-only handle for diagnostics */
 
+/* fetch 本身没有超时。仓库 Wi-Fi 掉一半（连着但发不出去）、或者撞上要登录的
+   路由器时，它可能一直挂着不返回。而 syncNow 那道闸（syncInflight）只在 runSync
+   结束时才清空 —— 挂住就等于整个会话的同步静默冻结：60 秒轮询照常触发但全是空
+   转，徽标不报错，人看不出异常，只能刷新页面才恢复。数据不丢（都在本地待同步队
+   列里），但那台设备可能一整天没往上传一条。
+   超时按普通网络错误处理：徽标点亮，下一轮重试。
+
+   上传给足时间：8MB 的 PDF 在仓库那种网速下 30 秒根本传不完，一刀切会把本来能
+   成的上传掐死。没 body 的（拉索引、拉记录、删照片）30 秒够了。
+   signal 放在 ...opts 后面：调用方万一自带一个，也不能把超时顶掉。 */
+const API_TIMEOUT = 30000, API_TIMEOUT_UPLOAD = 180000;
 async function api(path, opts={}){
-  const r = await fetch(path, { credentials:"same-origin", ...opts });
+  const ac = new AbortController();
+  const t = setTimeout(()=>ac.abort(), opts.body ? API_TIMEOUT_UPLOAD : API_TIMEOUT);
+  let r;
+  try{
+    r = await fetch(path, { credentials:"same-origin", ...opts, signal:ac.signal });
+  }catch(e){
+    /* abort 抛的是 AbortError，换成自己的标记，好跟"真的没有后端"分开 —— 见下面
+       runSync 的 catch。 */
+    throw (e && e.name==="AbortError") ? new Error("timeout") : e;
+  }finally{ clearTimeout(t); }
   if(r.status===401){ SYNC.err="auth"; throw new Error("unauthorized"); }
   if(!r.ok) throw new Error("http "+r.status);
   return r;
@@ -9843,8 +9863,12 @@ async function runSync(){
        SYNC.enabled=false → 徽标直接隐藏、整个会话不再尝试、也没有任何提示。
        人照常录入（本地存得住），但一条都推不上去，要等到有人想起来刷新页面。
        api() 对 HTTP 错误抛的是 "http <状态码>"，靠这个把两者分开。 */
-    const st=(/^http (\d+)$/.exec(String((e && e.message) || ""))||[])[1];
-    const noBackend = !st || st==="404";
+    const msg=String((e && e.message) || "");
+    const st=(/^http (\d+)$/.exec(msg)||[])[1];
+    /* 超时要单独摘出来：它是"这次没打通"，不是"根本没有后端"。不摘的话，会话里
+       第一次同步撞上慢网就会被判成没有后端 → SYNC.enabled=false → 徽标藏起来、
+       整个会话不再尝试，跟上面 500 那段是同一个坑。 */
+    const noBackend = (!st && msg!=="timeout") || st==="404";
     if(SYNC.err==="auth"){
       toast("Session expired — reloading");
       setTimeout(()=>location.reload(), 1200);
