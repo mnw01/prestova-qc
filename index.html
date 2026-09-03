@@ -9739,7 +9739,9 @@ let syncTimer=null;
 function scheduleSync(delay=1600){
   if(!SYNC.enabled) return;
   clearTimeout(syncTimer);
-  syncTimer=setTimeout(()=>syncNow(), delay);
+  /* 触发后要置空：切走时那个"有没有待推的同步"判断读的就是它，
+     不置空的话第一次排过之后它永远是真，每次切后台都会白打一枪全量拉取。 */
+  syncTimer=setTimeout(()=>{ syncTimer=null; syncNow(); }, delay);
 }
 
 /* 推送输掉的记录：本地这次改动已经被服务端那份覆盖掉了。先收集，等这轮同步
@@ -9905,8 +9907,21 @@ setInterval(()=>{ if(!document.hidden) syncNow(); }, 60000);
 /* 切回标签页立刻同步一次。没有这一条的话，切回来会先盯着一屏最多一个轮询
    周期那么旧的数据。30 秒内刚同步过就不重复 —— 有人会在两个标签之间来回切，
    别让每次切换都打一枪。 */
+/* 反过来，切走的时候（锁屏、切别的 App、关标签页）把还没到点的那次同步
+   立刻冲掉。原来只有"切回来"这一半：人填完最后一个字就锁屏，那次改动正好
+   卡在防抖里，要等下次打开 App 才推得上去。数据不丢（在本地待同步队列里），
+   但云上会晚一大截，现场感受是"我明明填了，别人那儿怎么没有"。
+   这个洞不是靠调小防抖能堵的 —— 总有人比那个数快，所以防抖维持 2 秒，堵在
+   这儿。剩下的窗口只有保存防抖那 0.4 秒（那会儿还没落盘，冲上去的是上一版），
+   比原来的 2 秒小得多。
+   尽力而为，不是保证：页面被立刻冻结的话这次 fetch 也可能发不出去，但那种
+   情况下本地那份仍在，下次打开照样推。 */
 document.addEventListener("visibilitychange",()=>{
-  if(!document.hidden && Date.now()-(SYNC.at||0) > 30000) syncNow();
+  if(document.hidden){
+    if(syncTimer){ clearTimeout(syncTimer); syncTimer=null; syncNow(); }
+    return;
+  }
+  if(Date.now()-(SYNC.at||0) > 30000) syncNow();
 });
 
 /* ══ 实验室 ═══════════════════════════════════════════════════════════
