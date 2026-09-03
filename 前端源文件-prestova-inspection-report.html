@@ -9699,7 +9699,16 @@ async function hydratePhotos(id){
 }
 
 let syncTimer=null;
-function scheduleSync(delay=2500){
+/* 改完多久推云端。注意这个计时器每次保存都会重置，所以连续录入时它一直
+   往后顺延 —— 真正的上限是下面那个 60 秒轮询，不是这个数。
+   它管的也不是"存没存住"：本地写盘和「已保存」都在各板块 400ms 的保存防抖里
+   完成了，这里只决定云徽标什么时候清。
+   每次开火都跟一次 pullAll，而 /api/index 是全表扫描（没有增量游标），
+   2026-09-03 时库里 2960 条。所以这个数往小调，代价是索引全表读成倍增加，
+   换来的却是别人早看到一点点 —— 而"别人多久看见"由 60 秒轮询决定。
+   2.5 秒调到 2 秒是用户要的（2026-09-03），这个幅度对读行数影响有限；
+   真要再往下调，先跑 wrangler d1 insights 看当下谁在烧。 */
+function scheduleSync(delay=2000){
   if(!SYNC.enabled) return;
   clearTimeout(syncTimer);
   syncTimer=setTimeout(()=>syncNow(), delay);
