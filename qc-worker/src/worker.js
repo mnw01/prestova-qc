@@ -365,8 +365,14 @@ async function apiPutPhoto(request, env, id, slot) {
      pushOne 传完照片就无条件 `delete rec.photoOps[slot]`、不看返回值，拒收
      会让这张照片彻底丢掉（记录靠 updatedAt!==syncedAt 留在本地重试，照片
      没有这层保护）。而照片时间戳只用于索引和新旧比较，不参与 last-write-wins
-     抢写，偏了也不会把谁卡住 —— 何况记录那头已经拒收，时钟不准的设备根本
-     走不到「记录存进去了、照片时间却是歪的」这一步。 */
+     抢写，偏了也不会把谁卡住。
+
+     注意别被"记录那头已经拒收了"骗过去：pushOne 的 clock_skew 分支并不 return，
+     后面的照片循环照跑，所以时钟不准的设备**确实会**把歪掉的 x-updated-at 传
+     上来。之所以仍然不设防线，是因为这个值在两头都不参与判断 —— 服务端这条
+     INSERT 是无条件覆盖（DO UPDATE SET updated_at=excluded.updated_at，不比
+     大小），客户端 hydratePhotos 也只看「服务端有没有这张」不看时间。歪着也
+     只是索引上难看，卡不住任何人；而拒收会让这张照片彻底丢掉。 */
   const now = Number(request.headers.get("x-updated-at")) || Date.now();
   await env.DB.prepare(
     `INSERT INTO photos (report_id,slot,updated_at,size,deleted) VALUES (?,?,?,?,0)

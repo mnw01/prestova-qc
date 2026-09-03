@@ -9918,7 +9918,15 @@ setInterval(()=>{ if(!document.hidden) syncNow(); }, 60000);
    情况下本地那份仍在，下次打开照样推。 */
 document.addEventListener("visibilitychange",()=>{
   if(document.hidden){
-    if(syncTimer){ clearTimeout(syncTimer); syncTimer=null; syncNow(); }
+    if(syncTimer){
+      clearTimeout(syncTimer); syncTimer=null;
+      /* 正在跑的那一轮在开始时就把待推列表读完了，不含刚才这次改动。而
+         syncNow() 撞上在跑的一轮只会把那个 Promise 原样返回、不新开一轮 ——
+         直接调它就等于什么也没做，偏偏计时器已经被清掉，这次改动就谁也不管
+         了，比不加这个分支还差。所以要等在跑的那轮结束再补一轮。 */
+      if(syncInflight) syncInflight.catch(()=>{}).then(()=>syncNow());
+      else syncNow();
+    }
     return;
   }
   if(Date.now()-(SYNC.at||0) > 30000) syncNow();
