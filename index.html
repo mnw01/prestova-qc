@@ -9519,13 +9519,19 @@ const SYNC_CONCURRENCY = 10;
 /* `lab` carries a batch's readings, `std` the shared 品号标准表 — both are plain
    JSON and the server stores the payload opaquely, so they ride along as-is.
    Undefined keys are dropped by JSON.stringify, so an fqc report is unchanged. */
+/* payload 里的板块数据键。payloadOf 写它们、adoptServer 清它们 —— 原来这份清单
+   在三个地方各抄了一遍，加板块时要记得三处都改。 */
+const PAYLOAD_KEYS=["lab","std","iqc","mat","oqc","ipqc","cfr1633"];
+
 function payloadOf(r){
-  return { fields:r.fields||{}, checks:r.checks||{}, caps:r.caps||{},
+  const p={ fields:r.fields||{}, checks:r.checks||{}, caps:r.caps||{},
            flags:r.flags||{}, fits:r.fits||{}, tol:r.tol||"1.5",
            /* 「提交并锁定」的时间戳，0/缺省 = 还是草稿。放 payload 里跟着正常
               同步走，所以离线也能提交；服务端会把它抽成一列用来拦写入。 */
-           locked:r.locked||0,
-           lab:r.lab, std:r.std, iqc:r.iqc, mat:r.mat, oqc:r.oqc, ipqc:r.ipqc, cfr1633:r.cfr1633 };
+           locked:r.locked||0 };
+  /* 板块数据键单独贴，键名只在 PAYLOAD_KEYS 里写一次 */
+  PAYLOAD_KEYS.forEach(k=>{ p[k]=r[k]; });
+  return p;
 }
 
 /* write straight to storage without touching updatedAt — used when applying
@@ -9574,29 +9580,7 @@ async function pushOne(rec){
          "lost a race, please pull" would make pullAll() discard a fresh
          re-import in favour of the stale row it was meant to replace.) */
       const full = await (await api("/api/report/"+encodeURIComponent(rec.id))).json();
-      rec = Object.assign(blank(), rec, {
-        id: rec.id, type: full.type||rec.type||"fqc",
-        updatedAt: full.updatedAt, syncedAt: full.updatedAt,
-        /* 同一个响应里就带着照片清单（worker 的 apiGetReport 会返回 photos），
-           pullAll 那边用了，这边原来漏了。不更新的话，这台设备的 serverPhotos
-           停在输掉之前那一版：赢家新加的照片它不知道，hydratePhotos 也就不会去
-           下载。而且不会自愈 —— 这次解决完 updatedAt 已经等于服务端的值，
-           pullAll 的「服务端更新才拉」判据再也不成立，要等下一次有人改这条。 */
-        serverPhotos: photosOf(full.photos), photosChecked: true
-      }, payloadOf(full.payload||{}));
-      rec.checks = Object.assign(defaultChecks(), (full.payload||{}).checks||{});
-      if(rec.lab==null) delete rec.lab;
-      if(rec.std==null) delete rec.std;
-      if(rec.iqc==null) delete rec.iqc;
-      if(rec.mat==null) delete rec.mat;
-      if(rec.oqc==null) delete rec.oqc;
-      if(rec.ipqc==null) delete rec.ipqc;
-      if(rec.cfr1633==null) delete rec.cfr1633;
-      /* 跟 pullAll 同一条规矩：服务端已经没有的照片，本地那份也别留着；本机还没
-         推上去的（photoOps 里挂着）要放过。 */
-      Object.keys(rec.photos).forEach(slot=>{
-        if(!rec.serverPhotos[slot] && !rec.photoOps[slot]) delete rec.photos[slot];
-      });
+      rec = adoptServer(full, rec, rec.id);
       resolvedStale=true;
       /* 名字取覆盖**之前**那份上的，报给用户的才是他认得的那条 */
       LOST.push({ id:rec.id, why:lostWhy, name:lostName });
@@ -9649,6 +9633,37 @@ const photosOf = rows => {
   return sp;
 };
 
+/* 服务端那份 → 本地记录。「抢写输了」（pushOne）和「服务端更新了」（pullAll）做的
+   是同一件事，原来各写一份二十几行的重建，于是必然长歪：2026-09-03 就发现 pushOne
+   那份漏了 serverPhotos —— 输掉之后再也看不到赢家新加的照片，而且不自愈，因为解决
+   完 updatedAt 已经等于服务端的值，pullAll 的「服务端更新才拉」再也不成立。
+   注意这不是把六个板块合成一个：板块各有各的行为，那些不能合。这里合的是同步引擎
+   自己被抄成两份的同一个动作，以后只会一起对或一起错。
+
+   base = 覆盖之前手上那份：pushOne 传内存里的 rec，pullAll 传 dbGet 出来的
+   existing。照片和待传队列只从 base 继承，跟服务端 payload 无关。 */
+function adoptServer(full, base, id){
+  const rec=Object.assign(blank(), base, {
+    id, type: full.type || base.type || "fqc",
+    updatedAt: full.updatedAt, syncedAt: full.updatedAt,
+    photos: base.photos||{}, photoOps: base.photoOps||{},
+    serverPhotos: photosOf(full.photos), photosChecked: true
+  }, payloadOf(full.payload||{}));
+  rec.checks=Object.assign(defaultChecks(), (full.payload||{}).checks||{});
+  /* payloadOf 对没有的板块键写的是 undefined，而 Object.assign 连 undefined 一起
+     拷 —— 老版本 payload 里缺的键会把本地已有的抹成空。删掉，别留 undefined。 */
+  PAYLOAD_KEYS.forEach(k=>{ if(rec[k]==null) delete rec[k]; });
+  /* 别的设备删掉的照片，本地那份也别留着。serverPhotos 已经滤掉墓碑，但 photos
+     里是上次下载下来的 blob，原来从不裁剪 —— 那台设备会一直显示一张服务端早就
+     没有的照片，永远不自愈（线上 8/22 起累计 18 张墓碑、13 条记录）。
+     photoOps 里还挂着的要放过：那是本机刚拍、还没推上去的，裁掉就是把人的照片
+     吞了。 */
+  Object.keys(rec.photos).forEach(sl=>{
+    if(!rec.serverPhotos[sl] && !rec.photoOps[sl]) delete rec.photos[sl];
+  });
+  return rec;
+}
+
 async function pullAll(){
   const idx = await (await api(indexUrl())).json();
   const local = {};
@@ -9689,32 +9704,7 @@ async function pullAll(){
   let labChanged=false, iqcChanged=false, oqcChanged=false, ipqcChanged=false, fqcChanged=false, ftChanged=false;
   await withPool(toFetch, SYNC_CONCURRENCY, async row=>{
     const full = await (await api("/api/report/"+encodeURIComponent(row.id))).json();
-    const existing = (await dbGet(row.id)) || {};
-    const rec = Object.assign(blank(), existing, {
-      id: row.id, type: full.type||"fqc", updatedAt: full.updatedAt,
-      syncedAt: full.updatedAt, photoOps: existing.photoOps||{},
-      photos: existing.photos||{},
-      serverPhotos: photosOf(full.photos), photosChecked: true
-    }, payloadOf(full.payload||{}));
-    rec.checks = Object.assign(defaultChecks(), (full.payload||{}).checks||{});
-    /* Object.assign copies `undefined` too, so an older payload without these
-       would blank out what we already hold — drop the empty keys instead */
-    if(rec.lab==null) delete rec.lab;
-    if(rec.std==null) delete rec.std;
-    if(rec.iqc==null) delete rec.iqc;
-    if(rec.mat==null) delete rec.mat;
-    if(rec.oqc==null) delete rec.oqc;
-    if(rec.ipqc==null) delete rec.ipqc;
-    if(rec.cfr1633==null) delete rec.cfr1633;
-    /* 别的设备删掉的照片，本地这份要跟着删。serverPhotos 已经把墓碑滤掉了，但
-       photos 里是上次下载下来的 blob，原来从不裁剪 —— 于是那台设备会一直显示一
-       张服务端早就没有的照片，而且永远不会自愈（线上 8/22 起累计 18 张墓碑、
-       13 条记录，成品 10 / 装柜 8）。
-       photoOps 里还挂着东西的不能动：那是本机刚拍、还没推上去的，裁掉就是把人
-       的照片吞了。 */
-    Object.keys(rec.photos).forEach(slot=>{
-      if(!rec.serverPhotos[slot] && !rec.photoOps[slot]) delete rec.photos[slot];
-    });
+    const rec = adoptServer(full, (await dbGet(row.id)) || {}, row.id);
     await persistQuiet(rec);
     if(R && R.id===row.id){ R=rec; paintAll(); }
     /* 成品原来没有这个标记，记录表（=落地屏）在同步后不会重画 */
