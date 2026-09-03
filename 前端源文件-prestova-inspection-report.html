@@ -9551,7 +9551,13 @@ async function pushOne(rec){
       const full = await (await api("/api/report/"+encodeURIComponent(rec.id))).json();
       rec = Object.assign(blank(), rec, {
         id: rec.id, type: full.type||rec.type||"fqc",
-        updatedAt: full.updatedAt, syncedAt: full.updatedAt
+        updatedAt: full.updatedAt, syncedAt: full.updatedAt,
+        /* 同一个响应里就带着照片清单（worker 的 apiGetReport 会返回 photos），
+           pullAll 那边用了，这边原来漏了。不更新的话，这台设备的 serverPhotos
+           停在输掉之前那一版：赢家新加的照片它不知道，hydratePhotos 也就不会去
+           下载。而且不会自愈 —— 这次解决完 updatedAt 已经等于服务端的值，
+           pullAll 的「服务端更新才拉」判据再也不成立，要等下一次有人改这条。 */
+        serverPhotos: photosOf(full.photos), photosChecked: true
       }, payloadOf(full.payload||{}));
       rec.checks = Object.assign(defaultChecks(), (full.payload||{}).checks||{});
       if(rec.lab==null) delete rec.lab;
@@ -9561,6 +9567,11 @@ async function pushOne(rec){
       if(rec.oqc==null) delete rec.oqc;
       if(rec.ipqc==null) delete rec.ipqc;
       if(rec.cfr1633==null) delete rec.cfr1633;
+      /* 跟 pullAll 同一条规矩：服务端已经没有的照片，本地那份也别留着；本机还没
+         推上去的（photoOps 里挂着）要放过。 */
+      Object.keys(rec.photos).forEach(slot=>{
+        if(!rec.serverPhotos[slot] && !rec.photoOps[slot]) delete rec.photos[slot];
+      });
       resolvedStale=true;
       /* 名字取覆盖**之前**那份上的，报给用户的才是他认得的那条 */
       LOST.push({ id:rec.id, why:lostWhy, name:lostName });
@@ -9741,23 +9752,44 @@ async function hydratePhotos(id){
       const full = await (await api("/api/report/"+encodeURIComponent(id))).json();
       rec.serverPhotos = photosOf(full.photos);
       rec.photosChecked = true;
-      await persistQuiet(rec);
+      await patchRec(id, cur=>{ cur.serverPhotos=rec.serverPhotos; cur.photosChecked=true; });
     }catch(e){ /* 离线 / 服务端出错：下次打开再补 */ }
   }
   const want = Object.keys(rec.serverPhotos||{}).filter(s=>!rec.photos[s] && !rec.photoOps[s]);
   if(!want.length) return;
-  let got=0;
+  /* 下载到本地这个小袋子里，别往开头那份快照上贴 —— 见下面 patchRec 的说明。 */
+  const got={};
   for(const slot of want){
     try{
       const r = await api("/api/photo/"+encodeURIComponent(id)+"/"+encodeURIComponent(slot));
-      rec.photos[slot] = await r.blob();
-      got++;
-      if(R && R.id===id){ R.photos[slot]=rec.photos[slot]; paintSlot(slot); }
-      if(OR && OR.id===id){ OR.photos[slot]=rec.photos[slot]; oqcPaintSlot(slot); }
-      if(FT && FT.id===id){ FT.photos[slot]=rec.photos[slot]; ftPaintSlot(slot); }
+      got[slot] = await r.blob();
+      if(R && R.id===id){ R.photos[slot]=got[slot]; paintSlot(slot); }
+      if(OR && OR.id===id){ OR.photos[slot]=got[slot]; oqcPaintSlot(slot); }
+      if(FT && FT.id===id){ FT.photos[slot]=got[slot]; ftPaintSlot(slot); }
     }catch(e){ /* leave it for the next open */ }
   }
-  if(got){ await persistQuiet(rec); if(R && R.id===id) markSaved(); }
+  if(Object.keys(got).length){
+    /* 只贴本地还没有的那几格：这中间用户可能自己在这一格拍了新的，别盖掉。 */
+    await patchRec(id, cur=>{
+      Object.keys(got).forEach(s=>{ if(!cur.photos[s]) cur.photos[s]=got[s]; });
+    });
+    if(R && R.id===id) markSaved();
+  }
+}
+
+/* 落盘前重新读一次，只改要改的那几个字段。
+   dbPut 是整条覆盖、不合并，而 hydratePhotos 从开头 dbGet 到最后写盘之间隔着 N
+   次网络往返 —— 装柜一条记录最多 30 张照片，仓库那种网速下几十秒很正常。而且它
+   在四个调用点全都没有 await，跟 pullAll、pushOne、以及用户自己的 save() 自由
+   重叠。把开头那份老快照整条写回去，等于把这段时间里所有人的改动一起抹掉：
+   用户刚填的字段没了，同步刚拉下来的服务端新版本也没了，而 markSaved() 还会亮
+   一句「已保存」，人根本看不出改动被吞了。
+   这么改之后读到写的窗口从几十秒缩到一次 IndexedDB 事务，够用了。 */
+async function patchRec(id, fn){
+  const cur = await dbGet(id); if(!cur) return null;
+  fn(cur);
+  await persistQuiet(cur);
+  return cur;
 }
 
 let syncTimer=null;
