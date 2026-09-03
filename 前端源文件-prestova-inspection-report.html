@@ -8788,9 +8788,11 @@ function ftBandOf(v, edges){
 const FT_PHRR_EDGES=[50,100,150,200], FT_PHRR_LABELS=["≤ 50","50–100","100–150","150–200","> 200"];
 const FT_THR_EDGES=[5,10,15],        FT_THR_LABELS=["≤ 5","5–10","10–15","> 15"];
 /* 燃烧时间分到 30 分钟：现场有烧十几二十分钟才自然熄灭的，原来 >15 一档
-   把它们全糊在一起，看不出是 16 分钟还是半小时。 */
-const FT_BURN_EDGES=[5,10,15,20,25,30];
-const FT_BURN_LABELS=["≤ 5 min","5–10 min","10–15 min","15–20 min","20–25 min","25–30 min","> 30 min"];
+   把它们全糊在一起，看不出是 16 分钟还是半小时。
+   10 分钟以上用 10 分钟一档而不是 5 分钟 —— 五分钟一档排出来七条太碎，
+   看不出形状（用户 2026-09-03 反馈）。 */
+const FT_BURN_EDGES=[5,10,20,30];
+const FT_BURN_LABELS=["≤ 5 min","5–10 min","10–20 min","20–30 min","> 30 min"];
 
 async function ftDashAgg(){
   /* 区间走共用的 labRangeOf，跟成品看板一模一样：当月 / 上个月 / 近 N 个月 /
