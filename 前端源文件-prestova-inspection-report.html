@@ -3400,7 +3400,7 @@ table.frec-table tbody tr.draft .lockdot,
       <label class="ftfield" style="grid-column:1/-1"><span>备注</span>
         <input id="ft-remark"></label>
     </div>
-    <div class="ftsum" id="ft-verdict-bar">
+    <div class="ftsum">
       <div class="ftverdict" id="ft-verdict">—</div>
       <div class="ftmetrics">
         <span>PHRR: <b id="ft-phrr-v">—</b><span class="unit">kW</span></span>
@@ -7517,7 +7517,7 @@ function oqcSave(){
 function oqcPickLabel(m){
   const f=m.fields||m;
   const podi=(f.podi||"").trim();
-  const cont=(f.container||f.itemNo||"").trim()||"未填柜号";
+  const cont=(f.container||f.itemNo||"").trim()||tr("未填柜号");   /* 同上：拼接串翻不动，得在这儿过 tr() */
   return (podi?podi+" · ":"")+cont;
 }
 function oqcMarkSaved(){
@@ -8484,7 +8484,10 @@ function ftMarkSaved(){
 function ftPickLabel(r){
   const f=r.fields||r;
   const a=(f.sku||f.itemNo||"").trim()||tr("未命名");
-  const b=(f.productType||"").trim();
+  /* 产品类型是枚举值，要过 tr() —— 拼出来的「AUD-1 · 弹簧床垫」整串不匹配
+     任何词典键，DOM 走查那遍翻不动它，印尼语下就只有这里还是中文。
+     制程 ipqcPickLabel 里的车间/工序早就是这么处理的。 */
+  const b=tr((f.productType||"").trim());
   return a+(b?" · "+b:"");
 }
 
@@ -10761,7 +10764,6 @@ const I18N_ID={
   "增加报告": "Tambah Laporan",
   "文件处理失败": "Gagal memproses berkas",
   "📷 照片": "📷 Foto",
-  "📄 测试报告": "📄 Laporan Pengujian",
   "测试结果": "Hasil Pengujian",
   "峰值热释放率 PHRR (kW)": "Laju Pelepasan Panas Puncak PHRR (kW)",
   "总热释放量 THR (MJ)": "Total Pelepasan Panas THR (MJ)",
