@@ -9483,6 +9483,12 @@ async function pushOne(rec){
     }
     if(res.status==="saved"){
       rec.syncedAt=rec.updatedAt;
+    }else if(res.status==="clock_skew"){
+      /* 这台设备的钟快了，服务端拒收。**什么都不动** —— 记录留在本地，
+         updatedAt 仍不等于 syncedAt，照常算进「N 条待同步」，校完时下一轮
+         自己就推上去了，一个字都不会丢。
+         记下最大的那个偏差，等这一轮跑完统一提示一次（十条记录弹十次没法看）。 */
+      if((res.skewMs||0) > CLOCK_SKEW) CLOCK_SKEW=res.skewMs;
     }else if(res.status==="stale"){
       /* Someone else's edit already won. Used to just set syncedAt=0 and leave
          it for pullAll() to notice — but pullAll()'s own staleness check
@@ -9577,18 +9583,23 @@ async function pullAll(){
     }
     /* only take the server copy when it is strictly newer, and never while we
        still hold unsent local edits for that report */
-    /* 自愈：本地这条的时间戳落在未来 —— 那是某台设备时钟不准写进去的。
-       这种记录会**两头卡死**：服务端那份永远不比它「更新」，pullAll 不拉；
-       本地 updatedAt===syncedAt，pushOne 也不推。于是它一直显示着未来日期，
-       别人也改不动它，要等真实时间追上去才会自己好（2026-09-03 现场遇到，
-       一台设备快了近两天，9 条装柜记录全卡住）。
-       只要本地时间戳超前服务器超过 SKEW_TOL，就无条件把服务端那份拉回来 ——
-       服务端的值经过校正，是可信的那一份。
-       容差给 5 分钟：设备时钟差几十秒很常见，不该为此重拉。 */
-    const SKEW_TOL = 5*60*1000;
-    const localFuture = mine && (mine.updatedAt||0) > Date.now() + SKEW_TOL;
-    const stale = !mine || localFuture ||
-                  (row.updated_at > mine.updatedAt && mine.updatedAt===mine.syncedAt);
+    /* 手上没有未推送的改动时，**只要跟服务端对不上就以服务端为准** ——
+       不管服务端那个时间戳是更新还是更旧。
+
+       原来写的是 `row.updated_at > mine.updatedAt`（只认「服务端更新」），
+       这留下一个永久分叉：某台设备时钟不准，把未来时间写进了库，事后把库里
+       那条改回正常值之后，本地这份反而比服务端「新」 —— pullAll 不拉、
+       pushOne 又因为 updatedAt===syncedAt 不推，两头卡死，**而且永远不会
+       自己解开**（2026-09-03 现场就是这样，一台设备快了近两天）。
+       曾经想过按「本地时间戳落在未来」来判，但那个条件会随真实时间流逝而
+       失效 —— 过了那个未来时刻就不再成立，坏记录反而永久留下。
+
+       改成比「相等」：同步成功之后两边本来就该一模一样，不一样就说明本地这份
+       out of step，服务端才是那份可信的。稳态下两边相等，不会多拉任何东西。
+       前提 mine.updatedAt===mine.syncedAt 一个字都不能少 —— 它保证本地没有
+       还没传上去的活儿，不会把现场刚填的东西覆盖掉。 */
+    const stale = !mine ||
+                  (mine.updatedAt===mine.syncedAt && row.updated_at !== mine.updatedAt);
     if(stale) toFetch.push(row);
   }
 
@@ -9703,6 +9714,20 @@ function scheduleSync(delay=2500){
 /* 推送输掉的记录：本地这次改动已经被服务端那份覆盖掉了。先收集，等这轮同步
    跑完统一报一次 —— 一次输五条就弹五个 toast 是没法看的。 */
 let LOST=[];
+/* 这台设备比服务器快多少（毫秒）—— 服务端拒收时回报的，见 pushOne。
+   每轮同步报一次；只要还没去校时，下一轮又会检出来、又会报。 */
+let CLOCK_SKEW=0;
+function reportClockSkew(){
+  const ms=CLOCK_SKEW; CLOCK_SKEW=0;
+  if(!ms) return;
+  const h=Math.round(ms/3600000), m=Math.round(ms/60000);
+  const amt = h>=1 ? h+" "+tr("小时") : m+" "+tr("分钟");
+  /* 说清四件事：谁的问题（这台设备）、错多少、后果（存不上去）、怎么修。
+     不提"时间戳""同步冲突"这类词 —— 看到它的是现场 QC。
+     也要讲明数据没丢，不然人家会重新输一遍。 */
+  toast(tr("这台设备的时间快了")+" "+amt+" —— "+
+        tr("记录暂时存不上去（内容没丢，还在这台机器上）。请把日期设成自动同步网络时间，改好会自动补传。"), 12000);
+}
 function reportLost(){
   const lost=LOST; LOST=[];
   if(!lost.length) return;
@@ -9778,6 +9803,7 @@ async function runSync(){
   }
   SYNC.busy=false;
   reportLost();
+  reportClockSkew();   /* 设备时钟不准的话，在这儿当场告诉拿着它的人 */
   await refreshPending();
   if($("#pickbtn") && !$("#mod").hidden) relabel();
   await refreshHomeIfVisible();
@@ -10787,6 +10813,11 @@ const I18N_ID={
   "删除这条防火检验记录？不可撤销。": "Hapus catatan uji api ini? Tidak bisa dibatalkan.",
   "照片处理失败": "Gagal memproses foto",
   /* 防火数据分析 */
+  /* 设备时钟不准的提示 */
+  "这台设备的时间快了": "Jam perangkat ini cepat",
+  "记录暂时存不上去（内容没丢，还在这台机器上）。请把日期设成自动同步网络时间，改好会自动补传。": "Catatan belum bisa terkirim (isinya tidak hilang, masih tersimpan di perangkat ini). Setel tanggal ke otomatis (jaringan) — setelah benar akan terkirim sendiri.",
+  "小时": "jam",
+  "分钟": "menit",
   "读取中": "Memuat",
   "记录数": "Jumlah Catatan",
   "平均": "Rata-rata",

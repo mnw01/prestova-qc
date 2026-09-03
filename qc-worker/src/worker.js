@@ -254,16 +254,7 @@ async function apiGetReport(env, id) {
 async function apiPutReport(request, env, id, role) {
   let body;
   try { body = await request.json(); } catch (_) { return json({ error: "bad_json" }, 400); }
-  /* 时间戳是客户端本地时钟生成的，服务端不能照单全收：一台时钟快了的设备
-     会把未来时间写进库，后果是这条记录**谁也改不动** —— 正常设备推上来的
-     updatedAt 比它小，被判 stale 打回；而客户端 pullAll 只在「服务端更新」时
-     才拉，所以本地那份也一直不修正，两头卡死，要等真实时间追上去。
-     2026-09-03 现场就这么坏了 10 条（一台设备快了近两天）。
-     往未来钳，往过去不动 —— 离线设备隔几小时才同步是正常的，那种偏旧的
-     时间戳必须原样保留，last-write-wins 才判得对。 */
-  const SKEW_TOL = 5 * 60 * 1000;
-  const claimed = Number(body.updatedAt) || Date.now();
-  const updatedAt = claimed > Date.now() + SKEW_TOL ? Date.now() : claimed;
+  const updatedAt = Number(body.updatedAt) || Date.now();
   const type = String(body.type || "fqc");
   const payload = body.payload && typeof body.payload === "object" ? body.payload : {};
   const f = payload.fields || {};
@@ -281,6 +272,29 @@ async function apiPutReport(request, env, id, role) {
   if (cur && cur.locked && role !== "admin") {
     return json({ error: "locked", need: "admin",
                   serverUpdatedAt: Number(cur.updated_at) }, 403);
+  }
+
+  /* 时钟不准的设备直接**拒收**，不替它纠正。
+     时间戳是客户端本地时钟给的（Date.now()，UTC epoch，跟设备设在哪个时区
+     无关）。一台钟快了的设备会把未来时间写进库，那条记录就谁也改不动了：
+     正常设备推上来的值比它小、被判 stale 打回；而 pullAll 只在「服务端更新」
+     时才拉，本地那份也不修正 —— 两头卡死，要等真实时间追上去。
+     2026-09-03 现场就这么坏了 10 条（一台设备快了近两天）。
+
+     为什么拒收而不是悄悄钳到当前时间：钳了之后「首页显示未来日期」这个唯一
+     的症状就没了，毛病彻底静默，下次再发生没人知道。拒收是响的 —— 拿着那台
+     设备的人当场就看到，而且**不丢数据**：这条记录留在本地（updatedAt 仍不等于
+     syncedAt），照常计入「N 条待同步」，校完时下一轮自己就推上去了。
+
+     **必须回 200 + status，不能回 4xx**：客户端 api() 遇到非 2xx 就 throw，
+     pushOne 只容忍 403，别的错误会把整轮同步掀掉，连累其它记录。
+     只挡未来方向：离线设备隔几小时才补传是正常的，偏旧的时间戳原样收下，
+     last-write-wins 才判得对。 */
+  const SKEW_TOL = 5 * 60 * 1000;
+  const skew = updatedAt - Date.now();
+  if (skew > SKEW_TOL) {
+    console.warn("clock skew rejected", { id, type, skewMs: skew });
+    return json({ status: "clock_skew", skewMs: skew, serverNow: Date.now() });
   }
 
   if (cur && Number(cur.updated_at) > updatedAt) {
@@ -347,7 +361,11 @@ async function apiPutPhoto(request, env, id, slot) {
   await env.PHOTOS.put(photoKey(id, slot), buf, {
     httpMetadata: { contentType: request.headers.get("content-type") || "image/jpeg" },
   });
-  /* 同 apiPutReport：这个头也是客户端时钟给的，往未来钳 */
+  /* 这个头也是客户端时钟给的，同样只信到 5 分钟。
+     但这里**是钳不是拒**，跟 apiPutReport 相反 —— pushOne 传完照片就无条件
+     `delete rec.photoOps[slot]`，拒收会让这张照片彻底丢掉（记录本身拒收不丢，
+     因为它靠 updatedAt!==syncedAt 留在本地重试；照片没有这层保护）。
+     照片时间戳只用来做索引/新旧比较，不参与 last-write-wins 抢写，钳掉无害。 */
   const claimed = Number(request.headers.get("x-updated-at")) || Date.now();
   const now = claimed > Date.now() + 5 * 60 * 1000 ? Date.now() : claimed;
   await env.DB.prepare(

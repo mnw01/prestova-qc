@@ -231,13 +231,14 @@ console.log("\n— /api/index?types= 按板块过滤 —");
   ok("注入之后库还在", (await idx("")).length === all.length);
 }
 
-console.log("\n— updatedAt 往未来钳（设备时钟不准的防线）—");
+console.log("\n— 时钟不准的设备直接拒收（不替它纠正）—");
 {
   /* 时间戳是客户端本地时钟给的。一台时钟快了的设备会把未来时间写进库，
      那条记录就谁也改不动了：正常设备推上来的值比它小、被判 stale 打回，
      而客户端 pullAll 只在「服务端更新」时才拉，本地那份也不修正 —— 两头卡死。
      2026-09-03 现场坏了 10 条（一台设备快了近两天）。
-     往未来钳，往过去绝不动：离线设备隔几小时才同步是正常的。 */
+     拒收而不是悄悄钳：钳了症状就没了，毛病彻底静默；拒收是响的，而且不丢
+     数据（记录留在本地重试）。只挡未来方向，偏旧的照收 —— 离线补传是正常的。 */
   const put = (id, updatedAt) =>
     hit("/api/report/" + id, {
       method: "PUT", ...auth({ "content-type": "application/json" }),
@@ -247,22 +248,28 @@ console.log("\n— updatedAt 往未来钳（设备时钟不准的防线）—");
     (await (await hit("/api/report/" + id, auth())).json()).updatedAt;
 
   const future = Date.now() + 3 * 24 * 3600 * 1000;      /* 超前三天 */
-  await put("t-skew-future", future);
-  const gotFuture = await readAt("t-skew-future");
-  ok("未来三天的时间戳被钳到当前时间", gotFuture < Date.now() + 60 * 1000, "得到 " + gotFuture);
-  ok("钳完不是 0 / 不是垃圾值", gotFuture > Date.now() - 60 * 1000);
+  const rf = await (await put("t-skew-future", future)).json();
+  ok("未来三天的时间戳被拒收", rf.status === "clock_skew", JSON.stringify(rf));
+  ok("拒收时回报偏差 skewMs", typeof rf.skewMs === "number" && rf.skewMs > 2.9 * 24 * 3600 * 1000);
+  ok("拒收 = 一个字都没写进库", (await (await hit("/api/report/t-skew-future", auth())).json()).error === "not_found");
+
+  /* **必须回 200** —— 客户端 api() 遇到非 2xx 就 throw，pushOne 只容忍 403，
+     回 4xx 会把整轮同步掀掉、连累其它记录 */
+  ok("拒收走 200 + status（不能回 4xx，否则掀掉整轮同步）",
+     (await put("t-skew-http", future)).status === 200);
 
   const past = Date.now() - 6 * 3600 * 1000;             /* 六小时前：离线补传 */
   await put("t-skew-past", past);
-  ok("偏旧的时间戳原样保留（离线补传不能动）", (await readAt("t-skew-past")) === past);
+  ok("偏旧的时间戳照常收下（离线补传不是故障）", (await readAt("t-skew-past")) === past);
 
   const near = Date.now() + 60 * 1000;                   /* 快一分钟：容差内 */
   await put("t-skew-near", near);
-  ok("容差内（快 1 分钟）原样保留", (await readAt("t-skew-near")) === near);
+  ok("容差内（快 1 分钟）照常收下", (await readAt("t-skew-near")) === near);
 
-  /* 钳过之后，正常设备就能改动这条了 —— 这才是这道闸真正要保住的东西 */
-  const after = await put("t-skew-future", Date.now());
-  ok("钳过的记录，正常时钟的设备改得动", (await after.json()).status === "saved");
+  /* 校完时之后，同一条记录推得上去 —— 这就是「数据没丢、会自动补传」 */
+  const after = await (await put("t-skew-future", Date.now())).json();
+  ok("校完时之后同一条记录推得上去", after.status === "saved");
+  ok("补传之后库里就有了", (await readAt("t-skew-future")) > 0);
 }
 
 console.log("\n— 提交锁定：只有管理员能改已锁的记录 —");
