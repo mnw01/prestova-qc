@@ -4575,7 +4575,8 @@ function save(){
   return new Promise(res=>{
     saveWaiters.push(res);
     saveTimer=setTimeout(async()=>{
-      try{ await dbPut(R); relabel(); markSaved(); refreshPending(); scheduleSync(); }
+      /* 1500 而不是默认的 1600：成品这层保存防抖是 500ms 不是 400，凑够端到端 2 秒 */
+      try{ await dbPut(R); relabel(); markSaved(); refreshPending(); scheduleSync(1500); }
       catch(e){ toast("Save failed — storage may be full"); }
       const w=saveWaiters; saveWaiters=[]; w.forEach(f=>f());
     },500);
@@ -9731,9 +9732,11 @@ let syncTimer=null;
    每次开火都跟一次 pullAll，而 /api/index 是全表扫描（没有增量游标），
    2026-09-03 时库里 2960 条。所以这个数往小调，代价是索引全表读成倍增加，
    换来的却是别人早看到一点点 —— 而"别人多久看见"由 60 秒轮询决定。
-   2.5 秒调到 2 秒是用户要的（2026-09-03），这个幅度对读行数影响有限；
-   真要再往下调，先跑 wrangler d1 insights 看当下谁在烧。 */
-function scheduleSync(delay=2000){
+   这个数是"端到端 2.0 秒"倒推出来的：前面串着一层保存防抖，五个板块 400ms，
+   所以 1600；成品的是 500ms，它在 save() 里单独传 1500。两处要一起改，
+   只动一个就会一快一慢（用户 2026-09-03 要的是填完 2 秒整）。
+   再往下调之前先跑 wrangler d1 insights 看当下谁在烧。 */
+function scheduleSync(delay=1600){
   if(!SYNC.enabled) return;
   clearTimeout(syncTimer);
   syncTimer=setTimeout(()=>syncNow(), delay);
