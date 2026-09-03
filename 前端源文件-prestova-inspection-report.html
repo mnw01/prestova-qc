@@ -9577,7 +9577,18 @@ async function pullAll(){
     }
     /* only take the server copy when it is strictly newer, and never while we
        still hold unsent local edits for that report */
-    const stale = !mine || (row.updated_at > mine.updatedAt && mine.updatedAt===mine.syncedAt);
+    /* 自愈：本地这条的时间戳落在未来 —— 那是某台设备时钟不准写进去的。
+       这种记录会**两头卡死**：服务端那份永远不比它「更新」，pullAll 不拉；
+       本地 updatedAt===syncedAt，pushOne 也不推。于是它一直显示着未来日期，
+       别人也改不动它，要等真实时间追上去才会自己好（2026-09-03 现场遇到，
+       一台设备快了近两天，9 条装柜记录全卡住）。
+       只要本地时间戳超前服务器超过 SKEW_TOL，就无条件把服务端那份拉回来 ——
+       服务端的值经过校正，是可信的那一份。
+       容差给 5 分钟：设备时钟差几十秒很常见，不该为此重拉。 */
+    const SKEW_TOL = 5*60*1000;
+    const localFuture = mine && (mine.updatedAt||0) > Date.now() + SKEW_TOL;
+    const stale = !mine || localFuture ||
+                  (row.updated_at > mine.updatedAt && mine.updatedAt===mine.syncedAt);
     if(stale) toFetch.push(row);
   }
 

@@ -254,7 +254,16 @@ async function apiGetReport(env, id) {
 async function apiPutReport(request, env, id, role) {
   let body;
   try { body = await request.json(); } catch (_) { return json({ error: "bad_json" }, 400); }
-  const updatedAt = Number(body.updatedAt) || Date.now();
+  /* 时间戳是客户端本地时钟生成的，服务端不能照单全收：一台时钟快了的设备
+     会把未来时间写进库，后果是这条记录**谁也改不动** —— 正常设备推上来的
+     updatedAt 比它小，被判 stale 打回；而客户端 pullAll 只在「服务端更新」时
+     才拉，所以本地那份也一直不修正，两头卡死，要等真实时间追上去。
+     2026-09-03 现场就这么坏了 10 条（一台设备快了近两天）。
+     往未来钳，往过去不动 —— 离线设备隔几小时才同步是正常的，那种偏旧的
+     时间戳必须原样保留，last-write-wins 才判得对。 */
+  const SKEW_TOL = 5 * 60 * 1000;
+  const claimed = Number(body.updatedAt) || Date.now();
+  const updatedAt = claimed > Date.now() + SKEW_TOL ? Date.now() : claimed;
   const type = String(body.type || "fqc");
   const payload = body.payload && typeof body.payload === "object" ? body.payload : {};
   const f = payload.fields || {};
@@ -338,7 +347,9 @@ async function apiPutPhoto(request, env, id, slot) {
   await env.PHOTOS.put(photoKey(id, slot), buf, {
     httpMetadata: { contentType: request.headers.get("content-type") || "image/jpeg" },
   });
-  const now = Number(request.headers.get("x-updated-at")) || Date.now();
+  /* 同 apiPutReport：这个头也是客户端时钟给的，往未来钳 */
+  const claimed = Number(request.headers.get("x-updated-at")) || Date.now();
+  const now = claimed > Date.now() + 5 * 60 * 1000 ? Date.now() : claimed;
   await env.DB.prepare(
     `INSERT INTO photos (report_id,slot,updated_at,size,deleted) VALUES (?,?,?,?,0)
      ON CONFLICT(report_id,slot) DO UPDATE SET
