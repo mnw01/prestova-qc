@@ -361,13 +361,13 @@ async function apiPutPhoto(request, env, id, slot) {
   await env.PHOTOS.put(photoKey(id, slot), buf, {
     httpMetadata: { contentType: request.headers.get("content-type") || "image/jpeg" },
   });
-  /* 这个头也是客户端时钟给的，同样只信到 5 分钟。
-     但这里**是钳不是拒**，跟 apiPutReport 相反 —— pushOne 传完照片就无条件
-     `delete rec.photoOps[slot]`，拒收会让这张照片彻底丢掉（记录本身拒收不丢，
-     因为它靠 updatedAt!==syncedAt 留在本地重试；照片没有这层保护）。
-     照片时间戳只用来做索引/新旧比较，不参与 last-write-wins 抢写，钳掉无害。 */
-  const claimed = Number(request.headers.get("x-updated-at")) || Date.now();
-  const now = claimed > Date.now() + 5 * 60 * 1000 ? Date.now() : claimed;
+  /* 这里**不设时钟防线**，跟 apiPutReport 不一样，是有意的：
+     pushOne 传完照片就无条件 `delete rec.photoOps[slot]`、不看返回值，拒收
+     会让这张照片彻底丢掉（记录靠 updatedAt!==syncedAt 留在本地重试，照片
+     没有这层保护）。而照片时间戳只用于索引和新旧比较，不参与 last-write-wins
+     抢写，偏了也不会把谁卡住 —— 何况记录那头已经拒收，时钟不准的设备根本
+     走不到「记录存进去了、照片时间却是歪的」这一步。 */
+  const now = Number(request.headers.get("x-updated-at")) || Date.now();
   await env.DB.prepare(
     `INSERT INTO photos (report_id,slot,updated_at,size,deleted) VALUES (?,?,?,?,0)
      ON CONFLICT(report_id,slot) DO UPDATE SET

@@ -9583,23 +9583,15 @@ async function pullAll(){
     }
     /* only take the server copy when it is strictly newer, and never while we
        still hold unsent local edits for that report */
-    /* 手上没有未推送的改动时，**只要跟服务端对不上就以服务端为准** ——
-       不管服务端那个时间戳是更新还是更旧。
-
-       原来写的是 `row.updated_at > mine.updatedAt`（只认「服务端更新」），
-       这留下一个永久分叉：某台设备时钟不准，把未来时间写进了库，事后把库里
-       那条改回正常值之后，本地这份反而比服务端「新」 —— pullAll 不拉、
-       pushOne 又因为 updatedAt===syncedAt 不推，两头卡死，**而且永远不会
-       自己解开**（2026-09-03 现场就是这样，一台设备快了近两天）。
-       曾经想过按「本地时间戳落在未来」来判，但那个条件会随真实时间流逝而
-       失效 —— 过了那个未来时刻就不再成立，坏记录反而永久留下。
-
-       改成比「相等」：同步成功之后两边本来就该一模一样，不一样就说明本地这份
-       out of step，服务端才是那份可信的。稳态下两边相等，不会多拉任何东西。
-       前提 mine.updatedAt===mine.syncedAt 一个字都不能少 —— 它保证本地没有
-       还没传上去的活儿，不会把现场刚填的东西覆盖掉。 */
-    const stale = !mine ||
-                  (mine.updatedAt===mine.syncedAt && row.updated_at !== mine.updatedAt);
+    /* ⚠ 这一行不要为了「顺手修一下」去动。2026-09-03 试过改成比 `!==`
+       （手上没有未推送改动时，跟服务端对不上就以服务端为准），想让一批被
+       时钟超前污染的记录立刻自愈。算下来不值：那批记录在超前的那个时刻过去
+       之后，**编辑功能本来就自己恢复**（本地 updatedAt 变成 now，比服务端大，
+       推得上去），剩下的只是「没人碰过的那几条一直显示旧日期」，谁编辑一次
+       就正了。为这点显示问题动整个同步引擎最核心的判据，不划算。
+       真正该堵的是源头 —— 服务端已经对时钟超前的写入直接拒收，见
+       worker.js 里 apiPutReport 的 clock_skew 分支。 */
+    const stale = !mine || (row.updated_at > mine.updatedAt && mine.updatedAt===mine.syncedAt);
     if(stale) toFetch.push(row);
   }
 
@@ -9720,8 +9712,12 @@ let CLOCK_SKEW=0;
 function reportClockSkew(){
   const ms=CLOCK_SKEW; CLOCK_SKEW=0;
   if(!ms) return;
-  const h=Math.round(ms/3600000), m=Math.round(ms/60000);
-  const amt = h>=1 ? h+" "+tr("小时") : m+" "+tr("分钟");
+  /* 超过一天就说「N 天 N 小时」—— 现场那台快了 44 小时，直接写「44 小时」
+     看的人还得自己换算。 */
+  const d=Math.floor(ms/86400000), h=Math.floor(ms%86400000/3600000), m=Math.round(ms/60000);
+  const amt = d>=1 ? (d+" "+tr("天")+(h?" "+h+" "+tr("小时"):""))
+            : ms>=3600000 ? Math.round(ms/3600000)+" "+tr("小时")
+            : m+" "+tr("分钟");
   /* 说清四件事：谁的问题（这台设备）、错多少、后果（存不上去）、怎么修。
      不提"时间戳""同步冲突"这类词 —— 看到它的是现场 QC。
      也要讲明数据没丢，不然人家会重新输一遍。 */
@@ -10816,6 +10812,7 @@ const I18N_ID={
   /* 设备时钟不准的提示 */
   "这台设备的时间快了": "Jam perangkat ini cepat",
   "记录暂时存不上去（内容没丢，还在这台机器上）。请把日期设成自动同步网络时间，改好会自动补传。": "Catatan belum bisa terkirim (isinya tidak hilang, masih tersimpan di perangkat ini). Setel tanggal ke otomatis (jaringan) — setelah benar akan terkirim sendiri.",
+  "天": "hari",
   "小时": "jam",
   "分钟": "menit",
   "读取中": "Memuat",
