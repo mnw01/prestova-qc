@@ -3398,7 +3398,7 @@ table.frec-table tbody tr.draft .lockdot,
   </section>
 
   <section class="ftcard">
-    <h2>测试报告</h2>
+    <h2>测试报告 <span class="fthint">PDF 或图片，单个不超过 8 MB</span></h2>
     <!-- 跟测试照片一样是动态网格：格子由 ftBuildRptGrid 生成，末尾一个「＋」
          可以再加一份（一次测试可能有燃烧报告 + 材料报告等好几份）。 -->
     <div class="ftphotos" id="ft-rpt-wrap">
@@ -8607,6 +8607,10 @@ function ftBindPhotoBox(box,k){
     if(!FT||FT.locked) return;
     const sk="ft_"+k;
     delete FT.photos[sk]; FT.photoOps[sk]="del";
+    /* 另外三个板块删照片时都顺手清了 serverPhotos，防火漏了。留着的话，等这次
+       删除推上去、photoOps 清空之后，hydratePhotos 会把这一格重新算进 want，
+       每次打开这条记录都去拉一张服务端已经没有的照片（404，被静默吞掉，白跑）。 */
+    delete FT.serverPhotos[sk];
     ftSetURL(k,null);
     ftBuildPhotoGrid(); ftSave();
   });
@@ -8624,7 +8628,7 @@ function ftBindPhotoBox(box,k){
       FT.photos[sk]=blob; FT.photoOps[sk]="put";
       ftSetURL(k, URL.createObjectURL(blob));
       ftBuildPhotoGrid(); ftSave();
-    }catch(err){ toast("文件处理失败"); }
+    }catch(err){ toast(ftFileErr(err), 7000); }
   });
 }
 function ftBuildPhotoGrid(){
@@ -8713,8 +8717,27 @@ function ftPaintPhotos(){ ftBuildPhotoGrid(); }
    所以这里只要**别把 PDF 当图片处理**就行。 */
 const ftIsPdf = b => !!b && (b.type==="application/pdf" ||
                              /\.pdf$/i.test(b.name||""));
+/* 跟 worker.js 的 MAX_PHOTO_BYTES 一模一样，改一个必须改另一个。 */
+const MAX_UPLOAD = 8 * 1024 * 1024;
 /* PDF 不缩、原样存；图片照旧走 shrink 压到 1400px */
-async function ftPrepFile(file){ return ftIsPdf(file) ? file : await shrink(file); }
+async function ftPrepFile(file){
+  const blob = ftIsPdf(file) ? file : await shrink(file);
+  /* 超过上限的当场拒收，别让它进队列。服务端回 413，而那个错会让 pushOne 的
+     照片循环整个中断、这一格的 photoOps 永远清不掉 —— 结果是每轮同步重传一次、
+     永远不成功，现场只看到一个"推不上去"的数字，不知道是哪个文件、为什么。
+     挡在选文件这一刻而不是上传那一刻：人还拿着文件，当场就知道要去压缩。
+     图片走 shrink 压到 1400px，够不着这个数；真正会超的是实验室出的扫描版 PDF。 */
+  if(blob.size > MAX_UPLOAD) throw new Error("too_big:"+blob.size);
+  return blob;
+}
+/* "这份文件太大"跟"解不开这个文件"是两回事，得分开说 —— 否则人只看到一句
+   "文件处理失败"，不知道该去压缩。 */
+function ftFileErr(err){
+  const m=/^too_big:(\d+)$/.exec(String((err && err.message) || ""));
+  if(!m) return tr("文件处理失败");
+  return tr("这份文件")+" "+(Number(m[1])/1048576).toFixed(1)+" MB —— "+
+         tr("超过 8 MB 上限，传不上去。请压缩后再选一次。");
+}
 /* 点开看：图片走共用的全屏查看器，PDF 用浏览器自带的阅读器开新标签页。
    两者锁定之后都要能用 —— 只读动作，不受提交锁限制。 */
 function ftOpenReport(k){
@@ -9070,7 +9093,7 @@ $("#ftpick").addEventListener("change",async e=>{
     FT.photos[sk]=blob; FT.photoOps[sk]="put";
     ftSetURL(ftPendingSlot, URL.createObjectURL(blob));
     ftPaintPhotos(); ftSave();
-  }catch(err){ toast("文件处理失败"); }
+  }catch(err){ toast(ftFileErr(err), 7000); }
   ftPendingSlot=null;
 });
 
@@ -9550,18 +9573,27 @@ async function pushOne(rec){
   }
   for(const slot of Object.keys(rec.photoOps||{})){
     const op=rec.photoOps[slot];
-    if(op==="put"){
-      const blob=rec.photos[slot];
-      if(!blob){ delete rec.photoOps[slot]; continue; }
-      await api("/api/photo/"+encodeURIComponent(rec.id)+"/"+encodeURIComponent(slot), {
-        method:"PUT",
-        headers:{"content-type":blob.type||"image/jpeg","x-updated-at":String(rec.updatedAt||Date.now())},
-        body:blob
-      });
-    }else{
-      await api("/api/photo/"+encodeURIComponent(rec.id)+"/"+encodeURIComponent(slot), { method:"DELETE" });
+    try{
+      if(op==="put"){
+        const blob=rec.photos[slot];
+        if(!blob){ delete rec.photoOps[slot]; continue; }
+        await api("/api/photo/"+encodeURIComponent(rec.id)+"/"+encodeURIComponent(slot), {
+          method:"PUT",
+          headers:{"content-type":blob.type||"image/jpeg","x-updated-at":String(rec.updatedAt||Date.now())},
+          body:blob
+        });
+      }else{
+        await api("/api/photo/"+encodeURIComponent(rec.id)+"/"+encodeURIComponent(slot), { method:"DELETE" });
+      }
+      delete rec.photoOps[slot];
+    }catch(e){
+      /* 一张失败不该连累同一条记录的其它照片。原来这里一抛就中断整个循环，连末
+         尾的 persistQuiet 都跳过 —— 本轮已经传成功的那几张，photoOps 的清除没落
+         盘，下一轮又全部重传一遍。现在留着这一格下轮再试，其余照传，进度照落盘。
+         记录靠 photoPending 仍然算「待同步」，不会假装传完了。
+         会话过期要往上抛：那不是"这一张的问题"，继续跑只是白打。 */
+      if(SYNC.err==="auth") throw e;
     }
-    delete rec.photoOps[slot];
   }
   await persistQuiet(rec);
   /* the record just lost a race — if it's also the one on screen, the visible
@@ -9643,6 +9675,15 @@ async function pullAll(){
     if(rec.oqc==null) delete rec.oqc;
     if(rec.ipqc==null) delete rec.ipqc;
     if(rec.cfr1633==null) delete rec.cfr1633;
+    /* 别的设备删掉的照片，本地这份要跟着删。serverPhotos 已经把墓碑滤掉了，但
+       photos 里是上次下载下来的 blob，原来从不裁剪 —— 于是那台设备会一直显示一
+       张服务端早就没有的照片，而且永远不会自愈（线上 8/22 起累计 18 张墓碑、
+       13 条记录，成品 10 / 装柜 8）。
+       photoOps 里还挂着东西的不能动：那是本机刚拍、还没推上去的，裁掉就是把人
+       的照片吞了。 */
+    Object.keys(rec.photos).forEach(slot=>{
+      if(!rec.serverPhotos[slot] && !rec.photoOps[slot]) delete rec.photos[slot];
+    });
     await persistQuiet(rec);
     if(R && R.id===row.id){ R=rec; paintAll(); }
     /* 成品原来没有这个标记，记录表（=落地屏）在同步后不会重画 */
@@ -10858,6 +10899,9 @@ const I18N_ID={
   "点击查看": "Klik untuk lihat",
   "增加报告": "Tambah Laporan",
   "文件处理失败": "Gagal memproses berkas",
+  "这份文件": "Berkas ini",
+  "PDF 或图片，单个不超过 8 MB": "PDF atau gambar, maks. 8 MB per berkas",
+  "超过 8 MB 上限，传不上去。请压缩后再选一次。": "melebihi batas 8 MB dan tidak bisa diunggah. Kompres dulu, lalu pilih ulang.",
   "📷 照片": "📷 Foto",
   "测试结果": "Hasil Pengujian",
   "峰值热释放率 PHRR (kW)": "Laju Pelepasan Panas Puncak PHRR (kW)",
