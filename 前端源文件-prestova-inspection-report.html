@@ -4214,6 +4214,9 @@ function blank(){
     syncedAt:0,        /* the updatedAt value the server has confirmed */
     photoOps:{},       /* slot -> "put" | "del", cleared once the server has it */
     serverPhotos:{},   /* slot -> {updatedAt,size} the server holds but we may not */
+    photoAt:{},        /* slot -> 手上这张 blob 对应的服务端 updatedAt。没有它就
+                          只能比「有没有」，别的设备把同一格重拍一张，这台永远
+                          显示旧图（serverPhotos 里的 updatedAt 一直存着没人读）。 */
     photosChecked:false /* 问过服务端「这条有哪些照片」了没有 —— 见 hydratePhotos */
   };
 }
@@ -9429,18 +9432,36 @@ try{ window.__SYNC = SYNC; }catch(e){}   /* read-only handle for diagnostics */
 const API_TIMEOUT = 30000, API_TIMEOUT_UPLOAD = 180000;
 async function api(path, opts={}){
   const ac = new AbortController();
-  const t = setTimeout(()=>ac.abort(), opts.body ? API_TIMEOUT_UPLOAD : API_TIMEOUT);
+  const budget = opts.body ? API_TIMEOUT_UPLOAD : API_TIMEOUT;
+  const asTimeout = e => (e && e.name==="AbortError") ? new Error("timeout") : e;
+  let t = setTimeout(()=>ac.abort(), budget);
   let r;
   try{
     r = await fetch(path, { credentials:"same-origin", ...opts, signal:ac.signal });
   }catch(e){
+    clearTimeout(t);
     /* abort 抛的是 AbortError，换成自己的标记，好跟"真的没有后端"分开 —— 见下面
        runSync 的 catch。 */
     throw (e && e.name==="AbortError") ? new Error("timeout") : e;
-  }finally{ clearTimeout(t); }
+  }
+  clearTimeout(t);
   if(r.status===401){ SYNC.err="auth"; throw new Error("unauthorized"); }
   if(!r.ok) throw new Error("http "+r.status);
-  return r;
+  /* 响应头到手不等于这次请求完了 —— fetch 收到头就 resolve，真正的大头是调用方
+     随后 .json()/.blob() 才流下来的那一段（索引 461KB、照片几百 KB）。body 卡在
+     半路的话 syncInflight 永远不清空，整个会话的同步静默冻死，正是这个超时本来
+     要挡的那件事：5212557 只挡到了响应头。所以重新计一次盖住读 body 那段，读完
+     由下面的包装解除。
+     不读 body 的调用（照片 PUT/DELETE、记录 DELETE）就让它到点空转一次 ——
+     请求早已完成，那时 abort 是空操作。 */
+  t = setTimeout(()=>ac.abort(), budget);
+  const guard = fn => async () => {
+    try{ return await fn(); }
+    catch(e){ throw asTimeout(e); }
+    finally{ clearTimeout(t); }
+  };
+  return { status:r.status, ok:r.ok, headers:r.headers,
+           json:guard(()=>r.json()), blob:guard(()=>r.blob()), text:guard(()=>r.text()) };
 }
 
 /* Runs fn(item) over items with at most `limit` in flight at once, instead of
@@ -9517,10 +9538,14 @@ async function persistQuiet(rec){
 }
 
 async function pushOne(rec){
-  let resolvedStale=false;
+  /* rec 是这一轮开始时 dbGet 出来的快照。下面每一次网络往返都可能是几秒到几十秒，
+     期间用户完全可能改了这条记录、或者新拍了照片 —— 记住进来时的样子，结尾合并时
+     拿它跟库里对账。 */
+  const snapAt = rec.updatedAt||0, snapOps = Object.keys(rec.photoOps||{});
+  const lf = rec.fields||{}, lostName=(lf.itemNo||lf.po||lf.container||"").trim();
+  let adopted=null, photoFail=0;
   if((rec.updatedAt||0)!==(rec.syncedAt||0)){
     let res, lostWhy="race";
-    const f=rec.fields||{}, lostName=(f.itemNo||f.po||f.container||"").trim();
     try{
       res = await (await api("/api/report/"+encodeURIComponent(rec.id), {
         method:"PUT", headers:{"content-type":"application/json"},
@@ -9554,9 +9579,10 @@ async function pushOne(rec){
          overwrite what the server holds — so reusing that value to also mean
          "lost a race, please pull" would make pullAll() discard a fresh
          re-import in favour of the stale row it was meant to replace.) */
-      const full = await (await api("/api/report/"+encodeURIComponent(rec.id))).json();
-      rec = adoptServer(full, rec, rec.id);
-      resolvedStale=true;
+      /* 服务端那份留到结尾再套用。这会儿就替换 rec，等于拿「开始时的快照 + 服务端
+         payload」去盖当前状态 —— 这期间用户新填的、新拍的一起没。到结尾对完账再
+         adopt，基底用那时候库里的真实内容。 */
+      adopted = await (await api("/api/report/"+encodeURIComponent(rec.id))).json();
       /* 名字取覆盖**之前**那份上的，报给用户的才是他认得的那条 */
       LOST.push({ id:rec.id, why:lostWhy, name:lostName });
     }
@@ -9567,11 +9593,15 @@ async function pushOne(rec){
       if(op==="put"){
         const blob=rec.photos[slot];
         if(!blob){ delete rec.photoOps[slot]; continue; }
+        const stamp = rec.updatedAt||Date.now();
         await api("/api/photo/"+encodeURIComponent(rec.id)+"/"+encodeURIComponent(slot), {
           method:"PUT",
-          headers:{"content-type":blob.type||"image/jpeg","x-updated-at":String(rec.updatedAt||Date.now())},
+          headers:{"content-type":blob.type||"image/jpeg","x-updated-at":String(stamp)},
           body:blob
         });
+        /* 记下这张在服务端的版本号，否则下次 hydratePhotos 会把自己刚传上去的又下
+           载一遍（服务端的 updatedAt 比本地记的 0 大）。 */
+        (rec.photoAt=rec.photoAt||{})[slot]=stamp;
       }else{
         await api("/api/photo/"+encodeURIComponent(rec.id)+"/"+encodeURIComponent(slot), { method:"DELETE" });
       }
@@ -9583,20 +9613,39 @@ async function pushOne(rec){
          记录靠 photoPending 仍然算「待同步」，不会假装传完了。
          会话过期要往上抛：那不是"这一张的问题"，继续跑只是白打。 */
       if(SYNC.err==="auth") throw e;
+      /* 4xx 是"这一张永远传不上去"（太大 413、槽位非法 400、空文件 400）。留着
+         photoOps 只会每 60 秒重传一次、永远不成功，白烧现场流量，记录还一直卡在
+         「待同步」也说不清是哪一张。丢掉这一格并报出来。
+         408/429 是服务端说"稍后再来"，跟 5xx、网络错误一样算临时，留着下轮再试。 */
+      const st=Number((/^http (\d+)$/.exec(String((e&&e.message)||""))||[])[1]);
+      if(st>=400 && st<500 && st!==408 && st!==429){ delete rec.photoOps[slot]; photoFail++; }
     }
   }
-  await persistQuiet(rec);
+  if(photoFail) LOST.push({ id:rec.id, why:"photo", name:lostName });
+  /* 不能整条写回 rec —— 它是进来时那份快照。整条盖回去就把这期间用户改的抹掉了；
+     更糟的是 syncedAt 跟着回到旧值，那条改动连「待同步」都不算，永远不会被推上去。
+     昨天在 hydratePhotos 修的是同一个毛病，这里漏了。只合并这一轮真正产生的那几样，
+     而且先跟库里对账。 */
+  const fresh = await patchRec(rec.id, cur=>{
+    /* 期间这条被改过：这一轮的结果对它已经不适用。什么都不写，让它下一轮带着新内容
+       重来 —— 重复推一次是幂等的，丢改动不是。 */
+    if((cur.updatedAt||0)!==snapAt) return false;
+    if(adopted){ Object.assign(cur, adoptServer(adopted, cur, rec.id)); return; }
+    cur.syncedAt = rec.syncedAt;
+    snapOps.forEach(s=>{ if(!(s in rec.photoOps)) delete cur.photoOps[s]; });
+    if(rec.photoAt) cur.photoAt = Object.assign(cur.photoAt||{}, rec.photoAt);
+  });
   /* the record just lost a race — if it's also the one on screen, the visible
      form is still showing the losing edit until this catches it up */
-  if(resolvedStale){
-    if(R && R.id===rec.id){ R=rec; paintAll(); }
-    if(!$("#lab").hidden  && LR && LR.id===rec.id) await labLoad(rec.id);
-    if(!$("#iqc").hidden  && IR && IR.id===rec.id) await iqcLoad(rec.id);
+  if(adopted && fresh){
+    if(R && R.id===fresh.id){ R=fresh; paintAll(); }
+    if(!$("#lab").hidden  && LR && LR.id===fresh.id) await labLoad(fresh.id);
+    if(!$("#iqc").hidden  && IR && IR.id===fresh.id) await iqcLoad(fresh.id);
     /* 制程和装柜原来漏了 —— 本地记录已经被换掉，屏幕上却还是输掉的那一版，
        接着再改就是在一份已经不存在的数据上改。 */
-    if(!$("#ipqc").hidden && PR && PR.id===rec.id) await ipqcLoad(rec.id);
-    if(!$("#oqc").hidden  && OR && OR.id===rec.id) await oqcLoad(rec.id);
-    if(!$("#cfr1633").hidden && FT && FT.id===rec.id) await ftLoad(rec.id);
+    if(!$("#ipqc").hidden && PR && PR.id===fresh.id) await ipqcLoad(fresh.id);
+    if(!$("#oqc").hidden  && OR && OR.id===fresh.id) await oqcLoad(fresh.id);
+    if(!$("#cfr1633").hidden && FT && FT.id===fresh.id) await ftLoad(fresh.id);
   }
 }
 
@@ -9621,7 +9670,7 @@ function adoptServer(full, base, id){
   const rec=Object.assign(blank(), base, {
     id, type: full.type || base.type || "fqc",
     updatedAt: full.updatedAt, syncedAt: full.updatedAt,
-    photos: base.photos||{}, photoOps: base.photoOps||{},
+    photos: base.photos||{}, photoOps: base.photoOps||{}, photoAt: base.photoAt||{},
     serverPhotos: photosOf(full.photos), photosChecked: true
   }, payloadOf(full.payload||{}));
   rec.checks=Object.assign(defaultChecks(), (full.payload||{}).checks||{});
@@ -9634,7 +9683,7 @@ function adoptServer(full, base, id){
      photoOps 里还挂着的要放过：那是本机刚拍、还没推上去的，裁掉就是把人的照片
      吞了。 */
   Object.keys(rec.photos).forEach(sl=>{
-    if(!rec.serverPhotos[sl] && !rec.photoOps[sl]) delete rec.photos[sl];
+    if(!rec.serverPhotos[sl] && !rec.photoOps[sl]){ delete rec.photos[sl]; delete rec.photoAt[sl]; }
   });
   return rec;
 }
@@ -9745,23 +9794,37 @@ async function hydratePhotos(id){
       await patchRec(id, cur=>{ cur.serverPhotos=rec.serverPhotos; cur.photosChecked=true; });
     }catch(e){ /* 离线 / 服务端出错：下次打开再补 */ }
   }
-  const want = Object.keys(rec.serverPhotos||{}).filter(s=>!rec.photos[s] && !rec.photoOps[s]);
+  /* 只看「本地有没有」不够：别的设备把同一格重拍一张，本地那份还在，就永远不会
+     重下 —— serverPhotos 里本来就带着 updatedAt，一直存着没人读。拿它跟手上这张
+     的版本（photoAt）比，服务端更新的才拉。 */
+  const held = rec.photoAt||{};
+  const want = Object.keys(rec.serverPhotos||{}).filter(s=>{
+    if(rec.photoOps[s]) return false;                            /* 本机还有没推上去的动作，别覆盖 */
+    if(!rec.photos[s]) return true;                              /* 本地压根没有 */
+    return ((rec.serverPhotos[s]||{}).updatedAt||0) > (held[s]||0);  /* 服务端那张更新 */
+  });
   if(!want.length) return;
   /* 下载到本地这个小袋子里，别往开头那份快照上贴 —— 见下面 patchRec 的说明。 */
   const got={};
   for(const slot of want){
     try{
       const r = await api("/api/photo/"+encodeURIComponent(id)+"/"+encodeURIComponent(slot));
-      got[slot] = await r.blob();
-      if(R && R.id===id){ R.photos[slot]=got[slot]; paintSlot(slot); }
-      if(OR && OR.id===id){ OR.photos[slot]=got[slot]; oqcPaintSlot(slot); }
-      if(FT && FT.id===id){ FT.photos[slot]=got[slot]; ftPaintSlot(slot); }
+      got[slot] = { blob: await r.blob(), at:((rec.serverPhotos[slot]||{}).updatedAt||0) };
+      if(R && R.id===id){ R.photos[slot]=got[slot].blob; paintSlot(slot); }
+      if(OR && OR.id===id){ OR.photos[slot]=got[slot].blob; oqcPaintSlot(slot); }
+      if(FT && FT.id===id){ FT.photos[slot]=got[slot].blob; ftPaintSlot(slot); }
     }catch(e){ /* leave it for the next open */ }
   }
   if(Object.keys(got).length){
-    /* 只贴本地还没有的那几格：这中间用户可能自己在这一格拍了新的，别盖掉。 */
+    /* 按 photoOps 判断，不是按「本地有没有」：下载这段时间里人可能把这一格删了或
+       者重拍了，两种都会留下 photoOps，贴回去就是把人的动作顶掉。而「本地已有旧
+       版」恰恰是应该被覆盖的 —— 那正是重下的原因。 */
     await patchRec(id, cur=>{
-      Object.keys(got).forEach(s=>{ if(!cur.photos[s]) cur.photos[s]=got[s]; });
+      cur.photoAt = cur.photoAt||{};
+      Object.keys(got).forEach(s=>{
+        if(cur.photoOps[s]) return;
+        cur.photos[s]=got[s].blob; cur.photoAt[s]=got[s].at;
+      });
     });
     if(R && R.id===id) markSaved();
   }
@@ -9777,7 +9840,8 @@ async function hydratePhotos(id){
    这么改之后读到写的窗口从几十秒缩到一次 IndexedDB 事务，够用了。 */
 async function patchRec(id, fn){
   const cur = await dbGet(id); if(!cur) return null;
-  fn(cur);
+  /* 回调返回 false = "我这一轮算出来的东西已经不适用了，别写" */
+  if(fn(cur)===false) return null;
   await persistQuiet(cur);
   return cur;
 }
@@ -9826,11 +9890,13 @@ function reportClockSkew(){
 function reportLost(){
   const lost=LOST; LOST=[];
   if(!lost.length) return;
-  const lk=lost.filter(x=>x.why==="locked"), rc=lost.filter(x=>x.why!=="locked");
+  const lk=lost.filter(x=>x.why==="locked"), ph=lost.filter(x=>x.why==="photo"),
+        rc=lost.filter(x=>x.why!=="locked" && x.why!=="photo");
   /* 只输一条就报名字（品号/PO），输多条就报条数 */
   const who=a=>(a.length===1 && a[0].name) ? "「"+a[0].name+"」" : a.length+" "+tr("条记录");
   const parts=[];
   if(lk.length) parts.push(who(lk)+tr("已被提交锁定，你刚才的改动没有保存 —— 需要管理员解除锁定。"));
+  if(ph.length) parts.push(who(ph)+tr("有照片传不上去（多半是文件太大），已跳过 —— 记录本身已经保存好了。"));
   if(rc.length) parts.push(who(rc)+tr("已被其他人修改，你刚才的改动没有保存 —— 屏幕上是最新的那一版。"));
   toast(parts.join("　"), 8000);
 }
@@ -10920,6 +10986,7 @@ const I18N_ID={
   "点击查看": "Klik untuk lihat",
   "增加报告": "Tambah Laporan",
   "文件处理失败": "Gagal memproses berkas",
+  "有照片传不上去（多半是文件太大），已跳过 —— 记录本身已经保存好了。": "ada foto yang tidak bisa diunggah (kemungkinan berkasnya terlalu besar) dan dilewati — catatannya sendiri sudah tersimpan.",
   "这份文件": "Berkas ini",
   "PDF 或图片，单个不超过 8 MB": "PDF atau gambar, maks. 8 MB per berkas",
   "超过 8 MB 上限，传不上去。请压缩后再选一次。": "melebihi batas 8 MB dan tidak bisa diunggah. Kompres dulu, lalu pilih ulang.",
