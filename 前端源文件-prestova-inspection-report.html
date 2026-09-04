@@ -2408,11 +2408,14 @@ table.frec-table tbody tr.draft .lockdot,
      1. 它长在 .sheet 上 —— 祖先链是 .prtfoot → .sheet → .wrap → #mod，
         **一个都不带 --accent-fill**（那个 token 只挂在板块根节点和 .bar 上），
         写 var() 会解析失败、整条声明作废。
-     2. 那张纸永远是白的，按钮不该跟着深色模式变成浅一档的 #2f62c4。
-     所以这里写字面值，并固定用浅色那一档。
+     2. 那张纸永远是白的，按钮不该跟着深色模式变成浅一档的 #4CC2FF。
+     所以这里写字面值，并固定用浅色那一档：#005FB8 + 白字。
+     ⚠ **字色也必须写字面值**。上面基础规则里是 color:var(--accent-on)，同样解析
+     失败、同样作废，于是字色回落成继承来的纸墨（深色）—— 2026-09-04 就是这么
+     踩的：底色靠这里兜住了，字色没兜，深色模式下变成深字压深蓝。
      （@media print 里 .prtfoot 是 display:none，改它不影响打印件。） */
-  .prtfoot > button.key{background:#1f4fa8;border-color:#1f4fa8}
-  .prtfoot > button.key:hover{background:#1f4fa8;border-color:#1f4fa8;filter:brightness(1.14)}
+  .prtfoot > button.key{background:#005FB8;border-color:#005FB8;color:#fff}
+  .prtfoot > button.key:hover{background:#005FB8;border-color:#005FB8;color:#fff;filter:brightness(1.14)}
 
   /* ── 卡片 ───────────────────────────────────────────────────────── */
   #iqc .iqcard,#ipqc .ipcard,#oqc .oqcard,#lab .lcard,#cfr1633 .ftcard,
