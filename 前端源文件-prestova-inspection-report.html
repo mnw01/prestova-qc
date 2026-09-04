@@ -94,7 +94,7 @@
   --lock-off:#e08600;
   --card:#ffffff; --card-line:#e2e7ee;
   --field:#ffffff; --field-line:#cdd5e0;
-  --accent:#1f4fa8; --accent-soft:#eef3fc; --accent-fill:#1f4fa8;
+  --accent:#005FB8; --accent-soft:#eaf3fc; --accent-fill:#005FB8; --accent-on:#ffffff;
   --deck:#e8ecf3; --bar-bg:#f5f8fc; --seg-bg:#e7ecf3; --seg-on:#ffffff; --sunk:#eef0f3;
   /* 形状与投影：两个主题一样，只在这一处声明，深色那几段不用重抄 */
   --r-card:11px; --r-ctl:7px; --r-seg:8px;
@@ -109,7 +109,7 @@
     --lock-off:#fcd34d;
     --card:#1e2229; --card-line:#2e3239;
     --field:#181c23; --field-line:#363a41;
-    --accent:#5b93ea; --accent-soft:#16233a; --accent-fill:#2f62c4;
+    --accent:#4CC2FF; --accent-soft:#0f2a38; --accent-fill:#4CC2FF; --accent-on:#08202e;
     --deck:#0d1014; --bar-bg:#14181f; --seg-bg:#0f131a; --seg-on:#2a2e35; --sunk:#252930;
     --sh-1:0 1px 2px rgba(0,0,0,.5);
   }
@@ -121,7 +121,7 @@
   --lock-off:#fcd34d;
   --card:#1e2229; --card-line:#2e3239;
   --field:#181c23; --field-line:#363a41;
-  --accent:#5b93ea; --accent-soft:#16233a; --accent-fill:#2f62c4;
+  --accent:#4CC2FF; --accent-soft:#0f2a38; --accent-fill:#4CC2FF; --accent-on:#08202e;
   --deck:#0d1014; --bar-bg:#14181f; --seg-bg:#0f131a; --seg-on:#2a2e35; --sunk:#252930;
   --sh-1:0 1px 2px rgba(0,0,0,.5);
 }
@@ -132,7 +132,7 @@
   --lock-off:#e08600;
   --card:#ffffff; --card-line:#e2e7ee;
   --field:#ffffff; --field-line:#cdd5e0;
-  --accent:#1f4fa8; --accent-soft:#eef3fc; --accent-fill:#1f4fa8;
+  --accent:#005FB8; --accent-soft:#eaf3fc; --accent-fill:#005FB8; --accent-on:#ffffff;
   --deck:#e8ecf3; --bar-bg:#f5f8fc; --seg-bg:#e7ecf3; --seg-on:#ffffff; --sunk:#eef0f3;
   --sh-1:0 1px 2px rgba(15,23,41,.07);
 }
@@ -291,13 +291,13 @@ html[lang="id"] .hhead h1 .cn{display:none}
 .prtfoot > button.key,
 #oqc .oqprt,
 #lab .lcard > h2 button.key:not(.recbtn){
-  background:#17458c;border-color:#17458c;color:#fff;font-weight:600;
+  background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-on);font-weight:600;
 }
 .bar button.key:hover,
 .prtfoot > button.key:hover,
 #oqc .oqprt:hover,
 #lab .lcard > h2 button.key:not(.recbtn):hover{
-  background:#17458c;color:#fff;filter:brightness(1.22);
+  background:var(--accent-fill);color:var(--accent-on);filter:brightness(1.22);
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]) .bar button.key,
@@ -1155,7 +1155,7 @@ input[type="date"]{max-width:100%;min-width:0;overflow:hidden}
 #ipqc .iprec-open:hover,
 #oqc .orec-open:hover,
 #lab .lrecbtn:hover{
-  background:#17458c;border-color:#17458c;color:#fff;
+  background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-on);
 }
 /* ── 「查看」按钮兼作锁状态：已提交实心蓝，未提交空心 ──────────────────
    原来"已锁 / 未锁"全靠上面 .draft 那条 opacity:.6 —— 同一个颜色的深浅，
@@ -1169,7 +1169,7 @@ table.frec-table tbody tr:not(.draft) .frec-open,
 #ipqc table.iprec-table tbody tr:not(.draft) .iprec-open,
 #oqc table.orec-table tbody tr:not(.draft) .orec-open,
 #lab table.lrec tbody tr:not(.draft) .lrecbtn{
-  background:#17458c;border-color:#17458c;color:#fff;
+  background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-on);
 }
 /* 实心蓝原本就是按钮的 hover 色，现在被拿去表示"已锁"了，两个态各自再找一档。
    **少了这两条，鼠标一划过未锁的按钮就变实心蓝、看着像"锁上了"**，
@@ -1181,7 +1181,8 @@ table.frec-table tbody tr:not(.draft) .frec-open:hover,
 #ipqc table.iprec-table tbody tr:not(.draft) .iprec-open:hover,
 #oqc table.orec-table tbody tr:not(.draft) .orec-open:hover,
 #lab table.lrec tbody tr:not(.draft) .lrecbtn:hover{
-  background:#0f3269;border-color:#0f3269;color:#fff;
+  background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-on);
+  filter:brightness(1.14);
 }
 table.frec-table tbody tr.draft .frec-open:hover,
 #iqc table.irec-table tbody tr.draft .irec-open:hover,
@@ -2371,11 +2372,11 @@ table.frec-table tbody tr.draft .lockdot,
 
   /* 每屏唯一的主操作：提交并锁定 */
   .bar #lockbtn,.bar #ilockbtn,.bar #plockbtn,.bar #olockbtn,.bar #llockbtn,.bar #ftlockbtn{
-    background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;font-weight:600;
+    background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-on);font-weight:600;
   }
   .bar #lockbtn:hover,.bar #ilockbtn:hover,.bar #plockbtn:hover,
   .bar #olockbtn:hover,.bar #llockbtn:hover,.bar #ftlockbtn:hover{
-    background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;filter:brightness(1.14);
+    background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-on);filter:brightness(1.14);
   }
 
   /* ── 三个打印按钮（全站仅有的「主操作」蓝底白字）────────────────────
@@ -2450,7 +2451,7 @@ table.frec-table tbody tr.draft .lockdot,
   /* 记录表卡片头上的「+ 新建」（从工具栏挪过来的：创建属于列表，不属于导航） */
   .recnew{
     font:inherit;font-size:13px;font-weight:600;padding:6px 13px;cursor:pointer;
-    border:1px solid var(--accent-fill);background:var(--accent-fill);color:#fff;
+    border:1px solid var(--accent-fill);background:var(--accent-fill);color:var(--accent-on);
     border-radius:var(--r-ctl);white-space:nowrap;
   }
   .recnew:hover{filter:brightness(1.14)}
@@ -2464,11 +2465,11 @@ table.frec-table tbody tr.draft .lockdot,
      button:not(.recbtn)` 是 (1,2,2) 的"标题栏按钮统一空心药丸"规则。
      下面这条同为 (1,2,2)，靠写在样式表更后面赢 —— 这一段本来就是最后一段。 */
   #lab .lcard > h2 button.recnew{
-    border:1px solid var(--accent-fill);background:var(--accent-fill);color:#fff;
+    border:1px solid var(--accent-fill);background:var(--accent-fill);color:var(--accent-on);
     font-size:13px;font-weight:600;padding:6px 13px;border-radius:var(--r-ctl);
   }
   #lab .lcard > h2 button.recnew:hover{
-    background:var(--accent-fill);color:#fff;filter:brightness(1.14);
+    background:var(--accent-fill);color:var(--accent-on);filter:brightness(1.14);
   }
 
   /* ── 表单控件 ───────────────────────────────────────────────────── */
@@ -2607,14 +2608,14 @@ table.frec-table tbody tr.draft .lockdot,
   #ipqc table.iprec-table tbody tr:not(.draft) .iprec-open,
   #oqc table.orec-table tbody tr:not(.draft) .orec-open,
   #lab table.lrec tbody tr:not(.draft) .lrecbtn{
-    background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;
+    background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-on);
   }
   table.frec-table tbody tr:not(.draft) .frec-open:hover,
   #iqc table.irec-table tbody tr:not(.draft) .irec-open:hover,
   #ipqc table.iprec-table tbody tr:not(.draft) .iprec-open:hover,
   #oqc table.orec-table tbody tr:not(.draft) .orec-open:hover,
   #lab table.lrec tbody tr:not(.draft) .lrecbtn:hover{
-    background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;
+    background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-on);
     filter:brightness(1.14);
   }
   /* 通用那条 hover（空心态划上去变实心蓝）也还写着旧蓝。它管得到的主要是
@@ -2624,7 +2625,7 @@ table.frec-table tbody tr.draft .lockdot,
      覆盖到，所以报了 0 处 —— 是漏，不是没有。 */
   .frec-open:hover,#iqc .irec-open:hover,#ipqc .iprec-open:hover,
   #oqc .orec-open:hover,#lab .lrecbtn:hover{
-    background:var(--accent-fill);border-color:var(--accent-fill);color:#fff;
+    background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-on);
   }
 
   /* ── 收拾 --accent-soft 变实色之后的副作用 ──────────────────────────
@@ -2676,7 +2677,7 @@ table.frec-table tbody tr.draft .lockdot,
   .recent h2{font-size:12px;letter-spacing:.12em;color:var(--ink-2)}
   .langsw{border-radius:var(--r-ctl);overflow:hidden;border-color:var(--field-line)}
   .langsw button{font-size:12px;background:var(--card);color:var(--ink-2)}
-  .langsw button.on{background:var(--accent-fill);color:#fff;font-weight:600}
+  .langsw button.on{background:var(--accent-fill);color:var(--accent-on);font-weight:600}
   .rolechip{border-radius:var(--r-ctl);background:var(--seg-bg);color:var(--ink-2);font-weight:600}
   .logoutbtn{border-radius:var(--r-ctl);border-color:var(--field-line);background:var(--card);color:var(--ink-2)}
 }

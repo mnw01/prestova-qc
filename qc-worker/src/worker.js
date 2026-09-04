@@ -116,7 +116,7 @@ const GATE = `<!doctype html><html lang="en"><head>
   --deck:#e8ecf3; --card:#ffffff; --card-line:#e2e7ee;
   --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
   --field:#ffffff; --field-line:#cdd5e0;
-  --accent:#1f4fa8; --accent-fill:#1f4fa8; --no:#b0342a;
+  --accent:#005FB8; --accent-fill:#005FB8; --accent-on:#ffffff; --no:#b0342a;
   --sh:0 1px 3px rgba(15,23,41,.08),0 14px 34px -18px rgba(15,23,41,.3);
 }
 @media (prefers-color-scheme:dark){
@@ -124,7 +124,7 @@ const GATE = `<!doctype html><html lang="en"><head>
     --deck:#0d1014; --card:#1e2229; --card-line:#2e3239;
     --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
     --field:#181c23; --field-line:#363a41;
-    --accent:#5b93ea; --accent-fill:#2f62c4; --no:#e08c82;
+    --accent:#4CC2FF; --accent-fill:#4CC2FF; --accent-on:#08202e; --no:#e08c82;
     --sh:0 1px 3px rgba(0,0,0,.55),0 16px 38px -20px rgba(0,0,0,.85);
   }
 }
@@ -148,7 +148,7 @@ input,select{width:100%;padding:10px 12px;font-size:16px;border:1px solid var(--
 select{margin-bottom:16px}
 input:focus,select:focus{outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);
   outline-offset:1px;border-color:var(--accent)}
-button{width:100%;margin-top:14px;padding:11px;font-size:15px;font-weight:600;color:#fff;
+button{width:100%;margin-top:14px;padding:11px;font-size:15px;font-weight:600;color:var(--accent-on);
        background:var(--accent-fill);border:1px solid var(--accent-fill);border-radius:7px;cursor:pointer}
 button:hover:not(:disabled){filter:brightness(1.14)}
 button:disabled{opacity:.6;cursor:default}
