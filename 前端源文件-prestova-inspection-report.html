@@ -9434,34 +9434,34 @@ async function api(path, opts={}){
   const ac = new AbortController();
   const budget = opts.body ? API_TIMEOUT_UPLOAD : API_TIMEOUT;
   const asTimeout = e => (e && e.name==="AbortError") ? new Error("timeout") : e;
-  let t = setTimeout(()=>ac.abort(), budget);
+  const t0 = setTimeout(()=>ac.abort(), budget);
   let r;
   try{
     r = await fetch(path, { credentials:"same-origin", ...opts, signal:ac.signal });
-  }catch(e){
-    clearTimeout(t);
-    /* abort 抛的是 AbortError，换成自己的标记，好跟"真的没有后端"分开 —— 见下面
-       runSync 的 catch。 */
-    throw (e && e.name==="AbortError") ? new Error("timeout") : e;
-  }
-  clearTimeout(t);
+  }catch(e){ throw asTimeout(e); }
+  finally{ clearTimeout(t0); }
   if(r.status===401){ SYNC.err="auth"; throw new Error("unauthorized"); }
-  if(!r.ok) throw new Error("http "+r.status);
+  if(!r.ok){
+    /* 状态码挂在错误对象上，别让调用方再从消息文本里抠回来。原来 pushOne 的 403
+       判断、照片 4xx 判断、runSync 的 noBackend 判断各写一份正则解析这句话，等于
+       把消息措辞变成三处的隐式契约 —— 哪天为了排障多写几个字，三处一起静默失配：
+       413 的照片回到无限重传，一次 500 又把整个会话的同步关掉。 */
+    const err = new Error("http "+r.status); err.status = r.status; throw err;
+  }
   /* 响应头到手不等于这次请求完了 —— fetch 收到头就 resolve，真正的大头是调用方
      随后 .json()/.blob() 才流下来的那一段（索引 461KB、照片几百 KB）。body 卡在
      半路的话 syncInflight 永远不清空，整个会话的同步静默冻死，正是这个超时本来
-     要挡的那件事：5212557 只挡到了响应头。所以重新计一次盖住读 body 那段，读完
-     由下面的包装解除。
-     不读 body 的调用（照片 PUT/DELETE、记录 DELETE）就让它到点空转一次 ——
-     请求早已完成，那时 abort 是空操作。 */
-  t = setTimeout(()=>ac.abort(), budget);
+     要挡的那件事：5212557 只挡到了响应头。
+     计时器放在 guard 里面：不读 body 的调用（照片 PUT/DELETE、记录 DELETE）一个
+     都不开。原来在外面开，每传成功一张照片就留下一个空转 180 秒的计时器，还顺带
+     把那个没人读的 Response 钉住不放 —— 装柜一条 30 张照片就是 30 个。 */
   const guard = fn => async () => {
+    const t = setTimeout(()=>ac.abort(), budget);
     try{ return await fn(); }
     catch(e){ throw asTimeout(e); }
     finally{ clearTimeout(t); }
   };
-  return { status:r.status, ok:r.ok, headers:r.headers,
-           json:guard(()=>r.json()), blob:guard(()=>r.blob()), text:guard(()=>r.text()) };
+  return { json:guard(()=>r.json()), blob:guard(()=>r.blob()) };
 }
 
 /* Runs fn(item) over items with at most `limit` in flight at once, instead of
@@ -9541,9 +9541,13 @@ async function pushOne(rec){
   /* rec 是这一轮开始时 dbGet 出来的快照。下面每一次网络往返都可能是几秒到几十秒，
      期间用户完全可能改了这条记录、或者新拍了照片 —— 记住进来时的样子，结尾合并时
      拿它跟库里对账。 */
-  const snapAt = rec.updatedAt||0, snapOps = Object.keys(rec.photoOps||{});
+  const snapAt = rec.updatedAt||0, snapSynced = rec.syncedAt||0, snapOps = Object.keys(rec.photoOps||{});
   const lf = rec.fields||{}, lostName=(lf.itemNo||lf.po||lf.container||"").trim();
-  let adopted=null, photoFail=0;
+  /* newAt / pushedSize 只装这一轮真正产生的东西 —— 结尾要靠它们判断「有没有值得
+     写盘的结果」。直接往 rec.photoAt 上堆的话，老记录本来就有的条目会让那个判断
+     永远为真，等于每轮都白跑一次读-改-写。 */
+  let adopted=null, photoFail=false;
+  const newAt={}, pushedSize={};
   if((rec.updatedAt||0)!==(rec.syncedAt||0)){
     let res, lostWhy="race";
     try{
@@ -9555,7 +9559,7 @@ async function pushOne(rec){
       /* 服务端 403：要么这条已经被管理员锁了、要么 QC 在改基础资料这类
          只有管理员能写的记录。两种情况本地这次修改都赢不了 —— 按"输掉了"
          处理，拉服务端那份覆盖掉。不这么做就会永远卡在「N 条推不上去」。 */
-      if(!/^http 403$/.test(String((err&&err.message)||""))) throw err;
+      if(!err || err.status!==403) throw err;
       res = { status:"stale" }; lostWhy="locked";
     }
     if(res.status==="saved"){
@@ -9594,14 +9598,20 @@ async function pushOne(rec){
         const blob=rec.photos[slot];
         if(!blob){ delete rec.photoOps[slot]; continue; }
         const stamp = rec.updatedAt||Date.now();
-        await api("/api/photo/"+encodeURIComponent(rec.id)+"/"+encodeURIComponent(slot), {
+        const put = await (await api("/api/photo/"+encodeURIComponent(rec.id)+"/"+encodeURIComponent(slot), {
           method:"PUT",
           headers:{"content-type":blob.type||"image/jpeg","x-updated-at":String(stamp)},
           body:blob
-        });
-        /* 记下这张在服务端的版本号，否则下次 hydratePhotos 会把自己刚传上去的又下
-           载一遍（服务端的 updatedAt 比本地记的 0 大）。 */
-        (rec.photoAt=rec.photoAt||{})[slot]=stamp;
+        })).json();
+        /* 版本号以服务端回的为准，别本地再算一遍赌它原样回显 —— 那边的判据是
+           Number(x-updated-at) || Date.now()，判据在它那头。哪天服务端补上时钟防线
+           或改用自己的时间，两个数就悄悄对不上，而这个值现在参与「要不要重下」的
+           判断了：服务端大 → 每次打开都把自己刚传的重下一遍；小 → 别人的重拍永远
+           拉不下来。两个方向都不自愈。
+           顺带记下体积：结尾对账时靠它认出「这一格期间被换过图了」。
+           读一下响应也让 api() 的 body 超时真正盖住这次上传。 */
+        newAt[slot] = put.updatedAt || stamp;
+        pushedSize[slot] = blob.size;
       }else{
         await api("/api/photo/"+encodeURIComponent(rec.id)+"/"+encodeURIComponent(slot), { method:"DELETE" });
       }
@@ -9617,8 +9627,8 @@ async function pushOne(rec){
          photoOps 只会每 60 秒重传一次、永远不成功，白烧现场流量，记录还一直卡在
          「待同步」也说不清是哪一张。丢掉这一格并报出来。
          408/429 是服务端说"稍后再来"，跟 5xx、网络错误一样算临时，留着下轮再试。 */
-      const st=Number((/^http (\d+)$/.exec(String((e&&e.message)||""))||[])[1]);
-      if(st>=400 && st<500 && st!==408 && st!==429){ delete rec.photoOps[slot]; photoFail++; }
+      const st=(e && e.status)||0;
+      if(st>=400 && st<500 && st!==408 && st!==429){ delete rec.photoOps[slot]; photoFail=true; }
     }
   }
   if(photoFail) LOST.push({ id:rec.id, why:"photo", name:lostName });
@@ -9626,15 +9636,33 @@ async function pushOne(rec){
      更糟的是 syncedAt 跟着回到旧值，那条改动连「待同步」都不算，永远不会被推上去。
      昨天在 hydratePhotos 修的是同一个毛病，这里漏了。只合并这一轮真正产生的那几样，
      而且先跟库里对账。 */
-  const fresh = await patchRec(rec.id, cur=>{
-    /* 期间这条被改过：这一轮的结果对它已经不适用。什么都不写，让它下一轮带着新内容
-       重来 —— 重复推一次是幂等的，丢改动不是。 */
-    if((cur.updatedAt||0)!==snapAt) return false;
-    if(adopted){ Object.assign(cur, adoptServer(adopted, cur, rec.id)); return; }
-    cur.syncedAt = rec.syncedAt;
-    snapOps.forEach(s=>{ if(!(s in rec.photoOps)) delete cur.photoOps[s]; });
-    if(rec.photoAt) cur.photoAt = Object.assign(cur.photoAt||{}, rec.photoAt);
-  });
+  const cleared = snapOps.some(s=>!(s in rec.photoOps));
+  /* 这一轮什么都没产出就别开读-改-写：clock_skew 分支（注释里写着「什么都不动」）、
+     以及只有照片待传而这批全部失败的记录，原来照样走一次 dbGet+dbPut，而 dbGet 读
+     的是整条记录连所有照片 Blob —— 装柜一条十几 MB，每 60 秒一次。 */
+  const fresh = (!adopted && (rec.syncedAt||0)===snapSynced && !cleared && !Object.keys(newAt).length)
+    ? null
+    : await patchRec(rec.id, cur=>{
+        /* 「服务端已经收到了」是关于服务端的事实，跟本地这期间有没有被改过无关，所以
+           无条件合并：syncedAt 记的是这次推上去的那一版，本地要是更新了，记录照样是
+           脏的、下轮再推。
+           原来把这几样一起卡在对账后面，代价是：装柜 30 张照片要传几分钟，人一直在
+           打字 updatedAt 就一直在变，于是每轮都判「不适用」→ photoOps 一格都清不掉
+           → 下一轮 30 张全部重传，永远不收敛。 */
+        cur.syncedAt = rec.syncedAt;
+        snapOps.forEach(s=>{
+          if(s in rec.photoOps) return;                 /* 这一格这轮没传成功 */
+          /* 期间这一格被换过图（体积对不上）就别清它的待传标记，否则新拍那张永远传
+             不上去。体积一样就当是同一张 —— 判错只是多传一次，判反了是丢照片。 */
+          if(pushedSize[s]!=null && (cur.photos[s]||{}).size!==pushedSize[s]) return;
+          delete cur.photoOps[s];
+        });
+        cur.photoAt = Object.assign(cur.photoAt||{}, newAt);
+        /* 只有整份 payload 覆盖才需要对账 —— 那才是会盖掉人改动的那个动作。本地这
+           期间改过就别盖，让它下轮带着新内容自己去推（重复推一次是幂等的，丢改动
+           不是）。 */
+        if(adopted && (cur.updatedAt||0)===snapAt) Object.assign(cur, adoptServer(adopted, cur, rec.id));
+      });
   /* the record just lost a race — if it's also the one on screen, the visible
      form is still showing the losing edit until this catches it up */
   if(adopted && fresh){
@@ -9797,22 +9825,32 @@ async function hydratePhotos(id){
   /* 只看「本地有没有」不够：别的设备把同一格重拍一张，本地那份还在，就永远不会
      重下 —— serverPhotos 里本来就带着 updatedAt，一直存着没人读。拿它跟手上这张
      的版本（photoAt）比，服务端更新的才拉。 */
+  const svAt = s => ((rec.serverPhotos[s]||{}).updatedAt)||0;
   const held = rec.photoAt||{};
+  /* photoAt 是后加的字段，老设备上每一张已经缓存的照片都没有它。要是把「没记过」
+     当成版本 0，那些照片会因为「服务端更新」被整批重下一遍 —— 装柜一条 30 张
+     ≈ 9MB，全司每台设备各来一次，还是串行的。手上有图又没记过版本的，把当前版本
+     补上就行，不用下载。 */
+  const backfill={};
   const want = Object.keys(rec.serverPhotos||{}).filter(s=>{
-    if(rec.photoOps[s]) return false;                            /* 本机还有没推上去的动作，别覆盖 */
-    if(!rec.photos[s]) return true;                              /* 本地压根没有 */
-    return ((rec.serverPhotos[s]||{}).updatedAt||0) > (held[s]||0);  /* 服务端那张更新 */
+    if(rec.photoOps[s]) return false;                 /* 本机还有没推上去的动作，别覆盖 */
+    if(!rec.photos[s]) return true;                   /* 本地压根没有 */
+    if(!(s in held)){ backfill[s]=svAt(s); return false; }   /* 有图没记过版本 → 补记 */
+    return svAt(s) > held[s];                         /* 服务端那张确实更新 */
   });
+  if(Object.keys(backfill).length){
+    await patchRec(id, cur=>{ cur.photoAt = Object.assign(cur.photoAt||{}, backfill); });
+  }
   if(!want.length) return;
   /* 下载到本地这个小袋子里，别往开头那份快照上贴 —— 见下面 patchRec 的说明。 */
   const got={};
   for(const slot of want){
     try{
       const r = await api("/api/photo/"+encodeURIComponent(id)+"/"+encodeURIComponent(slot));
-      got[slot] = { blob: await r.blob(), at:((rec.serverPhotos[slot]||{}).updatedAt||0) };
-      if(R && R.id===id){ R.photos[slot]=got[slot].blob; paintSlot(slot); }
-      if(OR && OR.id===id){ OR.photos[slot]=got[slot].blob; oqcPaintSlot(slot); }
-      if(FT && FT.id===id){ FT.photos[slot]=got[slot].blob; ftPaintSlot(slot); }
+      got[slot] = await r.blob();
+      if(R && R.id===id){ R.photos[slot]=got[slot]; paintSlot(slot); }
+      if(OR && OR.id===id){ OR.photos[slot]=got[slot]; oqcPaintSlot(slot); }
+      if(FT && FT.id===id){ FT.photos[slot]=got[slot]; ftPaintSlot(slot); }
     }catch(e){ /* leave it for the next open */ }
   }
   if(Object.keys(got).length){
@@ -9823,7 +9861,7 @@ async function hydratePhotos(id){
       cur.photoAt = cur.photoAt||{};
       Object.keys(got).forEach(s=>{
         if(cur.photoOps[s]) return;
-        cur.photos[s]=got[s].blob; cur.photoAt[s]=got[s].at;
+        cur.photos[s]=got[s]; cur.photoAt[s]=svAt(s);
       });
     });
     if(R && R.id===id) markSaved();
@@ -9840,8 +9878,7 @@ async function hydratePhotos(id){
    这么改之后读到写的窗口从几十秒缩到一次 IndexedDB 事务，够用了。 */
 async function patchRec(id, fn){
   const cur = await dbGet(id); if(!cur) return null;
-  /* 回调返回 false = "我这一轮算出来的东西已经不适用了，别写" */
-  if(fn(cur)===false) return null;
+  fn(cur);
   await persistQuiet(cur);
   return cur;
 }
@@ -9890,14 +9927,20 @@ function reportClockSkew(){
 function reportLost(){
   const lost=LOST; LOST=[];
   if(!lost.length) return;
-  const lk=lost.filter(x=>x.why==="locked"), ph=lost.filter(x=>x.why==="photo"),
-        rc=lost.filter(x=>x.why!=="locked" && x.why!=="photo");
-  /* 只输一条就报名字（品号/PO），输多条就报条数 */
+  /* why → 说给现场看的话。原来是三个平行 filter，最后一个用「既不是 A 也不是 B」
+     兜底 —— 每加一种原因都得改两处，忘了改的话新原因会被套上「已被其他人修改」，
+     既不对又足够吓人让人重录一遍。改成一张表，加一种就加一行。 */
+  const LOST_MSG={
+    locked:"已被提交锁定，你刚才的改动没有保存 —— 需要管理员解除锁定。",
+    photo :"有照片传不上去（多半是文件太大），已跳过 —— 记录本身已经保存好了。",
+    race  :"已被其他人修改，你刚才的改动没有保存 —— 屏幕上是最新的那一版。"
+  };
   const who=a=>(a.length===1 && a[0].name) ? "「"+a[0].name+"」" : a.length+" "+tr("条记录");
   const parts=[];
-  if(lk.length) parts.push(who(lk)+tr("已被提交锁定，你刚才的改动没有保存 —— 需要管理员解除锁定。"));
-  if(ph.length) parts.push(who(ph)+tr("有照片传不上去（多半是文件太大），已跳过 —— 记录本身已经保存好了。"));
-  if(rc.length) parts.push(who(rc)+tr("已被其他人修改，你刚才的改动没有保存 —— 屏幕上是最新的那一版。"));
+  Object.keys(LOST_MSG).forEach(k=>{
+    const g=lost.filter(x=>(LOST_MSG[x.why] ? x.why : "race")===k);
+    if(g.length) parts.push(who(g)+tr(LOST_MSG[k]));
+  });
   toast(parts.join("　"), 8000);
 }
 
@@ -9952,7 +9995,7 @@ async function runSync(){
        人照常录入（本地存得住），但一条都推不上去，要等到有人想起来刷新页面。
        api() 对 HTTP 错误抛的是 "http <状态码>"，靠这个把两者分开。 */
     const msg=String((e && e.message) || "");
-    const st=(/^http (\d+)$/.exec(msg)||[])[1];
+    const st=(e && e.status) ? String(e.status) : undefined;
     /* 超时要单独摘出来：它是"这次没打通"，不是"根本没有后端"。不摘的话，会话里
        第一次同步撞上慢网就会被判成没有后端 → SYNC.enabled=false → 徽标藏起来、
        整个会话不再尝试，跟上面 500 那段是同一个坑。 */
