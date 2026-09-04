@@ -121,9 +121,9 @@ const GATE = `<!doctype html><html lang="en"><head>
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --deck:#0d1014; --card:#171b22; --card-line:#252c36;
+    --deck:#0d1014; --card:#1e2229; --card-line:#2e3239;
     --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
-    --field:#11151b; --field-line:#333c48;
+    --field:#181c23; --field-line:#363a41;
     --accent:#5b93ea; --accent-fill:#2f62c4; --no:#e08c82;
     --sh:0 1px 3px rgba(0,0,0,.55),0 16px 38px -20px rgba(0,0,0,.85);
   }

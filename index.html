@@ -2584,9 +2584,12 @@ table.frec-table tbody tr.draft .lockdot,
      它的 th 不在 thead 里，所以写 `table.lmodel th`（(1,1,2)，跟它自己
      1994 行那条同分，靠写在后面赢）。 */
   #lab table.lmodel th{
-    /* 表头用 --seg-bg（卡片内的"凹陷"色），不是 --deck —— deck 是整页的底，
-       放在白卡片里会比卡片深太多，看着像另一张卡片。 */
-    background:var(--seg-bg);color:var(--ink-3);font-weight:600;letter-spacing:0;
+    /* 表头跟顶部工具栏同一个面（--bar-bg）。原来用的是 --seg-bg —— 那是整套里
+       最深的一档（分段控件的槽），深色下压在卡片里太重，评审提的。
+       用 --bar-bg 还顺带少一种面色：表格区不再自带一档独有的深色。
+       注意不能用 --deck（整页的底）：那个在浅色下比白卡片深太多，看着像
+       另外叠了一张卡片。 */
+    background:var(--bar-bg);color:var(--ink-3);font-weight:600;letter-spacing:0;
     box-shadow:inset 0 -1px 0 var(--card-line);
   }
   /* ⚠ 这条不是装饰，是**必须**的：这个页面没有 doctype，跑在怪异模式
@@ -2656,7 +2659,7 @@ table.frec-table tbody tr.draft .lockdot,
      该中性的换 --seg-bg，该没有的直接去掉。悬停高亮那类保持 accent-soft，
      那本来就是要被看见的。 */
   #lab table.lrec td.act{background:transparent}      /* 「查看」那一整列的蓝底 */
-  #lab table.lstdt th{background:var(--seg-bg)}       /* 标准表表头，跟另外五张对齐 */
+  #lab table.lstdt th{background:var(--bar-bg)}       /* 标准表表头，跟另外五张对齐 */
   /* 不良明细卡片和空照片位保留 --accent-soft 的蓝调 —— 试过换成中性的
      --seg-bg，评审下来不如蓝的好看。它们是"卡片里的内容块"，带一点色反而
      跟外层白卡片分得开。真正要去掉的只有上面那一整列的底。 */
