@@ -1627,6 +1627,12 @@ table.frec-table tbody tr.draft .lockdot,
   align-items:center;justify-content:center;line-height:1}
 #cfr1633 .ftpbox.has .ftpdel{display:flex}
 #cfr1633 .ftpbox-add{border-style:dashed;cursor:pointer}
+/* 「−」默认不出现：默认那两格照片、一份报告是固定的，没什么可减。加出来的格子
+   一旦存在，由 ftBuildPhotoGrid / ftBuildRptGrid 在外层挂 .hasx 打开它。
+   它同时带着 .ftpbox-add，所以外观跟「＋」一样，锁定时也被上面那条
+   `#ftentryv.locked .ftpbox-add` 一起罩住，不用另外写一遍。 */
+#cfr1633 .ftpbox-minus{display:none}
+#cfr1633 .ftphotos.hasx .ftpbox-minus{display:flex}
 #cfr1633 .ftpbox-add .ftplabel{font-size:28px;color:var(--ink-3);pointer-events:none}
 #cfr1633 .ftsum{display:flex;flex-direction:column;gap:6px;margin-top:10px;font-size:13px}
 #cfr1633 .ftmetrics{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
@@ -3394,6 +3400,9 @@ table.frec-table tbody tr.draft .lockdot,
       <div class="ftpbox ftpbox-add" id="ft-photo-add" title="增加照片">
         <span class="ftplabel">＋</span>
       </div>
+      <div class="ftpbox ftpbox-add ftpbox-minus" id="ft-photo-del" title="减少照片">
+        <span class="ftplabel">−</span>
+      </div>
     </div>
   </section>
 
@@ -3404,6 +3413,9 @@ table.frec-table tbody tr.draft .lockdot,
     <div class="ftphotos" id="ft-rpt-wrap">
       <div class="ftpbox ftpbox-add" id="ft-rpt-add" title="增加报告">
         <span class="ftplabel">＋</span>
+      </div>
+      <div class="ftpbox ftpbox-add ftpbox-minus" id="ft-rpt-del" title="减少报告">
+        <span class="ftplabel">−</span>
       </div>
     </div>
   </section>
@@ -8579,9 +8591,18 @@ function ftMakePhotoBox(k){
 /* 点照片看大图 —— 跟成品 / 装柜共用那个全屏查看器（lbShow），只是格子结构
    不一样，这里把 #cfr1633 里所有有图的格子收集成通用清单再交给它。
    「测试报告」那张也算一格，排在最后。
-   标题用格子名：上/侧/报告，动态加的格子用它的序号。 */
-const FT_SLOT_NAME={top:"上部",side:"侧面",report:"测试报告"};
-const ftSlotLabel = k => FT_SLOT_NAME[k] || (tr("照片")+" "+String(k).replace(/^x(\d+).*$/,"$1"));
+   标题按位置叫：照片 1、照片 2、照片 3…… */
+/* 格子名按它在网格里的位置来。原来前两格固定叫「上部」「侧面」，现场说用不上这个
+   区分；而且加出来的第三格叫「照片 1」，跟前面两格对不上号，看图时反而更容易混。
+   存储键仍然是 ft_top / ft_side（历史数据一直是这个），只换显示名。 */
+function ftSlotLabel(k){
+  if(ftIsRptSlot("ft_"+k)){
+    const i=ftRptKeys().indexOf(k);
+    return i<=0 ? tr("测试报告") : tr("测试报告")+" "+(i+1);
+  }
+  const i=ftPhotoKeys().indexOf(k);
+  return tr("照片")+" "+(i<0?1:i+1);
+}
 function ftLbOpen(k){
   /* PDF 那种格子没有 <img>，要先排掉 —— 否则它进了清单、lbShow 又按 src
      过滤掉，findIndex 算出来的序号就跟实际清单错位。 */
@@ -8639,6 +8660,8 @@ function ftBuildPhotoGrid(){
   const addBtn=$("#ft-photo-add");
   wrap.querySelectorAll(".ftpbox:not(.ftpbox-add)").forEach(el=>el.remove());
   const keys=ftPhotoKeys();
+  /* 只有存在「加出来的格子」时才亮「−」——— 前两格是固定的，减不得。 */
+  wrap.classList.toggle("hasx", keys.length>2);
   keys.forEach(k=>{
     const box=ftMakePhotoBox(k);
     const blob=FT.photos["ft_"+k];
@@ -8681,7 +8704,9 @@ function ftBuildRptGrid(){
   const wrap=$("#ft-rpt-wrap"), addBtn=$("#ft-rpt-add");
   if(!wrap||!addBtn) return;
   wrap.querySelectorAll(".ftpbox:not(.ftpbox-add)").forEach(el=>el.remove());
-  ftRptKeys().forEach(k=>{ wrap.insertBefore(ftMakeRptBox(k),addBtn); ftPaintRptBox(k); });
+  const rk=ftRptKeys();
+  wrap.classList.toggle("hasx", rk.length>1);      /* 第一份报告是固定的，减不得 */
+  rk.forEach(k=>{ wrap.insertBefore(ftMakeRptBox(k),addBtn); ftPaintRptBox(k); });
   /* 同上：显隐交给 CSS，别在这儿再写一次 hidden */
 }
 function ftPaintRptBox(k){
@@ -9077,13 +9102,36 @@ $("#ft-photo-add").addEventListener("click",()=>{
   if(!FT||FT.locked) return;
   const k="x"+(++ftPhotoCounter)+"_"+Date.now();
   FT.photos["ft_"+k]=null;
+  /* 先把空格子画出来。原来不画：选文件那一步一取消，这一格就只活在内存里，等下次
+     重画才冒出来 —— 而且是个空格子，而 ✕ 只在有内容时才显示（.ftpbox.has .ftpdel），
+     于是它删不掉。现在画出来，「−」就能把它减掉。 */
+  ftBuildPhotoGrid();
   ftPendingSlot=k; $("#ftpick").value=""; $("#ftpick").click();
 });
+/* 「−」减掉最后一个「加出来的」格子。默认那两格照片 / 第一份报告不许减，所以
+   CSS 在没有多余格子时压根不显示它，这里再守一道。
+   格子里有东西就先问一声 —— 跟装柜「最后一格里有照片，连照片一起删掉？」同一个
+   规矩，别让人一按就没了。 */
+function ftDropLast(keys, keep){
+  if(!FT || FT.locked || keys.length<=keep) return;
+  const k=keys[keys.length-1], sk="ft_"+k;
+  if(FT.photos[sk] && !confirm(tr("最后一格里有内容，连内容一起删掉？"))) return;
+  /* 服务端有过这一格才需要发删除；纯本地加出来、还没推上去的，把待传标记撤掉就行，
+     不用为一张从来不存在的照片跑一趟 DELETE。 */
+  const onServer = !!FT.serverPhotos[sk];
+  delete FT.photos[sk]; delete FT.serverPhotos[sk];
+  if(onServer) FT.photoOps[sk]="del"; else delete FT.photoOps[sk];
+  ftSetURL(k,null);
+  ftBuildPhotoGrid(); ftSave();
+}
+$("#ft-photo-del").addEventListener("click",()=>ftDropLast(ftPhotoKeys(),2));
+$("#ft-rpt-del").addEventListener("click",()=>ftDropLast(ftRptKeys(),1));
 /* 报告格由 ftBuildRptGrid 动态生成并逐个绑定，这里不用再静态绑一次 */
 $("#ft-rpt-add").addEventListener("click",()=>{
   if(!FT||FT.locked) return;
   const k="rpt"+(++ftRptCounter)+"_"+Date.now();
   FT.photos["ft_"+k]=null;                 /* 占位，ftRptKeys 才认得出这一格 */
+  ftBuildPhotoGrid();                      /* 同上：先画出来，取消选文件也能减掉 */
   ftPendingSlot=k;
   $("#ftpick").accept="image/*,application/pdf,.pdf";
   $("#ftpick").value=""; $("#ftpick").click();
@@ -11053,6 +11101,9 @@ const I18N_ID={
   "点击或拖入上传测试报告（图片或 PDF）": "Klik atau tarik untuk upload laporan pengujian (gambar atau PDF)",
   "点击查看": "Klik untuk lihat",
   "增加报告": "Tambah Laporan",
+  "减少照片": "Kurangi Foto",
+  "减少报告": "Kurangi Laporan",
+  "最后一格里有内容，连内容一起删掉？": "Kotak terakhir masih ada isinya — hapus sekalian isinya?",
   "文件处理失败": "Gagal memproses berkas",
   "有照片传不上去（多半是文件太大），已跳过 —— 记录本身已经保存好了。": "ada foto yang tidak bisa diunggah (kemungkinan berkasnya terlalu besar) dan dilewati — catatannya sendiri sudah tersimpan.",
   "这份文件": "Berkas ini",
@@ -11082,8 +11133,6 @@ const I18N_ID={
   "平均": "Rata-rata",
   "最大": "Maks",
   /* 大图查看器的格子名 */
-  "上部": "Atas",
-  "侧面": "Samping",
   "照片": "Foto",
   "判定构成": "Komposisi Hasil",
   "不合格是哪一项超的": "Item mana yang melebihi batas",
