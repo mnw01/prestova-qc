@@ -87,7 +87,7 @@
    那段注释警告过、用户报过两次的坑。
    同理 --accent 系列只加在这个模块列表上，不动 :root：报告表单里那些
    background:var(--accent-soft) 的输入格是打印件的一部分。 */
-#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar{
+#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar{
   --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
   --hairline:#e6eaf1; --rule-2:#cdd5e0;
   --ok:#0f7a52; --no:#b0342a; --okbg:#e6f5ee; --nobg:#fdecea;
@@ -102,7 +102,7 @@
   color:var(--ink);
 }
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]) :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
+  :root:not([data-theme="light"]) :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar){
     --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
     --hairline:#232a34; --rule-2:#333c48;
     --ok:#4fbb8a; --no:#e08c82; --okbg:#12291f; --nobg:#2b1a18;
@@ -114,7 +114,7 @@
     --sh-1:0 1px 2px rgba(0,0,0,.5);
   }
 }
-:root[data-theme="dark"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
+:root[data-theme="dark"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar){
   --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
   --hairline:#232a34; --rule-2:#333c48;
   --ok:#4fbb8a; --no:#e08c82; --okbg:#12291f; --nobg:#2b1a18;
@@ -125,7 +125,7 @@
   --deck:#0d1014; --bar-bg:#14181f; --seg-bg:#0f131a; --seg-on:#2a2e35; --sunk:#252930;
   --sh-1:0 1px 2px rgba(0,0,0,.5);
 }
-:root[data-theme="light"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.frec-card,.hcorner,#lockbar){
+:root[data-theme="light"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar){
   --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
   --hairline:#e6eaf1; --rule-2:#cdd5e0;
   --ok:#0f7a52; --no:#b0342a; --okbg:#e6f5ee; --nobg:#fdecea;
@@ -2404,18 +2404,12 @@ table.frec-table tbody tr.draft .lockdot,
       border-color:var(--accent-fill);
     }
   }
-  /* 成品那个「打印 / 存 PDF」是个例外，两点原因：
-     1. 它长在 .sheet 上 —— 祖先链是 .prtfoot → .sheet → .wrap → #mod，
-        **一个都不带 --accent-fill**（那个 token 只挂在板块根节点和 .bar 上），
-        写 var() 会解析失败、整条声明作废。
-     2. 那张纸永远是白的，按钮不该跟着深色模式变成浅一档的 #4CC2FF。
-     所以这里写字面值，并固定用浅色那一档：#005FB8 + 白字。
-     ⚠ **字色也必须写字面值**。上面基础规则里是 color:var(--accent-on)，同样解析
-     失败、同样作废，于是字色回落成继承来的纸墨（深色）—— 2026-09-04 就是这么
-     踩的：底色靠这里兜住了，字色没兜，深色模式下变成深字压深蓝。
-     （@media print 里 .prtfoot 是 display:none，改它不影响打印件。） */
-  .prtfoot > button.key{background:#005FB8;border-color:#005FB8;color:#fff}
-  .prtfoot > button.key:hover{background:#005FB8;border-color:#005FB8;color:#fff;filter:brightness(1.14)}
+  /* 成品那个「打印 / 存 PDF」原来在这里写死字面值、固定用浅色那一档，理由是
+     它长在白纸上。现在不写死了：**.prtfoot 已经加进上面那四块 token 的选择器**，
+     所以 var(--accent-fill) / var(--accent-on) 在它身上解析得出来，按钮跟着主题走。
+     .prtfoot 里只有这一个按钮，不含任何纸上的内容，把屏幕 token 挂上去不会
+     波及 .sheet —— .sheet 自己仍然吃 --paper / --ink，纸还是白的。
+     @media print 里 .prtfoot 是 display:none，所以打印出来的东西一点不受影响。 */
 
   /* ── 卡片 ───────────────────────────────────────────────────────── */
   #iqc .iqcard,#ipqc .ipcard,#oqc .oqcard,#lab .lcard,#cfr1633 .ftcard,
