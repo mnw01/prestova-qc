@@ -213,6 +213,7 @@ html[lang="id"] .hhead h1 .cn{display:none}
   transition:transform .12s,box-shadow .12s;
 }
 .mcard:hover{transform:translateY(-2px);box-shadow:0 8px 22px -12px rgba(20,26,36,.4)}
+.mcard .mtx{display:flex;flex-direction:column;gap:6px;min-width:0}
 .mcard .zh{font-size:17px;font-weight:700;letter-spacing:.01em}
 .mcard .en{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
 .mcard .desc{font-size:12.5px;color:var(--ink-2);line-height:1.45;margin-top:3px}
@@ -232,7 +233,6 @@ html[lang="id"] .hhead h1 .cn{display:none}
   background:var(--paper);border:1px solid var(--hairline);border-radius:5px;
   padding:9px 12px;margin-bottom:6px;cursor:pointer;font:inherit;color:var(--ink);
 }
-.rrow:hover{border-color:var(--accent)}
 .rrow .tag{
   flex:0 0 auto;font-size:10.5px;padding:2px 7px;border-radius:3px;
   background:var(--accent-soft);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
@@ -2743,20 +2743,50 @@ table.frec-table tbody tr.draft .lockdot,
      板块内页不用管 —— 那边的文字全在不透明卡片里，格纹碰不到。 */
   .hsub{font-size:11.5px;letter-spacing:.14em;color:var(--ink-2)}
   .rempty{color:var(--ink-2)}
+  /* position/overflow 是给水印用的：出血的那一角要靠卡片自己裁。
+     overflow 不影响 hover 的投影 —— 投影画在边框盒之外，不归 overflow 管。 */
   .mcard{
+    position:relative;overflow:hidden;
     background:var(--card);border:1px solid var(--card-line);border-left-width:1px;
     border-radius:var(--r-card);box-shadow:var(--sh-1);padding:18px 20px;
   }
   .mcard:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(15,23,41,.07),0 14px 30px -16px rgba(15,23,41,.4)}
+  /* 文字这层必须显式抬到 z-index:1。水印是绝对定位又带 z-index，
+     不抬的话它会盖在普通流的文字上面。 */
+  .mcard .mtx{position:relative;z-index:1}
+  /* 水印：板块图标放大压淡，衬在卡片右下角，右边裁掉三成（110 × 30% = 33px）。
+     ⚠ 偏移用 px 不用百分比 —— 百分比在绝对定位里是按**卡片宽度**算的，
+     而卡宽是 auto-fit 算出来的，窗口一拉水印就会漂（实测三栏缩进 58px、
+     两栏 70px，差 12px）。要「裁掉图标的几成」就得钉在图标自己的尺寸上。
+     尺寸 110 是按卡片算的：卡高 142，bottom:-8 时水印顶边落在距卡顶 39px
+     处，正好在标题那行下面，不会跟「实验室」这种短标题打架。
+     pointer-events:none —— 卡片整体是个 button，水印不能吃掉点击。
+     5% 墨色下「进入 →」压在描边上是 4.87:1（纯底 5.39），仍过 4.5。 */
+  .mcard .mwm{
+    position:absolute;right:-33px;bottom:-8px;width:110px;height:110px;z-index:0;
+    color:color-mix(in srgb,var(--ink) 5%,transparent);pointer-events:none;
+  }
+  .mcard .mwm svg{width:100%;height:100%;display:block}
   .mcard .zh{font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
   .mcard .en{font-size:10.5px;letter-spacing:.12em;color:var(--ink-3)}
   .mcard .desc{font-size:13px;color:var(--ink-2)}
   .mcard .go{color:var(--accent);font-weight:600}
+  /* 圆角维持原来的 --r-ctl（7px）—— 试过跟卡片一样的 11px，行只有 40px 高，
+     切得太圆。transition 是照抄卡片那条，不写 hover 的位移会瞬间跳过去。 */
   .rrow{
     background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-ctl);
-    box-shadow:var(--sh-1);
+    box-shadow:var(--sh-1);transition:transform .12s,box-shadow .12s;
   }
-  .rrow:hover{border-color:var(--accent)}
+  /* hover 跟卡片逐字一致：抬起 2px + 同一组投影。
+     原来是把描边变蓝（上面那条 .rrow:hover 已删）—— 卡片 hover 不换描边色，
+     留着就是行和卡两套反馈。 */
+  .rrow:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(15,23,41,.07),0 14px 30px -16px rgba(15,23,41,.4)}
+  /* 板块标签**只改布局，不碰颜色**：底色/字色/描边/圆角/字号全部沿用上面
+     那条原始规则（accent-soft 底 + accent 字 + accent 30% 描边）。
+     这两行只负责让胶囊里的图标和文字居中对齐 —— 不写 inline-flex，
+     图标会按基线排，比文字低半格。 */
+  .rrow .tag{display:inline-flex;align-items:center;gap:4px}
+  .rrow .tag svg{width:12px;height:12px;flex:0 0 auto}
   .recent h2{font-size:12px;letter-spacing:.12em;color:var(--ink-2)}
   .langsw{border-radius:var(--r-ctl);overflow:hidden;border-color:var(--field-line)}
   .langsw button{font-size:12px;background:var(--card);color:var(--ink-2)}
@@ -4049,6 +4079,30 @@ const MODULES=[
   { id:"cfr1633", zh:"防火检验", en:"16 CFR 1633", ready:true,
     reportZh:"16 CFR 1633 防火检验", desc:"成品燃烧测试，峰值热释放率/总热释放量" }
 ];
+/* 板块图标 —— 全站唯一一处图标，只在首页用。
+   24 视框、1.6 描边、fill:none、颜色一律 currentColor：跟着容器的字色走，
+   深浅两个主题都不用另配一份，也不引入新的颜色 token。
+   刻意不给每个板块配一种色 —— 评审定过「一个全部统一」，六种色的卡片是
+   参考图那种「一堆第三方 App」的味道，不是一个质检系统该有的。 */
+const MICONS={
+  lab:'<path d="M9.2 3h5.6M10.4 3v6.1L5.3 17.6A2 2 0 0 0 7 20.6h10a2 2 0 0 0 1.7-3l-5.1-8.5V3"/><path d="M7.7 14.4h8.6"/>',
+  iqc:'<path d="M3.5 13.2V19a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-5.8"/><path d="M3.5 13.2h4.3l1.2 2.2h6l1.2-2.2h4.3"/><path d="M12 3v7.2"/><path d="m8.9 7.2 3.1 3 3.1-3"/>',
+  ipqc:'<path d="M3.5 6.5h17M3.5 12h17M3.5 17.5h17"/><circle cx="9" cy="6.5" r="2.1"/><circle cx="15.5" cy="12" r="2.1"/><circle cx="8" cy="17.5" r="2.1"/>',
+  fqc:'<path d="m20.5 7.8-8.5-4.6-8.5 4.6v8.4l8.5 4.6 8.5-4.6V7.8Z"/><path d="m3.5 7.8 8.5 4.7 8.5-4.7"/><path d="M12 12.5v8.3"/>',
+  oqc:'<rect x="2.6" y="6" width="12.6" height="10.4" rx="1.4"/><path d="M15.2 9.6h3.6l2.6 2.9v3.9h-6.2"/><circle cx="7" cy="18.6" r="1.7"/><circle cx="17.6" cy="18.6" r="1.7"/>',
+  /* 火焰只用一笔、而且左边留那个内卷的钩 —— 第一版画成了左右对称的外廓
+     加一颗内芯，13px 的标签里看着就是一滴水。对称 = 水滴，不对称 + 卷边
+     = 火，这个区别在小尺寸下才是决定性的。 */
+  cfr1633:'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4.1 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5Z"/>'
+};
+/* sw：描边粗细。水印那枚要放大到 110px，1.6 的线在那个尺寸上会显得笨重，
+   给 1.1 才是「淡淡一层」而不是「一个大图标」。
+   认不出的板块直接返回空串，**不要吐一个空 <svg>** —— 空的照样占 12px 宽
+   加 4px gap，标签里会多出一截莫名的缩进。最近报告那边对未知 type 本来就有
+   || {zh:"?"} 的兜底，图标要跟它一个退法。 */
+const micon = (id,sw) => !MICONS[id] ? '' :
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="'+(sw||1.6)+'" '+
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+MICONS[id]+'</svg>';
 const moduleById = id => MODULES.find(m=>m.id===id);
 let CURRENT="fqc";
 
@@ -9616,12 +9670,15 @@ function renderCards(rows){
     const unseen = only && !only.includes(m.id);
     const b=el("button","mcard"+(m.ready?"":" off"));
     b.type="button";
-    b.innerHTML='<span class="zh">'+esc(m.zh)+'</span>'+
+    /* 文字包一层 .mtx —— 它要 z-index 才能压在水印上面（见样式表里那段注释） */
+    b.innerHTML='<span class="mtx">'+
+      '<span class="zh">'+esc(m.zh)+'</span>'+
       '<span class="en">'+esc(m.en)+'</span>'+
       '<span class="desc">'+esc(m.desc)+'</span>'+
       '<span class="foot"><span class="cnt">'+
         (!m.ready ? tr("尚未配置") : unseen ? "—" : n+" "+tr("份记录"))+'</span>'+
-      '<span class="go">'+(m.ready?tr("进入 →"):tr("待添加"))+'</span></span>';
+      '<span class="go">'+(m.ready?tr("进入 →"):tr("待添加"))+'</span></span></span>'+
+      '<span class="mwm">'+micon(m.id,1.1)+'</span>';
     b.addEventListener("click",()=>{
       if(m.ready) location.hash="#/"+m.id;
       else toast("「"+m.zh+"」 is not set up yet");
@@ -9639,7 +9696,7 @@ function renderRecent(rows){
     const m=moduleById(r.type||"fqc")||{zh:"?"};
     const d=new Date(r.updatedAt||Date.now());
     const b=el("button","rrow"); b.type="button";
-    b.innerHTML='<span class="tag">'+esc(m.zh)+'</span>'+
+    b.innerHTML='<span class="tag">'+micon(r.type||"fqc")+esc(m.zh)+'</span>'+
       '<span class="nm">'+esc(pickLabel(r))+'</span>'+
       '<span class="dt">'+(d.getMonth()+1)+"/"+d.getDate()+" "+p(d.getHours())+":"+p(d.getMinutes())+'</span>';
     b.addEventListener("click",async()=>{
