@@ -9442,11 +9442,19 @@ function ftDropLast(keys, keep){
   if(!FT || FT.locked || keys.length<=keep) return;
   const k=keys[keys.length-1], sk="ft_"+k;
   if(FT.photos[sk] && !confirm(tr("最后一格里有内容，连内容一起删掉？"))) return;
-  /* 服务端有过这一格才需要发删除；纯本地加出来、还没推上去的，把待传标记撤掉就行，
-     不用为一张从来不存在的照片跑一趟 DELETE。 */
-  const onServer = !!FT.serverPhotos[sk];
+  /* 无条件排删除，跟另外四处删照片的地方（成品、装柜两处、防火逐格 ✕）一致。
+     原来这里想省一趟请求，拿 serverPhotos 判「服务端有过这一格」—— 判反了。
+     serverPhotos **只在拉取侧写**：adoptServer 和 hydratePhotos 补问那一次。
+     pushOne 传完照片写的是 photoAt，不写它；而推成功后 syncedAt===updatedAt，
+     pullAll 的「服务端更新才拉」再也不成立，这条记录不会被重拉。所以本机自己拍、
+     自己传上去的照片，serverPhotos 里一直是空的 —— 「拍照 → 等同步完 → 点减」
+     这条日常路径上判出来永远是「没传过」，于是不发 DELETE：服务端的 R2 对象和
+     photos 行都留着，别的设备照常显示；而下次别人一编辑这条记录，adoptServer 把
+     serverPhotos 从服务端重建出来，hydratePhotos 判「本地没有」又把它下回来，
+     格子和照片一起复活，用户的删除被撤销。
+     给一张从没传过的照片发一次 DELETE，服务端只是多写一行墓碑，比这便宜得多。 */
   delete FT.photos[sk]; delete FT.serverPhotos[sk];
-  if(onServer) FT.photoOps[sk]="del"; else delete FT.photoOps[sk];
+  FT.photoOps[sk]="del";
   ftSetURL(k,null);
   ftBuildPhotoGrid(); ftSave();
 }
@@ -9940,7 +9948,10 @@ async function pushOne(rec){
   /* rec 是这一轮开始时 dbGet 出来的快照。下面每一次网络往返都可能是几秒到几十秒，
      期间用户完全可能改了这条记录、或者新拍了照片 —— 记住进来时的样子，结尾合并时
      拿它跟库里对账。 */
-  const snapAt = rec.updatedAt||0, snapSynced = rec.syncedAt||0, snapOps = Object.keys(rec.photoOps||{});
+  const snapAt = rec.updatedAt||0, snapSynced = rec.syncedAt||0;
+  /* 连动作种类一起快照，不能只留键 —— 结尾对账要判「这一格现在挂的还是不是同一个
+     动作」，只有键的话 del 和 put 分不开，见下面那段。 */
+  const snapOps = Object.assign({}, rec.photoOps);
   const lf = rec.fields||{}, lostName=(lf.itemNo||lf.po||lf.container||"").trim();
   /* newAt / pushedSize 只装这一轮真正产生的东西 —— 结尾要靠它们判断「有没有值得
      写盘的结果」。直接往 rec.photoAt 上堆的话，老记录本来就有的条目会让那个判断
@@ -10035,7 +10046,7 @@ async function pushOne(rec){
      更糟的是 syncedAt 跟着回到旧值，那条改动连「待同步」都不算，永远不会被推上去。
      昨天在 hydratePhotos 修的是同一个毛病，这里漏了。只合并这一轮真正产生的那几样，
      而且先跟库里对账。 */
-  const cleared = snapOps.some(s=>!(s in rec.photoOps));
+  const cleared = Object.keys(snapOps).some(s=>!(s in rec.photoOps));
   /* 这一轮什么都没产出就别开读-改-写：clock_skew 分支（注释里写着「什么都不动」）、
      以及只有照片待传而这批全部失败的记录，原来照样走一次 dbGet+dbPut，而 dbGet 读
      的是整条记录连所有照片 Blob —— 装柜一条十几 MB，每 60 秒一次。 */
@@ -10049,11 +10060,18 @@ async function pushOne(rec){
            打字 updatedAt 就一直在变，于是每轮都判「不适用」→ photoOps 一格都清不掉
            → 下一轮 30 张全部重传，永远不收敛。 */
         cur.syncedAt = rec.syncedAt;
-        snapOps.forEach(s=>{
+        Object.keys(snapOps).forEach(s=>{
           if(s in rec.photoOps) return;                 /* 这一格这轮没传成功 */
-          /* 期间这一格被换过图（体积对不上）就别清它的待传标记，否则新拍那张永远传
-             不上去。体积一样就当是同一张 —— 判错只是多传一次，判反了是丢照片。 */
-          if(pushedSize[s]!=null && (cur.photos[s]||{}).size!==pushedSize[s]) return;
+          /* 期间这一格换成了另一种动作，就留给下一轮，别拿这一轮的结果去清它。
+             原来只比体积，而 pushedSize 只有 put 分支才写 —— 快照是 del 的格子
+             pushedSize 是 undefined，那道守卫整条被跳过：del 推成功、期间用户在
+             同一格重拍一张，新拍那张的 put 会在这里被删掉，从此没有待推标记、
+             永远传不上去；serverPhotos 里也没有它，adoptServer 下次还会把本地
+             blob 一并裁掉，照片就没了。 */
+          if(cur.photoOps[s]!==snapOps[s]) return;
+          /* 动作种类没变，但同一格被换过图（体积对不上）也别清，否则新拍那张永远
+             传不上去。体积一样就当是同一张 —— 判错只是多传一次，判反了是丢照片。 */
+          if(snapOps[s]==="put" && (cur.photos[s]||{}).size!==pushedSize[s]) return;
           delete cur.photoOps[s];
         });
         cur.photoAt = Object.assign(cur.photoAt||{}, newAt);
@@ -10131,11 +10149,15 @@ async function pullAll(){
   for(const row of (idx.reports||[])){
     const mine=local[row.id];
     if(row.deleted){
-      if(mine){
-        await dbDelete(row.id);
-        /* if the open report was deleted elsewhere, don't leave a dead form up */
-        if(R && R.id===row.id){ resetToBlank(); toast("This report was deleted on another device"); }
-      }
+      /* 六个板块对「别人删了我正开着的这条」反应必须一致。原来只有成品会
+         resetToBlank() 并弹一句提示，另外五个什么都不做 —— 于是同一件事在成品是
+         「正在填的内容当场没了」，在另外五个是「接着填，下一轮 save 把记录推回去」。
+         按这个引擎一贯的 last-write-wins（删除也只是一次写，后来的编辑赢）统一到
+         后者：谁都不动屏幕上的表单，人正在填的东西不会被别人的删除销毁。
+         代价知道且接受：这样复活回来的记录没有照片 —— apiDeleteReport 把 R2 对象
+         真删了，只在 photos 表留墓碑。要连照片一起救，得先让服务端删除改成留一段
+         宽限期再收，那是另一件事。 */
+      if(mine) await dbDelete(row.id);
       continue;
     }
     /* only take the server copy when it is strictly newer, and never while we
@@ -10247,9 +10269,13 @@ async function hydratePhotos(id){
     try{
       const r = await api("/api/photo/"+encodeURIComponent(id)+"/"+encodeURIComponent(slot));
       got[slot] = await r.blob();
-      if(R && R.id===id){ R.photos[slot]=got[slot]; paintSlot(slot); }
-      if(OR && OR.id===id){ OR.photos[slot]=got[slot]; oqcPaintSlot(slot); }
-      if(FT && FT.id===id){ FT.photos[slot]=got[slot]; ftPaintSlot(slot); }
+      /* 跟下面落盘那步同一个守卫：这段时间里人可能把这一格删了或者重拍了，两种都
+         会留下 photoOps，贴回去就是把人的动作顶掉。落盘那步早就这么判了，这三行
+         漏了 —— 结果是库里干净、内存里的 R/OR/FT 被弄脏，人随手再改个字段，
+         save() 整条 dbPut 回去就把已删的照片连同 "del" 标记一起写进了库。 */
+      if(R  && R.id===id  && !R.photoOps[slot]){  R.photos[slot]=got[slot];  paintSlot(slot); }
+      if(OR && OR.id===id && !OR.photoOps[slot]){ OR.photos[slot]=got[slot]; oqcPaintSlot(slot); }
+      if(FT && FT.id===id && !FT.photoOps[slot]){ FT.photos[slot]=got[slot]; ftPaintSlot(slot); }
     }catch(e){ /* leave it for the next open */ }
   }
   if(Object.keys(got).length){
