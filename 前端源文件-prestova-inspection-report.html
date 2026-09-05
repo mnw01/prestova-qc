@@ -9741,6 +9741,15 @@ window.addEventListener("hashchange",route);
 const SYNC = { enabled:true, probed:false, busy:false, err:null, at:0, pending:0, stuck:0 };
 /* mirrors the worker's ID_RE — anything else is rejected with 400 and can never sync */
 const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+/* 「这份页面根本没有后端」是个**静态事实**，不该从一次网络失败反推。
+   file: / blob: = 这份 HTML 被当文件打开（单机副本）。另外两条判据在 runSync 那边：
+   /api/* 回 404，或者响应体压根不是 JSON —— artifact 那个宿主对任何路径都回应用
+   HTML，两条各盖一种。
+   原来是拿「fetch 抛没抛」猜的，而门户认证、DNS 解不开、TLS 握手失败抛的是同一个
+   TypeError —— 后端好好的、下一轮就通了，却会被判成没有后端：SYNC.enabled=false，
+   徽标直接隐藏、整个会话不再尝试、连提示都没有。命中窗口正是 !SYNC.probed，也就是
+   车间平板早上打开、网还没稳的那一次。 */
+const NO_BACKEND = location.protocol==="file:" || location.protocol==="blob:";
 
 /* ── 按板块同步：QC 只拉自己点进去过的板块 ─────────────────────────
    现场手机原来每 60 秒下载全库（1,547 行 / 122 KB）去用其中十几行。
@@ -9808,15 +9817,34 @@ try{ window.__SYNC = SYNC; }catch(e){}   /* read-only handle for diagnostics */
    列里），但那台设备可能一整天没往上传一条。
    超时按普通网络错误处理：徽标点亮，下一轮重试。
 
-   上传给足时间：8MB 的 PDF 在仓库那种网速下 30 秒根本传不完，一刀切会把本来能
-   成的上传掐死。没 body 的（拉索引、拉记录、删照片）30 秒够了。
+   大件给足时间：8MB 的 PDF 在仓库那种网速下 30 秒根本传不完（180 秒对应约
+   370 kbit/s 上行，对争抢中的车间 Wi-Fi 是个保守的地板），一刀切会把本来能成的
+   上传掐死。小件 30 秒够：最大的那件是管理员那份未过滤索引 461KB，30 秒只需要
+   约 126 kbit/s，而现场 QC 带 types= 过滤后一次才 1.4KB。
+   「大件」按字节数认，不按 body 的类型 —— 见下面 BIG_BODY。
    signal 放在 ...opts 后面：调用方万一自带一个，也不能把超时顶掉。 */
 const API_TIMEOUT = 30000, API_TIMEOUT_UPLOAD = 180000;
+/* 超过这么多才算「在传文件」，给上传那一档。取 128KB 而不是 256KB，是因为下面
+   量字符串用的是 .length（见那段注释），对中文 payload 会低估。 */
+const BIG_BODY = 128 * 1024;
 async function api(path, opts={}){
   const ac = new AbortController();
-  const budget = opts.body ? API_TIMEOUT_UPLOAD : API_TIMEOUT;
+  /* 按**这次要送多少字节**分档，不是按 body 的类型，更不是「有没有 body」。
+     大的可能是 8MB 的照片（Blob，量 .size），也可能是几千行的物料基础资料
+     （那也是一次记录 PUT，body 是 JSON 字符串，量 .length）。原来写的是
+     opts.body 有没有，于是几 KB 的普通记录推送也占满上传档 —— 卡住时把整轮同步
+     压满，而 syncNow 撞上在跑的一轮只返回同一个 Promise，60 秒轮询期间全是空转。
+     .length 是 UTF-16 码元数：中文一个字算 1，UTF-8 里却占 3 字节，所以对中文多
+     的 payload 会低估 —— 偏的方向是「更容易被判成小的」，阈值因此取低一档。 */
+  const bytes = opts.body ? (opts.body.size || opts.body.length || 0) : 0;
+  const budget = bytes > BIG_BODY ? API_TIMEOUT_UPLOAD : API_TIMEOUT;
+  /* 一个截止时间戳管到底：响应头和 body 共用同一份额度，不是各排一份。原来 body
+     那段重排一个完整 budget，实际上限是常量的两倍（普通 60 秒、上传 360 秒）——
+     而这个数就是「同步最长能冻多久」，写在常量上的数字得算数。 */
+  const deadline = Date.now() + budget;
   const asTimeout = e => (e && e.name==="AbortError") ? new Error("timeout") : e;
-  const t0 = setTimeout(()=>ac.abort(), budget);
+  const arm = () => setTimeout(()=>ac.abort(), Math.max(0, deadline - Date.now()));
+  const t0 = arm();
   let r;
   try{
     r = await fetch(path, { credentials:"same-origin", ...opts, signal:ac.signal });
@@ -9838,9 +9866,16 @@ async function api(path, opts={}){
      都不开。原来在外面开，每传成功一张照片就留下一个空转 180 秒的计时器，还顺带
      把那个没人读的 Response 钉住不放 —— 装柜一条 30 张照片就是 30 个。 */
   const guard = fn => async () => {
-    const t = setTimeout(()=>ac.abort(), budget);
+    const t = arm();
     try{ return await fn(); }
-    catch(e){ throw asTimeout(e); }
+    catch(e){
+      /* 响应体不是 JSON —— 真后端的 /api/* 一律回 JSON，回别的东西说明这份页面
+         压根不是 Worker 在服务（artifact 那个宿主对任何路径都回应用 HTML）。
+         标出来，好让 runSync 把它跟「网络这次没打通」分开：前者该永久关掉同步，
+         后者下一轮还要再试。 */
+      if(e && e.name==="SyntaxError"){ const err=new Error("not_json"); err.noBackend=true; throw err; }
+      throw asTimeout(e);
+    }
     finally{ clearTimeout(t); }
   };
   return { json:guard(()=>r.json()), blob:guard(()=>r.blob()) };
@@ -10421,13 +10456,18 @@ async function runSync(){
        时段里**新打开**页面 → 第一次同步就 500 → 判定成"没有后端" →
        SYNC.enabled=false → 徽标直接隐藏、整个会话不再尝试、也没有任何提示。
        人照常录入（本地存得住），但一条都推不上去，要等到有人想起来刷新页面。
-       api() 对 HTTP 错误抛的是 "http <状态码>"，靠这个把两者分开。 */
-    const msg=String((e && e.message) || "");
+       怎么把三者分开见下面那三条判据 —— 全是静态事实，不再从「这次失败了」反推。 */
     const st=(e && e.status) ? String(e.status) : undefined;
-    /* 超时要单独摘出来：它是"这次没打通"，不是"根本没有后端"。不摘的话，会话里
-       第一次同步撞上慢网就会被判成没有后端 → SYNC.enabled=false → 徽标藏起来、
-       整个会话不再尝试，跟上面 500 那段是同一个坑。 */
-    const noBackend = (!st && msg!=="timeout") || st==="404";
+    /* 三条判据，全是**静态事实**，没有一条是从「这次失败了」反推的：
+         · NO_BACKEND   —— 这份 HTML 被当文件打开（单机副本）
+         · 404          —— 宿主根本没有 /api/* 这些路由
+         · e.noBackend  —— 响应体不是 JSON（宿主对任何路径都回应用 HTML）
+       其余一律算「后端在，但这次没打通」：超时、门户认证、DNS 解不开、TLS 握手
+       失败、500、网关抖一下 —— 徽标点亮报错，下一轮重试。
+       原来写的是「没有状态码就算没有后端」（超时单独摘了出去），于是门户认证、
+       DNS、握手失败那一整类 —— fetch 抛的都是同一个 TypeError —— 全被误判成没有
+       后端。命中窗口正是 !SYNC.probed：车间平板早上打开、网还没稳的那一次。 */
+    const noBackend = NO_BACKEND || st==="404" || !!(e && e.noBackend);
     if(SYNC.err==="auth"){
       toast("Session expired — reloading");
       setTimeout(()=>location.reload(), 1200);
