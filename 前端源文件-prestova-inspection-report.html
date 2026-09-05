@@ -1917,10 +1917,8 @@ table.frec-table tbody tr.draft .lockdot,
 #oqc .oqan-item .fill{display:block;height:100%;background:#c9483c}
 #oqc .oqan-item .num{text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
 #oqc .oqan-empty{padding:14px 12px;font-size:12.5px;color:var(--ink-3);text-align:center}
-@media (max-width:560px){
-  #oqc .oqan-item{grid-template-columns:1fr;gap:4px}
-  #oqc .oqan-item .num{text-align:left}
-}
+/* 手机版（≤560）不写在这里 —— 六个板块的分析条是同一个形状，统一收在样式表
+   最后「分析屏的条形图：手机版」那一段，免得只有装柜一个板块被改。 */
 /* 数字列右对齐。全站只有 table.frec-table 和 #ipqc table.iprec-table 定义过
    th.num/td.num，装柜这张一直没有 —— 记录表里没用到 .num 所以没露出来，
    数据分析的 SKU 表一用就发现数字全靠左。 */
@@ -2765,6 +2763,32 @@ table.frec-table tbody tr.draft .lockdot,
   .langsw button.on{background:var(--accent-fill);color:var(--accent-on);font-weight:600}
   .rolechip{border-radius:var(--r-ctl);background:var(--seg-bg);color:var(--ink-2);font-weight:600}
   .logoutbtn{border-radius:var(--r-ctl);border-color:var(--field-line);background:var(--card);color:var(--ink-2)}
+}
+
+/* ── 分析屏的条形图：手机版 ────────────────────────────────────────
+   六个板块的看板里有两种条，桌面上都是「标签 | 条 | 数字」三列：
+     月度条  #fdash .fd-bar / #lab .lbar / #oqc .oqbar   标签是月份这种短词
+     明细条  #iqc .iqan-item / #ipqc .ipan-item / #oqc .oqan-item /
+             #cfr1633 .ftan-item / #lab .litem           标签是整句检验项目
+   两侧那两列写死了 64~150px，手机上不缩，条就被挤没了。375 宽实测条长：
+     实验室明细 26px · 制程/防火 46px · 来料 56px · 三张月度 82~104px
+   两种条的毛病不一样，分开治：
+     月度条 —— 一个月一行才好上下比长短，所以保持一行，只把两侧从固定宽
+               改成 auto（按内容量体），条从 104px 拿回约 165px。
+     明细条 —— 标签是整句话，本来就得独占一行。改成两行：
+               第一行 标签 + 右对齐的数字，第二行 整宽的条。
+               装柜原来是「标签 / 条 / 数字」三行、数字孤零零靠左，收成两行。
+   源码里三个 span 的顺序是 标签 → 条 → 数字，要把条挪到第二行、数字提到
+   第一行右边，只能显式排位，靠自动流排不出来。
+   ⚠ 选择器**不能折行**：换行后以 `.track{` 开头会被 check-isolation 当成
+     「别处的无作用域裸类规则」挡下来（它是按行首认的）。
+   整段只在 ≤560px 生效：桌面一个像素不动，打印件也不涉及（看板不打印）。 */
+@media (max-width:560px){
+  #fdash .fd-bar,#lab .lbar,#oqc .oqbar{grid-template-columns:auto 1fr auto}
+  #iqc .iqan-item,#ipqc .ipan-item,#oqc .oqan-item,#cfr1633 .ftan-item,#lab .litem{grid-template-columns:1fr auto;gap:5px 10px}
+  #iqc .iqan-item > span:first-child,#ipqc .ipan-item > span:first-child,#oqc .oqan-item > span:first-child,#cfr1633 .ftan-item > span:first-child,#lab .litem > span:first-child{grid-area:1 / 1}
+  #iqc .iqan-item .track,#ipqc .ipan-item .track,#oqc .oqan-item .track,#cfr1633 .ftan-item .track,#lab .litem .track{grid-area:2 / 1 / 3 / -1}
+  #iqc .iqan-item .num,#ipqc .ipan-item .num,#oqc .oqan-item .num,#cfr1633 .ftan-item .num,#lab .litem .num{grid-area:1 / 2}
 }
 </style>
 
