@@ -904,7 +904,9 @@ body.dropping::after{
 .frec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;padding-right:26px}
 .frec-head h2{font-size:15px;font-weight:700;color:var(--ink-2);margin:0;margin-right:auto}
 /* same corner-✕ treatment as #lab's cards, see the note over #lab .lcard > h2 button.plx */
-.frec-head .plx{position:absolute;top:10px;right:10px}
+/* padding 跟另外五个板块对齐（3px 7px → 26×26）。不写就落回 .plx 的
+   2px 6px，只有 24×24，六个屏里就它小一圈。 */
+.frec-head .plx{position:absolute;top:10px;right:10px;padding:3px 7px}
 .frec-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
 .frec-field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:0 0 150px}
 .frec-field span{font-size:11px;color:var(--ink-3);letter-spacing:.03em}
@@ -1082,6 +1084,7 @@ table.frec-table tbody tr.cur:hover td,#iqc table.irec-table tbody tr.cur:hover 
    那条 (1,1,1)，跟写在文件哪个位置无关。 */
 #idash .iqcard > h2.dtitle,
 #ipdash .ipcard > h2.dtitle,
+#oqdash .oqcard > h2.dtitle,
 #ldash .lcard > h2.dtitle,
 #ftdash .ftcard > h2.dtitle,
 #lsheetv .lcard > h2.dtitle{font-size:15px}
@@ -1465,8 +1468,12 @@ table.frec-table tbody tr.draft .lockdot,
 #ipqc .ipcard > h2 button{border:1px solid color-mix(in srgb,currentColor 26%,transparent);
   background:transparent;color:inherit;border-radius:4px;padding:4px 9px;font-size:12px;
   font-weight:400;cursor:pointer}
+/* 这条 :hover **不能省**：上面那条把 background 写成 transparent，权重 (1,2,2)
+   压过通用的 .plx:hover (0,2,0)，不在同权重上再写一次，鼠标移上去毫无反馈。
+   另外四个板块都写了。 */
 #ipqc .ipcard > h2 button.plx{position:absolute;top:10px;right:10px;margin:0;border:0;
   background:transparent;padding:3px 7px;font-size:15px}
+#ipqc .ipcard > h2 button.plx:hover{background:color-mix(in srgb,currentColor 10%,transparent)}
 #ipqc .iphint{font-size:11.5px;color:var(--ink-3);font-weight:400;line-height:1.5;margin-top:8px}
 #ipqc .iphead{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px 14px}
 #ipqc .ipfield{display:flex;flex-direction:column;gap:4px;min-width:0;position:relative}
@@ -1576,8 +1583,11 @@ table.frec-table tbody tr.draft .lockdot,
 /* ✕ 钉在卡片右上角，照抄制程 #ipqc .ipcard > h2 button.plx。
    不写这条它就是个普通 flex 子元素，挤在标题文字后面（用户报的）；
    上面 h2 的 padding-right:26px 是给它让位，同另外四个板块。 */
+/* font-weight:400 不能少：165 行的 input,textarea,button,select{font:inherit}
+   把 font 简写整个继承过来，字重也在内，于是 ✕ 会跟着屏标题变成 600 的粗体。
+   另外四个板块都写了这一条，防火漏了 —— 六个分析屏里就它的 ✕ 是粗的。 */
 #cfr1633 .ftcard>h2 button.plx{position:absolute;top:10px;right:10px;margin:0;border:0;
-  background:transparent;padding:3px 7px;font-size:15px}
+  background:transparent;padding:3px 7px;font-size:15px;font-weight:400}
 #cfr1633 .ftcard>h2 button.plx:hover{background:color-mix(in srgb,currentColor 10%,transparent)}
 /* 通用的一条，照抄制程 .iphint —— 原来只有下面那条 `h2 .fthint`（限定在标题
    里面），所以看板那个独立的 <p class="fthint" id="ftd-scope">「区间内 N 条
@@ -1682,8 +1692,12 @@ table.frec-table tbody tr.draft .lockdot,
   background:transparent;color:inherit;border-radius:4px;padding:4px 9px;font-size:12px;
   font-weight:400;cursor:pointer}
 #oqc .oqcard > h2 button:hover{background:color-mix(in srgb,currentColor 9%,transparent)}
+/* 这条 :hover **不能省**：上面那条把 background 写成 transparent，权重 (1,2,2)
+   压过通用的 .plx:hover (0,2,0)，不在同权重上再写一次，鼠标移上去毫无反馈。
+   另外四个板块都写了。 */
 #oqc .oqcard > h2 button.plx{position:absolute;top:10px;right:10px;margin:0;
   border:0;background:transparent;padding:3px 7px;font-size:15px;font-weight:400}
+#oqc .oqcard > h2 button.plx:hover{background:color-mix(in srgb,currentColor 10%,transparent)}
 #oqc .oqhint{font-size:11.5px;color:var(--ink-3);font-weight:400;line-height:1.5;margin-top:8px}
 /* 140px，跟来料 / 制程 / 防火统一。原来是 150：375 屏上卡片实际可用宽度 306，
    两栏门槛 150*2+14=314，就差 8px 过不去，整行塌成单列 —— 柜号、封条号、装柜
