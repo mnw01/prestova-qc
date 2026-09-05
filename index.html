@@ -3460,7 +3460,7 @@ table.frec-table tbody tr.draft .lockdot,
   </section>
 
   <section class="oqcard">
-    <h2>出货数量前 15 的 SKU <span class="oqhint">按实际装柜数量</span></h2>
+    <h2>出货数量排名 <span class="oqhint">数量前 15 的 SKU</span></h2>
     <div class="orec-wrap"><table class="orec-table" id="oqd-skus"></table></div>
   </section>
   </div>
@@ -8267,7 +8267,15 @@ async function oqcDashAgg(){
       const a=lnum(g.actual)||0;
       out.qty+=a;
       const sku=String(g.sku||"").trim();
-      if(sku && a) out.skus.set(sku,(out.skus.get(sku)||0)+a);
+      if(sku && a){
+        /* 每个 SKU 记「数量 + 出现过的类型集合」。同一个 SKU 在不同柜里
+           理论上是同一类，但明细是人手填的，收成集合才能把不一致暴露出来
+           （渲染时显示「混合」），而不是随便取一个。 */
+        let e=out.skus.get(sku);
+        if(!e) out.skus.set(sku,e={q:0,types:new Set()});
+        e.q+=a;
+        const t=oqTypeOf(g); if(t) e.types.add(t);
+      }
     });
 
     const v=oqcVerdict(rec);
@@ -8294,7 +8302,7 @@ async function oqcDashAgg(){
   });
   out.byMonth=[...out.months.values()].sort((a,b)=>a.ym.localeCompare(b.ym));
   out.byCheck=[...out.checks.entries()].sort((a,b)=>b[1]-a[1]);
-  out.bySku  =[...out.skus.entries()].sort((a,b)=>b[1]-a[1]);
+  out.bySku  =[...out.skus.entries()].sort((a,b)=>b[1].q-a[1].q);
   return out;
 }
 
@@ -8339,13 +8347,19 @@ async function oqdashRender(){
     : '<div class="oqan-empty">'+esc(tr("没有不合格项。"))+'</div>';
 
   const top=a.bySku.slice(0,15);
+  /* 一个 SKU 只该属于一类；真收到两类说明明细填岔了，显示「混合」而不是
+     随便挑一个 —— 挑一个会把数据问题藏起来。 */
+  const skuType=e=> e.types.size===1 ? tr([...e.types][0])
+                  : e.types.size     ? tr("混合") : "—";
   $("#oqd-skus").innerHTML = !top.length
-    ? '<tbody><tr><td class="orec-empty" colspan="4">'+esc(tr("没有数据。"))+'</td></tr></tbody>'
+    ? '<tbody><tr><td class="orec-empty" colspan="5">'+esc(tr("没有数据。"))+'</td></tr></tbody>'
     : '<thead><tr><th class="seq">'+esc(tr("序号"))+'</th><th>'+esc(tr("型号 SKU"))+'</th>'+
+      '<th>'+esc(tr("床垫类型"))+'</th>'+
       '<th class="num">'+esc(tr("出货数量"))+'</th><th class="num">'+esc(tr("占比"))+'</th></tr></thead><tbody>'+
-      top.map(([sku,q],i)=>'<tr><td class="seq">'+(i+1)+'</td><td>'+esc(sku)+'</td>'+
-        '<td class="num">'+ipn(q)+'</td>'+
-        '<td class="num">'+(a.qty?pct(q,a.qty)+"%":"—")+'</td></tr>').join('')+'</tbody>';
+      top.map(([sku,e],i)=>'<tr><td class="seq">'+(i+1)+'</td><td>'+esc(sku)+'</td>'+
+        '<td>'+esc(skuType(e))+'</td>'+
+        '<td class="num">'+ipn(e.q)+'</td>'+
+        '<td class="num">'+(a.qty?pct(e.q,a.qty)+"%":"—")+'</td></tr>').join('')+'</tbody>';
 }
 
 $("#odashbtn").addEventListener("click",()=>oqcShow($("#oqdash").hidden?"dash":"entry"));
@@ -11178,8 +11192,9 @@ const I18N_ID={
   "占比": "Porsi",
   "只列出现过的项": "Hanya item yang pernah muncul",
   "按柜计 · 绿=合格 红=不合格": "Per kontainer · hijau=lolos merah=tidak lolos",
-  "出货数量前 15 的 SKU": "15 SKU Teratas menurut Jumlah Kirim",
-  "按实际装柜数量": "Berdasarkan jumlah aktual muat",
+  "出货数量排名": "Peringkat Jumlah Kirim",
+  "数量前 15 的 SKU": "15 SKU teratas menurut jumlah",
+  "混合": "Campuran",
   "个已锁定的柜，实际数据在": "kontainer terkunci, data aktual pada",
   "这个区间没有已提交锁定的记录。": "Tidak ada catatan terkunci pada rentang ini.",
   "没有不合格项。": "Tidak ada item tidak lolos.",
