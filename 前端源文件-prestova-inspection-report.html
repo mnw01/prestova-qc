@@ -9931,10 +9931,13 @@ async function pushOne(rec){
   /* newAt / pushedSize 只装这一轮真正产生的东西 —— 结尾要靠它们判断「有没有值得
      写盘的结果」。直接往 rec.photoAt 上堆的话，老记录本来就有的条目会让那个判断
      永远为真，等于每轮都白跑一次读-改-写。 */
-  let adopted=null, photoFail=false;
+  /* lostWhy / adoptApplied 要留到结尾：报给用户的那句「你刚才的改动没有保存」
+     得等对完账、确认服务端那份**真的**盖下去了才能说。 */
+  let adopted=null, lostWhy="race", adoptApplied=false;
+  let photoFail=false, photoLocked=false;
   const newAt={}, pushedSize={};
   if((rec.updatedAt||0)!==(rec.syncedAt||0)){
-    let res, lostWhy="race";
+    let res;
     try{
       res = await (await api("/api/report/"+encodeURIComponent(rec.id), {
         method:"PUT", headers:{"content-type":"application/json"},
@@ -9972,8 +9975,9 @@ async function pushOne(rec){
          payload」去盖当前状态 —— 这期间用户新填的、新拍的一起没。到结尾对完账再
          adopt，基底用那时候库里的真实内容。 */
       adopted = await (await api("/api/report/"+encodeURIComponent(rec.id))).json();
-      /* 名字取覆盖**之前**那份上的，报给用户的才是他认得的那条 */
-      LOST.push({ id:rec.id, why:lostWhy, name:lostName });
+      /* 提示留到结尾统一报（名字用的是覆盖**之前**那份上的 lostName，人才认得出
+         是哪条）—— 这会儿还不知道服务端那份到底盖不盖得下去：对账那一步要是发现
+         本地又被改过，adopt 就不执行，人的改动好好地在，那句话就不该说。 */
     }
   }
   for(const slot of Object.keys(rec.photoOps||{})){
@@ -10021,10 +10025,14 @@ async function pushOne(rec){
          「待同步」也说不清是哪一张。丢掉这一格并报出来。
          408/429 是服务端说"稍后再来"，跟 5xx、网络错误一样算临时，留着下轮再试。 */
       const st=(e && e.status)||0;
-      if(st>=400 && st<500 && st!==408 && st!==429){ delete rec.photoOps[slot]; photoFail=true; }
+      if(st>=400 && st<500 && st!==408 && st!==429){
+        delete rec.photoOps[slot];
+        /* 403 是「这条被锁了 / 只有管理员能写」，不是这个文件本身的问题 —— 分开记，
+           不然人看到的是「多半是文件太大」，跑去压缩半天也没用。 */
+        if(st===403) photoLocked=true; else photoFail=true;
+      }
     }
   }
-  if(photoFail) LOST.push({ id:rec.id, why:"photo", name:lostName });
   /* 不能整条写回 rec —— 它是进来时那份快照。整条盖回去就把这期间用户改的抹掉了；
      更糟的是 syncedAt 跟着回到旧值，那条改动连「待同步」都不算，永远不会被推上去。
      昨天在 hydratePhotos 修的是同一个毛病，这里漏了。只合并这一轮真正产生的那几样，
@@ -10061,11 +10069,23 @@ async function pushOne(rec){
         /* 只有整份 payload 覆盖才需要对账 —— 那才是会盖掉人改动的那个动作。本地这
            期间改过就别盖，让它下轮带着新内容自己去推（重复推一次是幂等的，丢改动
            不是）。 */
-        if(adopted && (cur.updatedAt||0)===snapAt) Object.assign(cur, adoptServer(adopted, cur, rec.id));
+        if(adopted && (cur.updatedAt||0)===snapAt){
+          Object.assign(cur, adoptServer(adopted, cur, rec.id));
+          adoptApplied=true;
+        }
       });
-  /* the record just lost a race — if it's also the one on screen, the visible
-     form is still showing the losing edit until this catches it up */
-  if(adopted && fresh){
+  /* 报给现场看的那几句统一放在对完账之后 —— 这时候才知道服务端那份到底盖没盖下去。
+     一条记录最多报一句「输掉了」：adopt 真执行了就报 lostWhy（抢写输了 / 被锁），
+     没执行说明本地改动还在、下一轮自己会带着新内容去推，那就什么都不该说。
+     照片被锁挡回来是独立的一路 —— 记录那头没报过的时候才补，否则 reportLost 会把
+     同一条记录数成两条。 */
+  if(adoptApplied) LOST.push({ id:rec.id, why:lostWhy, name:lostName });
+  else if(photoLocked) LOST.push({ id:rec.id, why:"locked", name:lostName });
+  if(photoFail) LOST.push({ id:rec.id, why:"photo", name:lostName });
+  /* 服务端那份盖下去了，而且屏幕上正开着这一条：表单里还是输掉的那一版，追上来。
+     adopt 被对账挡掉的时候**不能**走这里 —— 从库里重读重画会把人正在打、还没过
+     400ms 保存防抖的那几个键入一起抹掉，而他的改动其实一个字都没丢。 */
+  if(adoptApplied && fresh){
     if(R && R.id===fresh.id){ R=fresh; paintAll(); }
     if(!$("#lab").hidden  && LR && LR.id===fresh.id) await labLoad(fresh.id);
     if(!$("#iqc").hidden  && IR && IR.id===fresh.id) await iqcLoad(fresh.id);

@@ -349,6 +349,28 @@ console.log("\n— 提交锁定：只有管理员能改已锁的记录 —");
   /* 删除仍然只有管理员能做，跟锁无关 */
   ok("QC 删记录仍然 403",
      (await hitL("/api/report/lk-1", { method: "DELETE", ...as(qcC) })).status === 403);
+
+  /* 照片接口原来完全不看 locked。一台还没 pullAll 到锁状态的设备，前端那句
+     if(!FT||FT.locked) return 拦不住它 —— 它手上那份 locked 还是 0，界面照常给
+     按钮，于是能把一张已提交报告的证据照删掉，而 R2 对象是真删的、记录本身还看
+     不出改过。跟记录那头同一条理由：不是安全加固，是功能必需。 */
+  await put(adC, "lk-ph", 1, 1000);                  /* 管理员建一条已锁的 */
+  const photo = (c, m, id, slot) =>
+    hitL("/api/photo/" + id + "/" + slot, m === "PUT"
+      ? { method: "PUT", ...as(c, { "content-type": "image/jpeg" }), body: Buffer.from("x") }
+      : { method: m, ...as(c) });
+  const pl = await photo(qcC, "PUT", "lk-ph", "shot1");
+  ok("QC 往已锁记录传照片 → 403", pl.status === 403);
+  ok("照片 403 带上 error=locked", (await pl.json()).error === "locked");
+  ok("QC 删已锁记录的照片 → 403",
+     (await photo(qcC, "DELETE", "lk-ph", "shot1")).status === 403);
+  ok("管理员往已锁记录传照片 → 放行",
+     (await photo(adC, "PUT", "lk-ph", "shot1")).status === 200);
+  ok("看照片不受锁影响（只读动作，锁定后仍要能查看）",
+     (await photo(qcC, "GET", "lk-ph", "shot1")).status === 200);
+  /* 配置记录光看 id（__ 打头）就判得出来，库里还没这一行也拦得住 */
+  ok("QC 往配置记录传照片 → 403",
+     (await photo(qcC, "PUT", "__labstd", "shot1")).status === 403);
 }
 
 console.log("\n— input validation —");

@@ -393,6 +393,25 @@ async function apiPutPhoto(request, env, id, slot) {
   return json({ status: "saved", size: buf.byteLength, updatedAt: now });
 }
 
+/* 照片写入的准入检查 —— 跟 apiPutReport 那两道同源，两条照片路径共用。
+   返回 null = 放行；否则就是要直接回给客户端的那个响应。
+
+   为什么服务端非有不可，理由跟记录那头逐字相同：**这不是安全加固，是功能必需**。
+   一台还没 pullAll 到锁状态的设备，前端那句 if(!FT||FT.locked) return 拦不住它 ——
+   它手上那份 locked 还是 0，界面照常给按钮。而照片没有 last-write-wins 那层兜底：
+   apiDeletePhoto 把 R2 对象真删了，一张已提交报告的证据照删了就没了，记录本身还
+   看不出改过。
+   记录不存在时放行：pushOne 是先推记录再传照片，但记录那次可能被 clock_skew 挡下
+   （那一支不 return，照片照传），这时库里还没有这一行 —— 照收，跟以前一样。 */
+async function photoGate(env, id, role) {
+  if (role === "admin") return null;
+  const cur = await env.DB.prepare("SELECT type, locked FROM reports WHERE id=?").bind(id).first();
+  /* 配置记录光看 id 就判得出来（__ 打头），所以库里还没这一行也拦得住 */
+  if (isConfigRecord(id, cur ? cur.type : "")) return json({ error: "forbidden", need: "admin" }, 403);
+  if (cur && cur.locked) return json({ error: "locked", need: "admin" }, 403);
+  return null;
+}
+
 async function apiDeletePhoto(env, id, slot) {
   const now = Date.now();
   await env.PHOTOS.delete(photoKey(id, slot));
@@ -483,6 +502,11 @@ export default {
         const slot = decodeURIComponent(seg[3]).replace(/\.jpg$/i, "");
         if (!ID_RE.test(id) || !SLOT_RE.test(slot)) return json({ error: "bad_key" }, 400);
         if (m === "GET") return apiGetPhoto(env, id, slot);
+        /* 读不设限（看照片本来就人人能看），写和删要过 locked / 配置记录那两道 */
+        if (m === "PUT" || m === "DELETE") {
+          const gate = await photoGate(env, id, role);
+          if (gate) return gate;
+        }
         if (m === "PUT") return apiPutPhoto(request, env, id, slot);
         if (m === "DELETE") return apiDeletePhoto(env, id, slot);
         return json({ error: "method" }, 405);
