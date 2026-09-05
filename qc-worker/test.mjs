@@ -270,6 +270,27 @@ console.log("\n— 时钟不准的设备直接拒收（不替它纠正）—");
   const after = await (await put("t-skew-future", Date.now())).json();
   ok("校完时之后同一条记录推得上去", after.status === "saved");
   ok("补传之后库里就有了", (await readAt("t-skew-future")) > 0);
+
+  /* 照片走同一道防线、同一个回法。这里早年是**有意不设**的，理由是「照片时间戳
+     不参与任何判断」；photoAt 上线（2026-09-04）之后那条理由失效了 —— hydratePhotos
+     现在拿服务端的 updated_at 跟手上那张比大小来决定要不要重下，一个未来戳会让这
+     一格从此比谁都新，之后谁重拍都拉不下来，还不自愈。 */
+  const putPhoto = (slot, updatedAt) =>
+    hit("/api/photo/t-skew-future/" + slot, {
+      method: "PUT",
+      ...auth({ "content-type": "image/jpeg", "x-updated-at": String(updatedAt) }),
+      body: Buffer.from("abc"),
+    });
+  const pf = await putPhoto("skewshot", future);
+  const pfj = await pf.json();
+  ok("照片：未来的时间戳一样被拒收", pfj.status === "clock_skew", JSON.stringify(pfj));
+  ok("照片：拒收也走 200 + status（4xx 会被客户端当成「这张永远传不上去」丢掉）",
+     pf.status === 200);
+  ok("照片：拒收 = 图没进 R2",
+     (await hit("/api/photo/t-skew-future/skewshot", auth())).status === 404);
+  await putPhoto("okshot", Date.now());
+  ok("照片：校完时之后传得上去",
+     (await hit("/api/photo/t-skew-future/okshot", auth())).status === 200);
 }
 
 console.log("\n— 提交锁定：只有管理员能改已锁的记录 —");

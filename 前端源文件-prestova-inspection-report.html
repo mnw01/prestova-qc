@@ -9988,11 +9988,19 @@ async function pushOne(rec){
           headers:{"content-type":blob.type||"image/jpeg","x-updated-at":String(stamp)},
           body:blob
         })).json();
-        /* 版本号以服务端回的为准，别本地再算一遍赌它原样回显 —— 那边的判据是
-           Number(x-updated-at) || Date.now()，判据在它那头。哪天服务端补上时钟防线
-           或改用自己的时间，两个数就悄悄对不上，而这个值现在参与「要不要重下」的
-           判断了：服务端大 → 每次打开都把自己刚传的重下一遍；小 → 别人的重拍永远
-           拉不下来。两个方向都不自愈。
+        /* 服务端跟记录那头一样，对超前的时间戳回 200 + clock_skew（不是 4xx，
+           4xx 会被下面的 catch 当成「这一张永远传不上去」直接丢掉）。这里
+           **什么都不动**：photoOps 留着、newAt/pushedSize 不记，这一格下一轮
+           再推 —— 跟上面记录的 clock_skew 分支同一个处理。偏差并进同一个
+           CLOCK_SKEW，校时提示一轮还是只弹一次。 */
+        if(put.status==="clock_skew"){
+          if((put.skewMs||0) > CLOCK_SKEW) CLOCK_SKEW=put.skewMs;
+          continue;
+        }
+        /* 版本号以服务端回的为准，别本地再算一遍赌它原样回显 —— 判据在它那头，
+           而且它现在会把超前的挡掉（见上一段），两边各算各的迟早对不上。这个值
+           参与「要不要重下」的判断：服务端大 → 每次打开都把自己刚传的重下一遍；
+           小 → 别人的重拍永远拉不下来。两个方向都不自愈。
            顺带记下体积：结尾对账时靠它认出「这一格期间被换过图了」。
            读一下响应也让 api() 的 body 超时真正盖住这次上传。 */
         newAt[slot] = put.updatedAt || stamp;

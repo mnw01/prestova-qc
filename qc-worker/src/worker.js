@@ -24,6 +24,9 @@ const COOKIE = "qc_session";
 const ROLE_COOKIE = "qc_role";
 const TTL_MS = 90 * 24 * 60 * 60 * 1000; // 90 days — a shift shouldn't re-login
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+/* 时钟超前多少算「这台设备的钟坏了」。记录和照片两条写入路径共用同一个容差，
+   免得哪天只调一处、两条路对同一台设备给出不同答案。 */
+const SKEW_TOL = 5 * 60 * 1000;
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
 
@@ -290,7 +293,6 @@ async function apiPutReport(request, env, id, role) {
      pushOne 只容忍 403，别的错误会把整轮同步掀掉，连累其它记录。
      只挡未来方向：离线设备隔几小时才补传是正常的，偏旧的时间戳原样收下，
      last-write-wins 才判得对。 */
-  const SKEW_TOL = 5 * 60 * 1000;
   const skew = updatedAt - Date.now();
   if (skew > SKEW_TOL) {
     console.warn("clock skew rejected", { id, type, skewMs: skew });
@@ -355,25 +357,34 @@ async function apiGetPhoto(env, id, slot) {
 }
 
 async function apiPutPhoto(request, env, id, slot) {
+  /* 跟 apiPutReport 同一道时钟防线：同一个容差、同一个回法（200 + status，**不能
+     回 4xx** —— 非 2xx 会被客户端 api() 抛出来，而 pushOne 现在把 4xx 当成「这一张
+     永远传不上去」直接丢掉这一格，回 4xx 就等于拒收即丢照片）。客户端收到
+     clock_skew 什么都不动：photoOps 留着，下一轮再推，跟记录那条一模一样。
+
+     早年这里是**有意不设**的，理由写的是「照片时间戳不参与任何判断，歪着也卡不住
+     谁」。那条理由 2026-09-04 失效了：客户端加了 photoAt，hydratePhotos 现在拿
+     serverPhotos[slot].updatedAt 跟手上那张比大小，来决定要不要重下。一台快钟设备
+     传上来的未来时间戳，会让这一格从此比谁都「新」—— 之后任何一台正常设备重拍这
+     一格，新戳都比它小，谁也拉不下来，全厂一直看着那张旧图，而且不自愈。
+     这条路径确实到得了：pushOne 的 clock_skew 分支不 return，记录被拒收之后照片
+     循环照跑，x-updated-at 用的就是那个刚被拒收的值。
+
+     挡在读 body 之前：不然一台钟坏了的设备每轮都要把整张图重传一遍再被拒。
+     只挡未来方向，偏旧的照收 —— 离线补传不是故障。 */
+  const stamp = Number(request.headers.get("x-updated-at")) || 0;
+  const skew = stamp - Date.now();
+  if (skew > SKEW_TOL) {
+    console.warn("clock skew rejected (photo)", { id, slot, skewMs: skew });
+    return json({ status: "clock_skew", skewMs: skew, serverNow: Date.now() });
+  }
   const buf = await request.arrayBuffer();
   if (!buf.byteLength) return json({ error: "empty" }, 400);
   if (buf.byteLength > MAX_PHOTO_BYTES) return json({ error: "too_large" }, 413);
   await env.PHOTOS.put(photoKey(id, slot), buf, {
     httpMetadata: { contentType: request.headers.get("content-type") || "image/jpeg" },
   });
-  /* 这里**不设时钟防线**，跟 apiPutReport 不一样，是有意的：
-     pushOne 传完照片就无条件 `delete rec.photoOps[slot]`、不看返回值，拒收
-     会让这张照片彻底丢掉（记录靠 updatedAt!==syncedAt 留在本地重试，照片
-     没有这层保护）。而照片时间戳只用于索引和新旧比较，不参与 last-write-wins
-     抢写，偏了也不会把谁卡住。
-
-     注意别被"记录那头已经拒收了"骗过去：pushOne 的 clock_skew 分支并不 return，
-     后面的照片循环照跑，所以时钟不准的设备**确实会**把歪掉的 x-updated-at 传
-     上来。之所以仍然不设防线，是因为这个值在两头都不参与判断 —— 服务端这条
-     INSERT 是无条件覆盖（DO UPDATE SET updated_at=excluded.updated_at，不比
-     大小），客户端 hydratePhotos 也只看「服务端有没有这张」不看时间。歪着也
-     只是索引上难看，卡不住任何人；而拒收会让这张照片彻底丢掉。 */
-  const now = Number(request.headers.get("x-updated-at")) || Date.now();
+  const now = stamp || Date.now();
   await env.DB.prepare(
     `INSERT INTO photos (report_id,slot,updated_at,size,deleted) VALUES (?,?,?,?,0)
      ON CONFLICT(report_id,slot) DO UPDATE SET
