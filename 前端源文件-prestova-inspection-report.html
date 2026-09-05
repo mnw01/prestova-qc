@@ -32,21 +32,28 @@
   --sans:"Segoe UI","Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,sans-serif;
   --mono:"Courier New","Consolas",monospace;
 }
-@media (prefers-color-scheme:dark){
+/* ⚠ 这两块深色"纸"的值**必须留在 @media screen 里**。
+   打印时 screen 不匹配，只有文件最上面那个不带媒体查询的 :root 生效，
+   于是打印件仍然是白纸黑字。挪出 screen 就等于把深色印到纸上。 */
+@media screen and (prefers-color-scheme:dark){
   :root{
-    --ink:#161a1f;--ink-2:#4d555f;--ink-3:#7b848f;
-    --paper:#f4f5f7;--ground:#14171b;--chrome:#1c2027;--deck:#0d1014;--grid:rgba(180,200,235,.065);
-    --rule:#1b1f24;--rule-2:#9aa3ae;--hairline:#c6ccd4;
-    --accent:#7ea6e8;--accent-soft:rgba(23,69,140,.05);
+    --ink:#e8ecf3;--ink-2:#b3bdcd;--ink-3:#8593a8;
+    --paper:#1e2229;--ground:#14171b;--chrome:#1c2027;--deck:#0d1014;--grid:rgba(180,200,235,.065);
+    --rule:#363a41;--rule-2:#333c48;--hairline:#2e3239;
+    --accent:#4CC2FF;--accent-soft:#181c23;   /* 纸上它是「可填写栏位」的底纹，对应板块的 --field（输入框底），不是板块那个可见的浅蓝面板底 */
+    --pass:#4fbb8a;--fail:#e08c82;--flag:#fcd34d;
     --shadow:0 1px 2px rgba(0,0,0,.5),0 16px 40px -16px rgba(0,0,0,.7);
   }
 }
-:root[data-theme="dark"]{
-  --ink:#161a1f;--ink-2:#4d555f;--ink-3:#7b848f;
-  --paper:#f4f5f7;--ground:#14171b;--chrome:#1c2027;--deck:#0d1014;--grid:rgba(180,200,235,.065);
-  --rule:#1b1f24;--rule-2:#9aa3ae;--hairline:#c6ccd4;
-  --accent:#7ea6e8;--accent-soft:rgba(23,69,140,.05);
-  --shadow:0 1px 2px rgba(0,0,0,.5),0 16px 40px -16px rgba(0,0,0,.7);
+@media screen{
+  :root[data-theme="dark"]{
+    --ink:#e8ecf3;--ink-2:#b3bdcd;--ink-3:#8593a8;
+    --paper:#1e2229;--ground:#14171b;--chrome:#1c2027;--deck:#0d1014;--grid:rgba(180,200,235,.065);
+    --rule:#363a41;--rule-2:#333c48;--hairline:#2e3239;
+    --accent:#4CC2FF;--accent-soft:#181c23;   /* 纸上它是「可填写栏位」的底纹，对应板块的 --field（输入框底），不是板块那个可见的浅蓝面板底 */
+    --pass:#4fbb8a;--fail:#e08c82;--flag:#fcd34d;
+    --shadow:0 1px 2px rgba(0,0,0,.5),0 16px 40px -16px rgba(0,0,0,.7);
+  }
 }
 :root[data-theme="light"]{
   --ink:#16191d;--ink-2:#4a525c;--ink-3:#79828d;
@@ -392,9 +399,13 @@ html[lang="id"] .hhead h1 .cn{display:none}
   .bar .sync.ok{color:#5fbf8d} .bar .sync.busy{color:#8fb6f0}
   .bar .sync.bad{color:#e88b81} .bar .sync.off{color:#d9b45e}
 }
-.bar .stat{font-size:12px;color:var(--ink-3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.bar .stat{font-size:13px;color:var(--ink-3);white-space:nowrap;font-variant-numeric:tabular-nums}
+/* 下拉弹窗必须显式配色。不写的话 Chrome 用系统默认的浅底画弹窗，字色却从
+   <select> 继承过去 —— 深色下就是 #e8ecf3 压白底，选项基本看不见。
+   弹窗不参与打印；打印时 --paper/--ink 本来就是白纸黑字，这条照样成立。 */
+.sheet select,.sheet option{background-color:var(--paper);color:var(--ink)}
 @media (prefers-color-scheme:dark){.bar .stat{color:#8b949f}}
-.bar .miss{color:var(--fail);font-weight:600}
+.bar .miss{color:var(--fail)}   /* 只染色不加粗：同一行里「还差…」600、「· 已存」400，粗细切一刀很扎眼 */
 @media (prefers-color-scheme:dark){.bar .miss{color:#e88b81}}
 
 /* ── sheet ────────────────────────────────────────────────────────── */
@@ -468,7 +479,7 @@ html[lang="id"] .hhead h1 .cn{display:none}
 .tick input{position:absolute;opacity:0;width:0;height:0}
 .box{
   width:3.4mm;height:3.4mm;border:1px solid var(--rule);flex:0 0 auto;
-  display:grid;place-items:center;background:#fff;
+  display:grid;place-items:center;background:var(--paper);
 }
 .box::after{content:"";width:2.2mm;height:1.1mm;border-left:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);transform:rotate(-45deg) translate(.2mm,-.3mm);opacity:0}
 .tick input:checked + .box::after{opacity:1}
@@ -485,11 +496,11 @@ html[lang="id"] .hhead h1 .cn{display:none}
   position:relative;margin:1.4mm;aspect-ratio:3/2;background:color-mix(in srgb,var(--ink) 4%,var(--paper));
   border:1px dashed var(--hairline);display:grid;place-items:center;overflow:hidden;
 }
-.pimg.has{border-style:solid;border-color:var(--hairline);background:#fff}
+.pimg.has{border-style:solid;border-color:var(--hairline);background:var(--paper)}
 /* Absolute, not height:100% — the frame is height:auto in print, and a
    percentage height against an auto-height parent falls back to auto, which
    lets the photo render at its natural aspect and blow through the cell. */
-.pimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;display:none}
+.pimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--paper);display:none}
 .pimg.has img{display:block}
 .pimg.drag{border-color:var(--accent);background:var(--accent-soft)}
 /* 空格子上下分两半：上面拍照、下面相册。**必须是两个 input** ——
@@ -514,7 +525,7 @@ html[lang="id"] .hhead h1 .cn{display:none}
   font-size:11px;color:var(--ink-3);display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:3px;width:100%;
 }
-.padd .plus{font-size:19px;line-height:1;color:var(--rule-2)}
+.padd .plus{font-size:19px;line-height:1;color:var(--ink-3)}   /* 原来用 --rule-2（描边色）当文字，深纸上 1.88:1 */
 /* 有照片之后两个入口都收起来，跟装柜检验一致。原来这里把「相册」缩成右下角
    一个小标签留着当"替换"入口，用户说多余 —— 换照片按右上角 ✕ 删掉重拍即可。 */
 .pimg.has .padd{display:none}
@@ -546,7 +557,8 @@ html[lang="id"] .hhead h1 .cn{display:none}
 .pscancel:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .pdel{
   position:absolute;top:0;right:0;display:none;border:0;background:rgba(255,255,255,.9);
-  color:var(--fail);cursor:pointer;font-size:11px;line-height:1;padding:3px 6px;
+  /* 同上，白底浮在照片上，字色钉死深红 */
+  color:#b32d23;cursor:pointer;font-size:11px;line-height:1;padding:3px 6px;
 }
 .pimg.has .pdel{display:block}
 .pimg.builtin .pdel{display:none}   /* nothing of the user's to delete */
@@ -595,7 +607,9 @@ html[lang="id"] .hhead h1 .cn{display:none}
 }
 .pfit{
   position:absolute;top:0;left:0;display:none;border:0;background:rgba(255,255,255,.9);
-  color:var(--accent);cursor:pointer;font-size:10px;line-height:1;padding:3px 6px;
+  /* 白底是有意的：这标签浮在照片上，照片什么颜色都可能。所以字色钉死深蓝，
+     不能跟 --accent 翻 —— 深色下 --accent 是浅蓝，压白底只有 2.01:1。 */
+  color:#17458c;cursor:pointer;font-size:10px;line-height:1;padding:3px 6px;
 }
 .pimg.has .pfit{display:block}
 .pimg.cover img{object-fit:cover}
@@ -618,7 +632,7 @@ body.dropping::after{
 }
 .pcap input:focus{background:var(--accent-soft)}
 .pflag{
-  border:0;background:transparent;cursor:pointer;color:var(--rule-2);font-size:10px;
+  border:0;background:transparent;cursor:pointer;color:var(--ink-3);font-size:10px;   /* 同上，原 --rule-2 深纸上 1.43:1 */
   padding:0 2px;line-height:1;flex:0 0 auto;
 }
 .slot.bad .pcap input{color:var(--fail);font-weight:700}
@@ -2356,8 +2370,10 @@ table.frec-table tbody tr.draft .lockdot,
   .bar button:hover{background:var(--seg-bg);color:var(--ink)}
   .bar button.danger{color:var(--no);border-color:color-mix(in srgb,var(--no) 34%,transparent);background:transparent}
   .bar button.danger:hover{background:var(--no);border-color:var(--no);color:#fff}
-  .bar .stat{font-size:12.5px;color:var(--ink-3)}
-  .bar .sync{border-radius:var(--r-ctl);font-size:12.5px}
+  /* 跟工具栏里的按钮同档 13px。原来是 12.5px，跟紧挨着的按钮差半像素 ——
+     既不算对齐又不像刻意做小，成品那条状态串最长所以最先露出来。 */
+  .bar .stat{font-size:13px;color:var(--ink-3)}
+  .bar .sync{border-radius:var(--r-ctl);font-size:13px}   /* 跟 .stat 和按钮同档，工具栏只留 13/15 两个字号 */
 
   /* 屏幕切换做成分段控件：一整块底 + 当前那格是浮起来的卡。
      不用实心蓝 —— 那是"主操作"的语气，导航不该抢这个位置。 */
