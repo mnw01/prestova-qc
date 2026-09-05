@@ -1855,6 +1855,53 @@ table.frec-table tbody tr.draft .lockdot,
 #oqc .orec-badge.ok{background:var(--okbg);color:var(--ok)}
 #oqc .orec-badge.no{background:var(--nobg);color:var(--no)}
 #oqc .orec-badge.na{background:var(--accent-soft);color:var(--ink-3)}
+/* ── 数据分析屏：跟实验室 (#lab .lkpi / .lbar / .litem) 同构 ──────────
+   底色、圆角、内边距、字号一律**不在这里写** —— 样式表末尾那段共用视觉系统
+   统一管（.fd-kpi,#iqc .iqan-kpi,… 那几条，#oqc .oqan-kpi 已加进去）。
+   在这里另写一套就是第一版的错：用了 --accent-soft（蓝的，评审否掉过），
+   字号 padding 圆角也跟另外五个板块对不上。 */
+/* 分析屏的容器：宽度对齐另外四个板块的分析屏（1180），
+   .oqwrap 本身是 1280 —— 那个宽是留给录入页那张货物明细表的。 */
+#oqc .oqdwrap{max-width:1180px}
+#oqc .oqan-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:4px}
+#oqc .oqan-kpi .n{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+#oqc .oqan-kpi .t{font-size:11.5px;color:var(--ink-3);margin-top:2px;letter-spacing:.02em}
+#oqc .oqan-kpi.bad .n{color:var(--no)}
+#oqc .oqan-kpi.good .n{color:var(--ok)}
+
+/* 月度合格率：照抄 #lab .lbar —— 标签 | 绿红两段的条 | 数字。
+   条的**总宽**按当月柜数占最大月的比例，条**内部**按合格/不合格分段，
+   跟实验室一个读法。 */
+#oqc .oqbars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+#oqc .oqbar{display:grid;grid-template-columns:64px 1fr 118px;gap:10px;align-items:center;font-size:12.5px}
+#oqc .oqbar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
+#oqc .oqbar .track{height:17px;border-radius:3px;overflow:hidden;display:flex;background:var(--rule-2)}
+#oqc .oqbar .ok{background:#3f9d67}
+#oqc .oqbar .no{background:#c9483c}
+#oqc .oqbar .num{color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right}
+#oqc .oqbar .num b{color:var(--ink);font-weight:600}
+
+/* 不合格项：照抄 #lab .litem / #ipqc .ipan-item —— **条拿 1fr，文字列封顶**。
+   第一版把 1fr 给了文字、条只剩 160px，比别的板块短一大截，评审指出。
+   实验室的文字列是 110px（「密度」「硬度」这种短词），装柜的检验项目是整句话，
+   所以上限放宽到 190px（会折成两行），但 1fr 仍然还给条。 */
+#oqc .oqan-items{display:flex;flex-direction:column;gap:12px;margin-top:4px}
+#oqc .oqan-item{display:grid;grid-template-columns:minmax(90px,190px) 1fr 150px;gap:10px;
+  align-items:center;font-size:12.5px}
+#oqc .oqan-item .track{height:13px;background:var(--rule-2);border-radius:3px;overflow:hidden}
+#oqc .oqan-item .fill{display:block;height:100%;background:#c9483c}
+#oqc .oqan-item .num{text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+#oqc .oqan-empty{padding:14px 12px;font-size:12.5px;color:var(--ink-3);text-align:center}
+@media (max-width:560px){
+  #oqc .oqan-item{grid-template-columns:1fr;gap:4px}
+  #oqc .oqan-item .num{text-align:left}
+}
+/* 数字列右对齐。全站只有 table.frec-table 和 #ipqc table.iprec-table 定义过
+   th.num/td.num，装柜这张一直没有 —— 记录表里没用到 .num 所以没露出来，
+   数据分析的 SKU 表一用就发现数字全靠左。 */
+#oqc table.orec-table th.num,#oqc table.orec-table td.num{
+  text-align:right;font-variant-numeric:tabular-nums;
+}
 #oqc .orec-open{font:inherit;font-size:12.5px;padding:4px 10px;border-radius:4px;
   border:1px solid var(--field-line);background:var(--field);color:var(--accent);cursor:pointer}
 #oqc .orec-empty{color:var(--ink-3);padding:14px 4px;text-align:center}
@@ -2532,23 +2579,23 @@ table.frec-table tbody tr.draft .lockdot,
   .recbtn:hover{background:var(--seg-bg);color:var(--ink)}
 
   /* ── KPI ────────────────────────────────────────────────────────── */
-  .fd-kpis,#iqc .iqan-kpis,#ipqc .ipan-kpis,#lab .lkpis,#cfr1633 .ftan-kpis{gap:12px}
+  .fd-kpis,#iqc .iqan-kpis,#ipqc .ipan-kpis,#oqc .oqan-kpis,#lab .lkpis,#cfr1633 .ftan-kpis{gap:12px}
   /* KPI / 不良明细卡片 / 空照片位是同一类"卡片里的内容块"，一套底色：
      中性浅灰 --sunk，不描边不投影。
      用 --sunk 不用 --seg-bg：后者是 #e7ecf3，蓝通道比红高 12，实际看着偏蓝；
      --sunk 是 #eef0f3，三通道只差 5，才是真的浅灰。
      也不用 --accent-soft（那是蓝的）—— 评审时明确说浅蓝不好看。 */
-  .fd-kpi,#iqc .iqan-kpi,#ipqc .ipan-kpi,#lab .lkpi,#cfr1633 .ftan-kpi,
+  .fd-kpi,#iqc .iqan-kpi,#ipqc .ipan-kpi,#oqc .oqan-kpi,#lab .lkpi,#cfr1633 .ftan-kpi,
   #ipqc .ipd,#oqc .oqimg{
     background:var(--sunk);
   }
-  .fd-kpi,#iqc .iqan-kpi,#ipqc .ipan-kpi,#lab .lkpi,#cfr1633 .ftan-kpi{
+  .fd-kpi,#iqc .iqan-kpi,#ipqc .ipan-kpi,#oqc .oqan-kpi,#lab .lkpi,#cfr1633 .ftan-kpi{
     border:0;border-radius:var(--r-card);padding:15px 16px;box-shadow:none;
   }
-  .fd-kpi .n,#iqc .iqan-kpi .n,#ipqc .ipan-kpi .n,#lab .lkpi .n,#cfr1633 .ftan-kpi .n{
+  .fd-kpi .n,#iqc .iqan-kpi .n,#ipqc .ipan-kpi .n,#oqc .oqan-kpi .n,#lab .lkpi .n,#cfr1633 .ftan-kpi .n{
     font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1.15;
   }
-  .fd-kpi .t,#iqc .iqan-kpi .t,#ipqc .ipan-kpi .t,#lab .lkpi .t,#cfr1633 .ftan-kpi .t{
+  .fd-kpi .t,#iqc .iqan-kpi .t,#ipqc .ipan-kpi .t,#oqc .oqan-kpi .t,#lab .lkpi .t,#cfr1633 .ftan-kpi .t{
     font-size:12px;font-weight:500;color:var(--ink-3);margin-top:5px;letter-spacing:0;
   }
 
@@ -3228,10 +3275,9 @@ table.frec-table tbody tr.draft .lockdot,
   <span class="grp">
     <button type="button" class="sync" id="osync" hidden title="同步状态 — 点一下立即同步"></button>
     <span class="stat" id="ostat">—</span>
-    <!-- 装柜只有一个屏幕按钮（它没有数据分析），分段控件里就一格；
-         保持同一个控件形状，五个板块的工具栏才是一套语言。 -->
     <span class="segnav">
       <button type="button" id="orecbtn">记录表</button>
+      <button type="button" id="odashbtn">数据分析</button>
     </span>
     <button type="button" id="olockbtn">提交并锁定</button>
     <button type="button" id="oimpbtn">导入计划表</button>
@@ -3318,6 +3364,56 @@ table.frec-table tbody tr.draft .lockdot,
   </div>
   <div class="orec-wrap"><table class="orec-table" id="orec-table"></table></div>
 </section>
+</div>
+
+<!-- ══ 数据分析 ═══════════════════════════════════════════════════ -->
+<div id="oqdash" hidden>
+  <!-- 容器套在 hidden 的 div **里面**：#oqdash 自己不能写 display:flex，
+       那会压掉 [hidden] 的 display:none。实验室 #ldash > .lwrap 就是这么摆的。 -->
+  <div class="oqwrap oqdwrap">
+    <section class="oqcard">
+    <h2 class="dtitle">数据分析
+      <button type="button" class="plx" id="oqd-close" title="关闭">✕</button>
+    </h2>
+    <!-- 只统计**已提交锁定**的柜：没锁的还在改，数字会跳。 -->
+    <div class="orec-bar">
+      <label class="orec-field"><span>区间</span>
+        <select id="oqd-range">
+          <option value="cur" selected>当月</option>
+          <option value="1">上个月</option>
+          <option value="3">近 3 个月</option>
+          <option value="6">近 6 个月</option>
+          <option value="12">近 12 个月</option>
+          <option value="all">全部</option>
+        </select></label>
+      <label class="orec-field"><span>床垫类型</span>
+        <select id="oqd-type">
+          <option value="">全部</option>
+          <option value="弹簧床垫">弹簧床垫</option>
+          <option value="海绵床垫">海绵床垫</option>
+        </select>
+      </label>
+      <button type="button" class="recbtn" id="oqd-clear">清除筛选</button>
+    </div>
+    <div class="oqan-kpis" id="oqd-kpis"></div>
+    <p class="oqhint" id="oqd-scope"></p>
+  </section>
+
+  <section class="oqcard">
+    <h2>月度合格率 <span class="oqhint">按柜计 · 绿=合格 红=不合格</span></h2>
+    <div class="oqbars" id="oqd-months"></div>
+  </section>
+
+  <section class="oqcard">
+    <h2>不合格项分析 <span class="oqhint">只列出现过的项</span></h2>
+    <div class="oqan-items" id="oqd-checks"></div>
+  </section>
+
+  <section class="oqcard">
+    <h2>出货数量前 15 的 SKU <span class="oqhint">按实际装柜数量</span></h2>
+    <div class="orec-wrap"><table class="orec-table" id="oqd-skus"></table></div>
+  </section>
+  </div>
 </div>
 
 <!-- 柜选择器 -->
@@ -7740,13 +7836,20 @@ async function oqcLoad(id, skipPhotos){
 function oqcShow(view){
   $("#oqcv").hidden = view!=="entry";
   $("#orec").hidden = view!=="rec";
+  $("#oqdash").hidden = view!=="dash";
   $("#orecbtn").classList.toggle("cur", view==="rec");
+  $("#odashbtn").classList.toggle("cur", view==="dash");
   /* 打印按钮现在在录入页的「结论」卡片里，跟着 #oqcv 一起显示/隐藏，
      不用再单独管它 */
+  /* 只有记录表那一屏才是「← 板块」。分析屏跟录入页一样是「← 返回」——
+     #oback 的处理是「#orec 藏着就先退回记录表」，写成 view!=="entry" 会让
+     分析屏显示「← 板块」却跳去记录表，标签跟行为对不上。制程同款分析屏
+     用的也是 view==="rec"。 */
   backLevel("#oback", view==="rec");
   statFor("#ostat", view==="entry");
   $("#olockbtn").hidden = view!=="entry";
   if(view==="rec"){ rangeToday("#orec-date"); orecRender(); }
+  if(view==="dash") oqdashRender();
   /* 跟成品 fqcShow 同一个理由：记录表点一行跳过了照片，从这里切回录入页要补拉 */
   if(view==="entry" && OR && OR.id) oqcHydrate(OR.id);
 }
@@ -8059,6 +8162,149 @@ async function orecRender(){
       }).join('')+'</tbody>';
 }
 $("#orecbtn").addEventListener("click",()=>oqcShow($("#orec").hidden?"rec":"entry"));
+
+/* ── 数据分析 ──────────────────────────────────────────────────────────
+   全部只算**已提交锁定**的柜（meta 行上的 locked）。没锁的还在改，
+   算进来数字会跳，评审明确要求按已锁的算。 */
+
+/* 床垫类型归一化。明细「类型」那一列是人手填的，同一种东西写法很多：
+   海绵垫 / 海绵床垫 / 海绵 / N-海绵床垫 …… 全站规范的类型只有两个
+   （弹簧床垫 / 海绵床垫，见成品报告和各板块筛选器），所以按关键字归。
+   类型优先取明细里填的，填了空就退回产品基础资料 PMAT 的第三列。 */
+function oqTypeOf(g){
+  const raw = String(g.dept||"").trim()
+           || ((PMAT_BY_M[g.sku]||[])[2]||"");
+  const t = String(raw).replace(/\s+/g,"");
+  if(!t) return "";
+  if(/弹簧|spring/i.test(t)) return "弹簧床垫";
+  if(/海绵|泡棉|foam/i.test(t)) return "海绵床垫";
+  return "";
+}
+
+async function oqcDashAgg(){
+  const range=$("#oqd-range").value||"cur", type=$("#oqd-type").value;
+  let rows=(await metaAll()).filter(r=>r.type==="oqc" && r.locked);
+  /* 区间换算走共用的 labRangeOf —— 成品和实验室的「近 3 个月」用的也是它，
+     三个板块同一个说法就得是同一个窗口。
+     「全部」不按日期筛：没填装柜日期的柜也该出现，不然它在任何区间里都消失。 */
+  if(range!=="all"){
+    const w=labRangeOf(range);
+    const lo=w.from?w.from.getTime():0, hi=w.to?w.to.getTime():Infinity;
+    rows=rows.filter(r=>{ const d=parseDMY(r.date); return d && d.getTime()>=lo && d.getTime()<hi; });
+  }
+
+  const out={ n:0, qty:0, ok:0, no:0, from:null, to:null,
+              checks:new Map(), skus:new Map(), months:new Map() };
+  /* 用现成的 withPool 限流并发拉，别一条条串着 await —— 那个 helper 就是为
+     「几百条记录逐条 await 把耗时拖成分钟级」写的（见它自己的注释）。
+
+     ⚠ 汇总必须写在 worker **里面**，不能先收集再遍历：dbGet 返回的是整条记录，
+     **照片 Blob 也在里面**。几百个已锁柜 × 每柜十几张图，先收集就等于把它们
+     同时钉在内存里；写在里面则每条汇总完就能回收。
+     并发改同一个 out 是安全的：JS 单线程，而这一段里没有 await，
+     对别的 worker 来说它是原子的。
+     withPool 是 allSettled 语义，单条抛错不打断其余。 */
+  await withPool(rows, 8, async m=>{
+    let rec; try{ rec=await dbGet(m.id); }catch(e){ return; }
+    if(!rec) return;
+    oqcNorm(rec);
+    /* 筛了类型就只留该类型的货物行；这个柜一行都不剩，整柜不计 */
+    const goods=(rec.oqc.goods||[]).filter(g=>!type || oqTypeOf(g)===type);
+    if(type && !goods.length) return;
+
+    out.n++;
+    goods.forEach(g=>{
+      const a=lnum(g.actual)||0;
+      out.qty+=a;
+      const sku=String(g.sku||"").trim();
+      if(sku && a) out.skus.set(sku,(out.skus.get(sku)||0)+a);
+    });
+
+    const v=oqcVerdict(rec);
+    if(v==="reject") out.no++; else if(v==="accept") out.ok++;
+
+    OQC_CHECKS.forEach(([k])=>{
+      /* 检验项目存的是 "ok" / "ng"，不是 √ / ×（见 oqcAutoVerdict）。
+         第一版按 × 数，对真实数据一条都数不出来。 */
+      if(((rec.oqc.checks||{})[k]||{}).r==="ng") out.checks.set(k,(out.checks.get(k)||0)+1);
+    });
+
+    /* (rec.fields||{})：oqcNorm 只规范 rec.oqc，不保证 fields 存在；
+       这里抛一次就是整屏卡在「读取中」。 */
+    const d=parseDMY((rec.fields||{}).date);
+    if(d){
+      if(!out.from||d<out.from) out.from=d;
+      if(!out.to  ||d>out.to  ) out.to=d;
+      const ym=ymOf(d);
+      let mo=out.months.get(ym);
+      if(!mo) out.months.set(ym,mo={ym,n:0,pass:0,fail:0});
+      mo.n++;
+      if(v==="reject") mo.fail++; else if(v==="accept") mo.pass++;
+    }
+  });
+  out.byMonth=[...out.months.values()].sort((a,b)=>a.ym.localeCompare(b.ym));
+  out.byCheck=[...out.checks.entries()].sort((a,b)=>b[1]-a[1]);
+  out.bySku  =[...out.skus.entries()].sort((a,b)=>b[1]-a[1]);
+  return out;
+}
+
+async function oqdashRender(){
+  $("#oqd-kpis").innerHTML='<div class="oqan-kpi"><div class="n">…</div><div class="t">读取中</div></div>';
+  const a=await oqcDashAgg();
+  const judged=a.ok+a.no;
+  const kpi=(n,t,c)=>'<div class="oqan-kpi'+(c?" "+c:"")+'"><div class="n">'+n+'</div><div class="t">'+esc(tr(t))+'</div></div>';
+  $("#oqd-kpis").innerHTML=
+    kpi(ipn(a.n),"装柜数量","")+
+    kpi(ipn(a.qty),"出货数量","")+
+    kpi(judged?pct(a.ok,judged)+"%":"—","合格率",a.no?"bad":"good")+
+    kpi(ipn(a.no),"不合格柜",a.no?"bad":"");
+  $("#oqd-scope").textContent = a.n
+    ? tr("区间内")+" "+a.n+" "+tr("个已锁定的柜，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
+    : tr("这个区间没有已提交锁定的记录。");
+
+  /* 月度合格率：条的**总宽**按当月柜数占最大月的比例，条**内部**按合格/不合格
+     分段 —— 跟实验室那张一个读法，不然两个板块的同名图表读法不一样。 */
+  const maxM=a.byMonth.reduce((x,m)=>Math.max(x,m.n),0)||1;
+  $("#oqd-months").innerHTML = a.byMonth.length
+    ? a.byMonth.map(m=>{
+        const j=m.pass+m.fail;
+        /* j 为 0（那个月的柜一项都没判）时不能走 pct(x, j||1)：那会算出绿 0%、
+           红 flex:1，整条画成红的，右边文字却写着「—」，图跟数字互相矛盾。
+           这时整条留中性灰（两段都不画）。 */
+        return '<div class="oqbar"><span class="lab">'+esc(m.ym.slice(2))+'</span>'+
+          '<span class="track" style="width:'+(m.n/maxM*100).toFixed(1)+'%">'+
+            (j ? '<i class="ok" style="width:'+pct(m.pass,j)+'%"></i>'+
+                 '<i class="no" style="flex:1"></i>' : '')+'</span>'+
+          '<span class="num"><b>'+(j?pct(m.pass,j)+"%":"—")+'</b> · '+m.n+' '+esc(tr("柜"))+'</span></div>';
+      }).join("")
+    : '<div class="oqan-empty">'+esc(tr("没有数据。"))+'</div>';
+
+  /* 不合格项：只列出现过的（评审：有才显示没有就不显示） */
+  const maxc=a.byCheck.length?a.byCheck[0][1]:1;
+  const label=k=>{ const it=OQC_CHECKS.find(x=>x[0]===k); return it?tr(it[1]):k; };
+  $("#oqd-checks").innerHTML = a.byCheck.length
+    ? a.byCheck.map(([k,n])=>'<div class="oqan-item"><span>'+esc(label(k))+'</span>'+
+        '<span class="track"><span class="fill" style="width:'+(maxc?Math.round(n/maxc*100):0)+'%"></span></span>'+
+        '<span class="num">'+ipn(n)+' '+esc(tr("柜"))+'　'+(a.n?pct(n,a.n)+"%":"—")+'</span></div>').join('')
+    : '<div class="oqan-empty">'+esc(tr("没有不合格项。"))+'</div>';
+
+  const top=a.bySku.slice(0,15);
+  $("#oqd-skus").innerHTML = !top.length
+    ? '<tbody><tr><td class="orec-empty" colspan="4">'+esc(tr("没有数据。"))+'</td></tr></tbody>'
+    : '<thead><tr><th class="seq">'+esc(tr("序号"))+'</th><th>'+esc(tr("型号 SKU"))+'</th>'+
+      '<th class="num">'+esc(tr("出货数量"))+'</th><th class="num">'+esc(tr("占比"))+'</th></tr></thead><tbody>'+
+      top.map(([sku,q],i)=>'<tr><td class="seq">'+(i+1)+'</td><td>'+esc(sku)+'</td>'+
+        '<td class="num">'+ipn(q)+'</td>'+
+        '<td class="num">'+(a.qty?pct(q,a.qty)+"%":"—")+'</td></tr>').join('')+'</tbody>';
+}
+
+$("#odashbtn").addEventListener("click",()=>oqcShow($("#oqdash").hidden?"dash":"entry"));
+$("#oqd-close").addEventListener("click",()=>oqcShow("entry"));
+["#oqd-range","#oqd-type"].forEach(id=>$(id).addEventListener("change",oqdashRender));
+$("#oqd-clear").addEventListener("click",()=>{
+  $("#oqd-range").value="cur"; $("#oqd-type").value="";
+  oqdashRender();
+});
 $("#orec-close").addEventListener("click",()=>oqcShow("entry"));
 ["#orec-podi","#orec-container"].forEach(id=>$(id).addEventListener("input",orecRender));
 $("#orec-verdict").addEventListener("change",orecRender);
@@ -10876,6 +11122,17 @@ const I18N_ID={
   "提货方": "Pengambil Barang",
   "操作": "Aksi",
   "状态/操作": "Status/Aksi",
+  "装柜数量": "Jumlah Kontainer",
+  "出货数量": "Jumlah Kirim",
+  "不合格柜": "Kontainer Tidak Lolos",
+  "占比": "Porsi",
+  "只列出现过的项": "Hanya item yang pernah muncul",
+  "按柜计 · 绿=合格 红=不合格": "Per kontainer · hijau=lolos merah=tidak lolos",
+  "出货数量前 15 的 SKU": "15 SKU Teratas menurut Jumlah Kirim",
+  "按实际装柜数量": "Berdasarkan jumlah aktual muat",
+  "个已锁定的柜，实际数据在": "kontainer terkunci, data aktual pada",
+  "这个区间没有已提交锁定的记录。": "Tidak ada catatan terkunci pada rentang ini.",
+  "没有不合格项。": "Tidak ada item tidak lolos.",
   "支": "sampel",
   "支数": "Jumlah Sampel",
   "改判理由": "Alasan Ubah Hasil",
