@@ -1412,7 +1412,8 @@ table.frec-table tbody tr.draft .lockdot,
   background:var(--card);border:1px solid var(--card-line);border-radius:6px}
 #iqc .irec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;padding-right:26px}
 #iqc .irec-head h2{font-size:15px;font-weight:700;color:var(--ink-2);margin:0;margin-right:auto}
-#iqc .irec-head .plx{position:absolute;top:10px;right:10px}
+/* padding 跟另外五个板块对齐（3px 7px → 26×26）；不写就落回通用 .plx 的 2px 6px。 */
+#iqc .irec-head .plx{position:absolute;top:10px;right:10px;padding:3px 7px}
 #iqc .irec-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
 /* 150px（跟第一版一样，不要再往上调）——手机上要保证两列，日期框超宽的问题靠
    上面 input[type=date] 那条 max-width/overflow 兜底，不是靠把格子撑大解决 */
@@ -1555,8 +1556,13 @@ table.frec-table tbody tr.draft .lockdot,
   background:var(--card);border:1px solid var(--card-line);border-radius:6px}
 #ipqc .iprec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;padding-right:26px}
 #ipqc .iprec-head h2{font-size:15px;font-weight:700;color:var(--ink-2);margin:0;margin-right:auto}
+/* 跟上面卡片标题那个 ✕ 同一个坑：这条把 background 写成 transparent，权重 (1,2,0)
+   压过通用的 .plx:hover (0,2,0)，不在同权重上再写一次，鼠标移上去毫无反馈。
+   成品和来料的对应规则没写 background，所以它们靠通用那条就够。
+   font-weight:400 同理 —— .plx 不重置的话会继承标题的粗细。 */
 #ipqc .iprec-head .plx{position:absolute;top:10px;right:10px;border:0;background:transparent;
-  padding:3px 7px;font-size:15px;cursor:pointer;color:inherit}
+  padding:3px 7px;font-size:15px;cursor:pointer;color:inherit;font-weight:400}
+#ipqc .iprec-head .plx:hover{background:color-mix(in srgb,currentColor 10%,transparent)}
 #ipqc .iprec-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
 #ipqc .iprec-field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:0 0 150px}
 #ipqc .iprec-field.wide{flex:0 0 170px}
@@ -1873,8 +1879,13 @@ table.frec-table tbody tr.draft .lockdot,
 #oqc .orec-card{max-width:1180px;margin:18px auto}
 #oqc .orec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;padding-right:26px}
 #oqc .orec-head h2{font-size:15px;font-weight:700;color:var(--ink-2);margin:0;margin-right:auto}
+/* 跟上面卡片标题那个 ✕ 同一个坑：这条把 background 写成 transparent，权重 (1,2,0)
+   压过通用的 .plx:hover (0,2,0)，不在同权重上再写一次，鼠标移上去毫无反馈。
+   成品和来料的对应规则没写 background，所以它们靠通用那条就够。
+   font-weight:400 同理 —— .plx 不重置的话会继承标题的粗细。 */
 #oqc .orec-head .plx{position:absolute;top:10px;right:10px;border:0;background:transparent;
-  padding:3px 7px;font-size:15px;cursor:pointer;color:inherit}
+  padding:3px 7px;font-size:15px;cursor:pointer;color:inherit;font-weight:400}
+#oqc .orec-head .plx:hover{background:color-mix(in srgb,currentColor 10%,transparent)}
 #oqc .orec-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
 #oqc .orec-field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:0 0 150px}
 #oqc .orec-field.wide{flex:0 0 170px}
