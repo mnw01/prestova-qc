@@ -1566,6 +1566,15 @@ table.frec-table tbody tr.draft .lockdot,
 #ipqc .ipan-kpi .t{font-size:11.5px;color:var(--ink-3);margin-top:2px;letter-spacing:.02em}
 #ipqc .ipan-kpi.bad .n{color:var(--no)}
 #ipqc .ipan-kpi.good .n{color:var(--ok)}
+/* 月度合格率：照抄 #lab .lbar —— 标签 | 绿红两段的条 | 数字。条的**总长**按当月
+   检查数量占最大那个月的比例，绿红是这个月内部的构成，跟成品/实验室一个读法。 */
+#ipqc .ipbars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+#ipqc .ipbar{display:grid;grid-template-columns:64px 1fr 150px;gap:10px;align-items:center;font-size:12.5px}
+#ipqc .ipbar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
+#ipqc .ipbar .track{height:17px;border-radius:3px;overflow:hidden;display:flex;background:var(--rule-2)}
+#ipqc .ipbar .ok{background:#3f9d67}
+#ipqc .ipbar .no{background:#c9483c}
+#ipqc .ipbar .num{color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 #ipqc .ipan-items{display:flex;flex-direction:column;gap:10px;margin-top:4px}
 #ipqc .ipan-item{display:grid;grid-template-columns:minmax(90px,140px) 1fr 150px;gap:10px;
   align-items:center;font-size:12.5px}
@@ -3300,8 +3309,17 @@ table.frec-table tbody tr.draft .lockdot,
         <button type="button" class="plx" id="ipd-close" title="关闭">✕</button>
       </h2>
       <div class="iprec-bar">
-        <label class="iprec-field wide"><span>起始日期</span><input type="date" id="ipd-from"></label>
-        <label class="iprec-field wide"><span>结束日期</span><input type="date" id="ipd-to"></label>
+        <label class="iprec-field"><span>区间</span>
+          <select id="ipd-range">
+            <option value="day">当天</option>
+            <option value="cur" selected>当月</option>
+            <option value="1">上个月</option>
+            <option value="3">近 3 个月</option>
+            <option value="6">近 6 个月</option>
+            <option value="12">近 12 个月</option>
+            <option value="all">全部</option>
+          </select></label>
+        <label class="iprec-field"><span>基准日期</span><input type="date" id="ipd-date"></label>
         <label class="iprec-field"><span>班次</span><select id="ipd-shift"><option value="">全部</option></select></label>
         <label class="iprec-field"><span>车间</span><select id="ipd-ws"><option value="">全部</option></select></label>
         <label class="iprec-field"><span>工序</span><select id="ipd-proc"><option value="">全部</option></select></label>
@@ -3309,6 +3327,11 @@ table.frec-table tbody tr.draft .lockdot,
       </div>
       <div class="ipan-kpis" id="ipd-kpis"></div>
       <p class="iphint" id="ipd-scope"></p>
+    </section>
+
+    <section class="ipcard">
+      <h2>月度合格率</h2>
+      <div class="ipbars" id="ipd-months"></div>
     </section>
 
     <section class="ipcard">
@@ -7548,20 +7571,26 @@ function rollMonthRange(fromSel, toSel, force){
     f.value=d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
   }
 }
-function ipqcDashDefaultRange(){ rollMonthRange("#ipd-from","#ipd-to"); }
+function ipqcDashDefaultRange(){ rangeToday("#ipd-date"); }
 function iprecDefaultRange(){ rollMonthRange("#iprec-from","#iprec-to"); }
 async function ipqcDashAgg(){
-  const from=$("#ipd-from").value, to=$("#ipd-to").value;
+  /* 区间改成跟成品/实验室同一套：下拉档位 + 基准日期，走共用的 labRangeOf。
+     原来是自选起止日期，跟同板块的记录表一致但跟另外四个看板不一致；用户要的是
+     看板这边统一。记录表那边仍然是起止框，没动。
+     「全部」不按日期筛 —— 没填日期的记录也该出现，不然它在任何区间里都消失，
+     跟装柜看板一个规矩。 */
+  const w=labRangeOf($("#ipd-range").value||"cur", dashAnchor("#ipd-date"));
+  const lo=w.from?w.from.getTime():0, hi=w.to?w.to.getTime():Infinity;
+  const bounded=!!(w.from||w.to);
   const shift=$("#ipd-shift").value;
   const ws=$("#ipd-ws").value, proc=$("#ipd-proc").value;
   let rows=(await metaAll()).filter(r=>r.type==="ipqc");
-  if(from) rows=rows.filter(r=>toDateInput(r.date)>=from);
-  if(to)   rows=rows.filter(r=>toDateInput(r.date)<=to);
+  if(bounded) rows=rows.filter(r=>{ const d=parseDMY(r.date); return d && d.getTime()>=lo && d.getTime()<hi; });
   if(shift) rows=rows.filter(r=>(r.shift||"")===shift);
   if(ws)   rows=rows.filter(r=>(r.ws||"")===ws);
   if(proc) rows=rows.filter(r=>(r.proc||"")===proc);
 
-  const out={ n:0, qty:0, bad:0, from:null, to:null,
+  const out={ n:0, qty:0, bad:0, from:null, to:null, months:new Map(),
               byProc:new Map(), byDesc:new Map(), byModel:new Map() };
   for(const m of rows){
     let rec; try{ rec=await dbGet(m.id); }catch(e){ continue; }
@@ -7574,6 +7603,13 @@ async function ipqcDashAgg(){
     const d=parseDMY(rec.fields.date);
     if(d && (!out.from||d<out.from)) out.from=d;
     if(d && (!out.to  ||d>out.to  )) out.to=d;
+    /* 月度就在这个循环里攒 —— 班次/车间/工序都已经筛过了，所以月度合格率天然
+       跟着上面那几个筛选走，不用另开一条路。 */
+    if(d){
+      const ym=ymOf(d);
+      let mo=out.months.get(ym); if(!mo) out.months.set(ym,mo={ym,qty:0,bad:0});
+      mo.qty+=q; mo.bad+=b;
+    }
 
     const pk=(rec.fields.ws||"")+" · "+(rec.fields.proc||"");
     let ps=out.byProc.get(pk);
@@ -7587,12 +7623,14 @@ async function ipqcDashAgg(){
       if(x.model){ out.byModel.set(x.model,(out.byModel.get(x.model)||0)+n); }
     });
   }
+  out.months=[...out.months.values()].sort((a,b)=>a.ym<b.ym?-1:1);
   out.byProc=[...out.byProc.values()].sort((a,b)=>b.bad-a.bad||b.qty-a.qty);
   out.byDesc=[...out.byDesc.entries()].sort((a,b)=>b[1]-a[1]);
   out.byModel=[...out.byModel.entries()].sort((a,b)=>b[1]-a[1]);
   return out;
 }
 async function ipdashRender(){
+  rangeToday("#ipd-date");
   $("#ipd-kpis").innerHTML='<div class="ipan-kpi"><div class="n">…</div><div class="t">读取中</div></div>';
   const a=await ipqcDashAgg();
   const kpi=(n,t,c)=>'<div class="ipan-kpi'+(c?" "+c:"")+'"><div class="n">'+n+'</div><div class="t">'+esc(t)+'</div></div>';
@@ -7605,6 +7643,18 @@ async function ipdashRender(){
   $("#ipd-scope").textContent = a.n
     ? tr("区间内")+" "+a.n+" "+tr("条记录，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
     : "这个区间没有数据。";
+
+  /* 条的总长按当月检查数量占最大那个月的比例，绿红是这个月内部的构成 ——
+     跟成品/实验室那两张一个读法，不用换脑子。 */
+  const maxQ=Math.max(1,...a.months.map(m=>m.qty));
+  $("#ipd-months").innerHTML=a.months.map(m=>{
+    const okN=m.qty-m.bad, w=m.qty/maxQ*100;
+    return '<div class="ipbar"><span class="lab">'+m.ym.slice(2)+'</span>'+
+      '<span class="track" style="width:'+w.toFixed(1)+'%">'+
+        '<i class="ok" style="width:'+pct(okN,m.qty||1)+'%"></i>'+
+        '<i class="no" style="flex:1"></i></span>'+
+      '<span class="num">'+ipn(okN)+' / '+ipn(m.qty)+'　'+(m.qty?pct(okN,m.qty)+"%":"—")+'</span></div>';
+  }).join("")||'<div class="iprec-empty">'+esc(tr("没有数据。"))+'</div>';
 
   $("#ipd-procs").innerHTML = !a.byProc.length
     ? '<tbody><tr><td class="iprec-empty" colspan="5">没有数据。</td></tr></tbody>'
@@ -7634,12 +7684,13 @@ async function ipdashRender(){
 }
 $("#pdashbtn").addEventListener("click",()=>ipqcShow($("#ipdash").hidden?"dash":"entry"));
 $("#ipd-close").addEventListener("click",()=>ipqcShow("entry"));
-["#ipd-from","#ipd-to","#ipd-shift","#ipd-ws","#ipd-proc"].forEach(id=>$(id).addEventListener("change",ipdashRender));
+rangeWire("#ipd-range","#ipd-date",ipdashRender);
+["#ipd-shift","#ipd-ws","#ipd-proc"].forEach(id=>$(id).addEventListener("change",ipdashRender));
 $("#ipd-clear").addEventListener("click",()=>{
   $("#ipd-shift").value=""; $("#ipd-ws").value=""; $("#ipd-proc").value="";
   /* force：用户手改过起止日期之后 RANGE_TOUCHED 会一直挡着自动回默认窗口，
      点了这个按钮就该连那个标记一起复位 */
-  rollMonthRange("#ipd-from","#ipd-to", true);
+  $("#ipd-range").value="cur"; rangeToday("#ipd-date", true);
   ipdashRender();
 });
 
@@ -12290,8 +12341,11 @@ function labRangeOf(v, anchor){
      原来这里写死 new Date()，于是日期框停在三月、选「上个月」拿到的却是八月，而小字
      只写「上个月」，界面上没有任何地方能让人看出来。
      六个看板没有日期框，照旧不传、以今天为准。 */
-  const n=anchor||new Date(), y=n.getFullYear(), m=n.getMonth();
+  const n=anchor||new Date(), y=n.getFullYear(), m=n.getMonth(), dd=n.getDate();
   if(v==="all") return {from:null,to:null,months:0};
+  /* 「当天」= 锚点那一天。制程按班次/车间看产量，天维度是有意义的，所以它的看板
+     单独有这一档；另外三个看板是月维度的图，没加。 */
+  if(v==="day") return {from:new Date(y,m,dd), to:new Date(y,m,dd+1), months:0};
   /* 「当月」= 锚点那个月的一整月。原来 to 是 null（不封顶）—— 没有锚点时那等于
      「本月 1 号至今」，看着没问题；一旦能把锚点挪到过去，不封顶就会把那个月之后
      的数据全带进来。收成下月 1 号（不含），跟上面那几档一个写法。 */
