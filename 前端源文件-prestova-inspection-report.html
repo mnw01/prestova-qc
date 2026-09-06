@@ -5159,7 +5159,17 @@ function rangeFilter(rangeSel, dateSel, rows, get){
    只返回截断后的数组 —— 小字是调用方紧跟着自己调 rangeNote 写的，这里一个字都不写。
    照字面读成「rangeCap 顺便把小字写掉」的话，会以为后面那句 rangeNote 是多余的，
    删掉就是五张表的范围小字一起消失。 */
-function rangeCap(rows){
+function rangeCap(rows, rangeSel){
+  /* **范围选择本身就是截断手段。** 当天 / 当月 / 上个月 / 近 N 个月 都是人主动划定
+     的一段，选了就该看全 —— 再砍到 200 等于把他刚做的选择否掉，而且下拉里只有
+     「全部」那一项写着「（最近 200 条）」，另外几项什么都没写，却也在偷偷砍：
+     成品忙月 310 条只画 200 条，少的 110 条没有任何地方交代得清楚。
+     只有「全部」是没有边界的，需要一个数字兜底 —— RANGE_CAP 自己的注释写的就是
+     这个意思。放开之后最重的是实验室的近 12 个月（1545 批 × 3 行），而那正是实验室
+     今天已经在跑的行为（它原来就只截「全部」），线上没出过问题。
+     不传 rangeSel 就照旧一律截，留给没有范围下拉的调用方。 */
+  const r = rangeSel ? (($(rangeSel)||{}).value||"") : "";
+  if(r!=="all") return rows;
   return rows.length>RANGE_CAP ? rows.slice(0,RANGE_CAP) : rows;
 }
 /* 标题旁边那行小字：现在看的是哪一段、几条。「全部」还要说清楚被截断了 */
@@ -5352,7 +5362,7 @@ async function frecRender(){
   /* slashDate() 把 DD/MM/YYYY 转成 YYYY/MM/DD，直接当字符串比就是正确的日期序 */
   recSort(rows, r=>r.inspDate);
   const total = rows.length;          /* 筛完、截断前 —— 小字要报的是这个 */
-  rows = rangeCap(rows);
+  rows = rangeCap(rows,"#frec-range");
   rangeNote("#frec-scope","#frec-range","#frec-date",rows.length,total);
   $("#frec-table").innerHTML = !rows.length
     ? '<tbody><tr><td class="frec-empty" colspan="9">没有记录。</td></tr></tbody>'
@@ -6072,7 +6082,7 @@ async function irecRender(){
   if(cat) rows=rows.filter(r=>(r.cat||"")===cat);
   recSort(rows, r=>r.date);
   const total = rows.length;          /* 筛完、截断前 —— 小字要报的是这个 */
-  rows = rangeCap(rows);
+  rows = rangeCap(rows,"#irec-range");
   rangeNote("#irec-scope","#irec-range","#irec-date",rows.length,total);
   $("#irec-table").innerHTML = !rows.length
     ? '<tbody><tr><td class="irec-empty" colspan="8">没有记录。</td></tr></tbody>'
@@ -7415,6 +7425,8 @@ async function iprecRows(){
 async function iprecRender(){
   let rows=await iprecRows(); if(!rows) return;
   const total=rows.length;
+  /* 制程用的是明确的起止框（#iprec-from ~ #iprec-to），没有「全部」这一档 ——
+     人自己划的窗口，一条都不截。不传范围下拉就是这个意思。 */
   rows=rangeCap(rows);
   const note=$("#iprec-scope");
   if(note) note.textContent=$("#iprec-from").value+" ~ "+$("#iprec-to").value+
@@ -8246,7 +8258,7 @@ async function orecRender(){
   if(container) rows=rows.filter(r=>orecHas(r.container,container));
   recSort(rows, r=>r.date);
   const total = rows.length;          /* 筛完、截断前 —— 小字要报的是这个 */
-  rows = rangeCap(rows);
+  rows = rangeCap(rows,"#orec-range");
   rangeNote("#orec-scope","#orec-range","#orec-date",rows.length,total);
   $("#orec-table").innerHTML = !rows.length
     ? '<tbody><tr><td class="orec-empty" colspan="8">没有记录。</td></tr></tbody>'
@@ -9542,7 +9554,7 @@ async function ftrecRender(){
      而且「共 N 条」报的是全部记录数而不是筛完的数。 */
   recSort(rows, r=>r.testDate);
   const total=rows.length;          /* 筛完、截断前 —— 小字要报的是这个 */
-  rows=rangeCap(rows);              /* 共用的上限，别手写 slice(0,200) */
+  rows=rangeCap(rows,"#ftrec-range");   /* 共用的上限，别手写 slice(0,200) */
   /* 共用的 rangeNote：会写成「02/09/2026 · 3 条（共 14 条）」，
      跟成品 / 来料 / 装柜 三张记录表一个格式 */
   rangeNote("#ftrec-scope","#ftrec-range","#ftrec-date",rows.length,total);
@@ -12112,7 +12124,9 @@ function labRecRecords(full){
     if((a.locked?1:0)!==(b.locked?1:0)) return (a.locked?1:0)-(b.locked?1:0);
     return labBatchNo(b.lab).localeCompare(labBatchNo(a.lab));
   });
-  return (range==="all" && !full) ? recs.slice(0,200) : recs;
+  /* 实验室原来就只截「全部」，那是对的 —— 现在共用的 rangeCap 也这么做了，
+     顺手接回去，别再手写一个 200（RANGE_CAP 改了这里会漏）。full 是导出用的，不截。 */
+  return full ? recs : rangeCap(recs,"#lrec-range");
 }
 function labRenderRec(){
   const recs=labRecRecords();
