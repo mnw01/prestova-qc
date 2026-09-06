@@ -9521,13 +9521,10 @@ function ftrecDefaultRange(){
 async function ftrecRender(){
   let rows=[];
   try{ rows=(await metaAll()).filter(m=>m.type==="cfr1633"); }catch(e){}
-  rows.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
-  const total=rows.length;
   /* 改用共用的 rangeFilter，按**测试日期**筛（原来是手写一段按 updatedAt 筛的
      —— updatedAt 是「最后改动时间」，跟这条记录测的是哪天没关系，补录一条上个月
      的测试会算进当月）。另外四个板块（成品 inspDate / 来料 date / 装柜 date）
      早就是这一套，防火当初漏了。 */
-  const range=$("#ftrec-range").value;
   rows = rangeFilter("#ftrec-range","#ftrec-date",rows,r=>r.testDate);
   const pt=$("#ftrec-prodtype").value;
   if(pt) rows=rows.filter(r=>(r.productType||"")==pt);
@@ -9537,7 +9534,13 @@ async function ftrecRender(){
      现场多半只记得中间那几位。 */
   const sku=$("#ftrec-sku").value.trim().toLowerCase();
   if(sku) rows=rows.filter(r=>String(r.sku||"").toLowerCase().includes(sku));
-  if(range!=="all") rows=rows.slice(0,200);
+  /* 排序也走共用那套：测试日期倒序 → 同一天里没提交的排前面 → 最后改动的在前。
+     原来是裸的 updatedAt 倒序。筛选那半边早就改成按测试日期了（见上面那段注释），
+     排序这半边当时没跟上 —— 于是补录一条上个月的测试，会插到今天这批的最前面，
+     而且「共 N 条」报的是全部记录数而不是筛完的数。 */
+  recSort(rows, r=>r.testDate);
+  const total=rows.length;          /* 筛完、截断前 —— 小字要报的是这个 */
+  rows=rangeCap(rows);              /* 共用的上限，别手写 slice(0,200) */
   /* 共用的 rangeNote：会写成「02/09/2026 · 3 条（共 14 条）」，
      跟成品 / 来料 / 装柜 三张记录表一个格式 */
   rangeNote("#ftrec-scope","#ftrec-range","#ftrec-date",rows.length,total);
@@ -10078,6 +10081,11 @@ async function pushOne(rec){
       if(op==="put"){
         const blob=rec.photos[slot];
         if(!blob){ delete rec.photoOps[slot]; continue; }
+        /* 体积记在**尝试之前**，不是成功之后。结尾那道守卫用它认「期间这一格被换过
+           图没有」；只在成功分支记的话，413 这种失败路径上它是 undefined，守卫一比
+           就 return，待传标记永远清不掉 —— 于是「4xx 当场丢弃、别无限重传」那条又
+           退回了原样，每 60 秒重传一次 8MB。 */
+        pushedSize[slot] = blob.size;
         const stamp = rec.updatedAt||Date.now();
         const put = await (await api("/api/photo/"+encodeURIComponent(rec.id)+"/"+encodeURIComponent(slot), {
           method:"PUT",
@@ -10100,7 +10108,6 @@ async function pushOne(rec){
            顺带记下体积：结尾对账时靠它认出「这一格期间被换过图了」。
            读一下响应也让 api() 的 body 超时真正盖住这次上传。 */
         newAt[slot] = put.updatedAt || stamp;
-        pushedSize[slot] = blob.size;
       }else{
         await api("/api/photo/"+encodeURIComponent(rec.id)+"/"+encodeURIComponent(slot), { method:"DELETE" });
       }
