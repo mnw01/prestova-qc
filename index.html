@@ -3357,17 +3357,8 @@ table.frec-table tbody tr.draft .lockdot,
         <button type="button" class="plx" id="ipd-close" title="关闭">✕</button>
       </h2>
       <div class="iprec-bar">
-        <label class="iprec-field"><span>区间</span>
-          <select id="ipd-range">
-            <option value="day">当天</option>
-            <option value="cur" selected>当月</option>
-            <option value="1">上个月</option>
-            <option value="3">近 3 个月</option>
-            <option value="6">近 6 个月</option>
-            <option value="12">近 12 个月</option>
-            <option value="all">全部</option>
-          </select></label>
-        <label class="iprec-field"><span>基准日期</span><input type="date" id="ipd-date"></label>
+        <label class="iprec-field wide"><span>起始日期</span><input type="date" id="ipd-from"></label>
+        <label class="iprec-field wide"><span>结束日期</span><input type="date" id="ipd-to"></label>
         <label class="iprec-field"><span>班次</span><select id="ipd-shift"><option value="">全部</option></select></label>
         <label class="iprec-field"><span>车间</span><select id="ipd-ws"><option value="">全部</option></select></label>
         <label class="iprec-field"><span>工序</span><select id="ipd-proc"><option value="">全部</option></select></label>
@@ -3760,13 +3751,13 @@ table.frec-table tbody tr.draft .lockdot,
     </section>
 
     <section class="ftcard">
-      <h2>判定构成 <span class="fthint">不合格是哪一项超的</span></h2>
-      <div class="ftan-items" id="ftd-verdict"></div>
+      <h2>月度合格率</h2>
+      <div class="ftbars" id="ftd-months"></div>
     </section>
 
     <section class="ftcard">
-      <h2>月度合格率</h2>
-      <div class="ftbars" id="ftd-months"></div>
+      <h2>判定构成 <span class="fthint">不合格是哪一项超的</span></h2>
+      <div class="ftan-items" id="ftd-verdict"></div>
     </section>
 
     <section class="ftcard">
@@ -7638,25 +7629,27 @@ function rollMonthRange(fromSel, toSel, force){
   const p=n=>String(n).padStart(2,"0");
   if(!RANGE_TOUCHED[toSel]) t.value=toDateInput(today());
   if(!RANGE_TOUCHED[fromSel]){
-    const d=new Date(); d.setDate(d.getDate()-30);
-    f.value=d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
+    /* 起 = 当月 1 号，止 = 今天（上面那行），所以默认就是「这个月到今天为止」，
+       每天自己往后滚，月初自动翻页。原来是「今天减 30 天」—— 那会跨月，月初打开
+       看到的大半是上个月的数据，跟「本月做得怎么样」对不上。
+       制程的记录表和数据分析都走这个函数，两块一起变，同板块内部一致。 */
+    const d=new Date();
+    f.value=d.getFullYear()+"-"+p(d.getMonth()+1)+"-01";
   }
 }
-function ipqcDashDefaultRange(){ rangeToday("#ipd-date"); }
+function ipqcDashDefaultRange(){ rollMonthRange("#ipd-from","#ipd-to"); }
 function iprecDefaultRange(){ rollMonthRange("#iprec-from","#iprec-to"); }
 async function ipqcDashAgg(){
-  /* 区间改成跟成品/实验室同一套：下拉档位 + 基准日期，走共用的 labRangeOf。
-     原来是自选起止日期，跟同板块的记录表一致但跟另外四个看板不一致；用户要的是
-     看板这边统一。记录表那边仍然是起止框，没动。
-     「全部」不按日期筛 —— 没填日期的记录也该出现，不然它在任何区间里都消失，
-     跟装柜看板一个规矩。 */
-  const w=labRangeOf($("#ipd-range").value||"cur", dashAnchor("#ipd-date"));
-  const lo=w.from?w.from.getTime():0, hi=w.to?w.to.getTime():Infinity;
-  const bounded=!!(w.from||w.to);
+  /* 区间是自选起止日期，不是预设的「近 N 个月」档位 —— 制程按班次/车间/工序看，
+     常要框任意一段，用户明确要这个；跟同板块的记录表也一致。
+     月度合格率**不需要**下拉档位：它只看窗口里有哪些记录，窗口跨几个月就出几条，
+     跟窗口怎么框出来的无关（来料也是起止框，一样按月分条）。 */
+  const from=$("#ipd-from").value, to=$("#ipd-to").value;
   const shift=$("#ipd-shift").value;
   const ws=$("#ipd-ws").value, proc=$("#ipd-proc").value;
   let rows=(await metaAll()).filter(r=>r.type==="ipqc");
-  if(bounded) rows=rows.filter(r=>{ const d=parseDMY(r.date); return d && d.getTime()>=lo && d.getTime()<hi; });
+  if(from) rows=rows.filter(r=>toDateInput(r.date)>=from);
+  if(to)   rows=rows.filter(r=>toDateInput(r.date)<=to);
   if(shift) rows=rows.filter(r=>(r.shift||"")===shift);
   if(ws)   rows=rows.filter(r=>(r.ws||"")===ws);
   if(proc) rows=rows.filter(r=>(r.proc||"")===proc);
@@ -7701,7 +7694,6 @@ async function ipqcDashAgg(){
   return out;
 }
 async function ipdashRender(){
-  rangeToday("#ipd-date");
   $("#ipd-kpis").innerHTML='<div class="ipan-kpi"><div class="n">…</div><div class="t">读取中</div></div>';
   const a=await ipqcDashAgg();
   const kpi=(n,t,c)=>'<div class="ipan-kpi'+(c?" "+c:"")+'"><div class="n">'+n+'</div><div class="t">'+esc(t)+'</div></div>';
@@ -7755,13 +7747,14 @@ async function ipdashRender(){
 }
 $("#pdashbtn").addEventListener("click",()=>ipqcShow($("#ipdash").hidden?"dash":"entry"));
 $("#ipd-close").addEventListener("click",()=>ipqcShow("entry"));
-rangeWire("#ipd-range","#ipd-date",ipdashRender);
-["#ipd-shift","#ipd-ws","#ipd-proc"].forEach(id=>$(id).addEventListener("change",ipdashRender));
+["#ipd-from","#ipd-to","#ipd-shift","#ipd-ws","#ipd-proc"].forEach(id=>$(id).addEventListener("change",ipdashRender));
+/* 人自己动过起止框就别再拿默认值覆盖 —— rollMonthRange 靠这个标记 */
+["#ipd-from","#ipd-to"].forEach(id=>$(id).addEventListener("change",()=>{ RANGE_TOUCHED[id]=true; }));
 $("#ipd-clear").addEventListener("click",()=>{
   $("#ipd-shift").value=""; $("#ipd-ws").value=""; $("#ipd-proc").value="";
   /* force：用户手改过起止日期之后 RANGE_TOUCHED 会一直挡着自动回默认窗口，
      点了这个按钮就该连那个标记一起复位 */
-  $("#ipd-range").value="cur"; rangeToday("#ipd-date", true);
+  rollMonthRange("#ipd-from","#ipd-to", true);   /* 回到默认窗口，不是清空 */
   ipdashRender();
 });
 
