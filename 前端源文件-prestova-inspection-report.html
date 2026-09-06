@@ -1429,6 +1429,15 @@ table.frec-table tbody tr.draft .lockdot,
 #iqc .iqan-kpi.bad .n{color:var(--no)}
 #iqc .iqan-kpi.good .n{color:var(--ok)}
 /* 不合格项分析——跟实验室看板的 .litem 同一个样子 */
+/* 月度合格率：同上。来料的窗口是自选起止日期，不是预设档位 —— 但月度图只关心
+   窗口里有哪些记录，跟窗口怎么选出来的无关，选 3 天就 1 根条，选一年最多 12 根。 */
+#iqc .iqbars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+#iqc .iqbar{display:grid;grid-template-columns:64px 1fr 150px;gap:10px;align-items:center;font-size:12.5px}
+#iqc .iqbar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
+#iqc .iqbar .track{height:17px;border-radius:3px;overflow:hidden;display:flex;background:var(--rule-2)}
+#iqc .iqbar .ok{background:#3f9d67}
+#iqc .iqbar .no{background:#c9483c}
+#iqc .iqbar .num{color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 #iqc .iqan-items{display:flex;flex-direction:column;gap:12px;margin-top:4px}
 #iqc .iqan-item{display:grid;grid-template-columns:80px 1fr 150px;gap:10px;align-items:center;font-size:12.5px}
 #iqc .iqan-item .track{height:13px;background:var(--rule-2);border-radius:3px;overflow:hidden}
@@ -1667,6 +1676,15 @@ table.frec-table tbody tr.draft .lockdot,
 #cfr1633 .ftan-kpi .t{font-size:11.5px;color:var(--ink-3);margin-top:2px;letter-spacing:.02em}
 #cfr1633 .ftan-kpi.bad .n{color:var(--no)}
 #cfr1633 .ftan-kpi.good .n{color:var(--ok)}
+/* 月度合格率：跟成品/制程/实验室同一个读法 —— 标签 | 绿红两段的条 | 数字。
+   条的总长按当月记录数占最大那个月的比例，绿红是这个月内部的构成。 */
+#cfr1633 .ftbars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+#cfr1633 .ftbar{display:grid;grid-template-columns:64px 1fr 150px;gap:10px;align-items:center;font-size:12.5px}
+#cfr1633 .ftbar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
+#cfr1633 .ftbar .track{height:17px;border-radius:3px;overflow:hidden;display:flex;background:var(--rule-2)}
+#cfr1633 .ftbar .ok{background:#3f9d67}
+#cfr1633 .ftbar .no{background:#c9483c}
+#cfr1633 .ftbar .num{color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 #cfr1633 .ftan-items{display:flex;flex-direction:column;gap:10px;margin-top:4px}
 #cfr1633 .ftan-item{display:grid;grid-template-columns:minmax(90px,140px) 1fr 150px;gap:10px;
   align-items:center;font-size:12.5px}
@@ -3210,6 +3228,11 @@ table.frec-table tbody tr.draft .lockdot,
     </section>
 
     <section class="iqcard">
+      <h2>月度合格率</h2>
+      <div class="iqbars" id="id-months"></div>
+    </section>
+
+    <section class="iqcard">
       <h2>不合格项分析 <span class="iqhint">按检查项每一行算，同一批可能同时几项都超</span></h2>
       <div class="iqan-items" id="id-items"></div>
     </section>
@@ -3714,6 +3737,11 @@ table.frec-table tbody tr.draft .lockdot,
     <section class="ftcard">
       <h2>判定构成 <span class="fthint">不合格是哪一项超的</span></h2>
       <div class="ftan-items" id="ftd-verdict"></div>
+    </section>
+
+    <section class="ftcard">
+      <h2>月度合格率</h2>
+      <div class="ftbars" id="ftd-months"></div>
     </section>
 
     <section class="ftcard">
@@ -6169,7 +6197,7 @@ async function iqcDashAgg(){
   if(cat)  rows=rows.filter(r=>(r.cat||"")===cat);
   if(supplier) rows=rows.filter(r=>irecHas(r.po,supplier));
 
-  const out={ batches:0, bad:0, pending:0, from:null, to:null,
+  const out={ batches:0, bad:0, pending:0, from:null, to:null, months:new Map(),
               inQty:0, inspQty:0, badQty:0,
               byCat:new Map(), bySupplier:new Map(), items:new Map() };
   IQC_ITEMS.forEach(it=>out.items.set(it.k,{k:it.k,zh:it.zh,n:0,bad:0}));
@@ -6185,6 +6213,13 @@ async function iqcDashAgg(){
        索引虽然有 META_VER 兜底，但能直接算的地方没必要多一层依赖。 */
     const v=iqcVerdict(rec);
     if(v==="reject") out.bad++; else if(!v) out.pending++;
+    /* 月度就在这个循环里攒，所以类别 / 供应商两个筛选它都跟着走。口径跟上面那个
+       「合格率（按批次）」KPI 一致：分母是**判过的**批次，待检查的不算。 */
+    if(d && v){
+      const ym=ymOf(d);
+      let mo=out.months.get(ym); if(!mo) out.months.set(ym,mo={ym,judged:0,bad:0});
+      mo.judged++; if(v==="reject") mo.bad++;
+    }
     /* 来料数量 = 每张表「进料数量」相加 */
     out.inQty += lnum(rec.fields.qty)||0;
 
@@ -6209,6 +6244,7 @@ async function iqcDashAgg(){
       });
     });
   }
+  out.months=[...out.months.values()].sort((a,b)=>a.ym<b.ym?-1:1);
   out.items=[...out.items.values()].filter(i=>i.n);
   out.byCat=[...out.byCat.values()].sort((a,b)=>b.bad-a.bad || b.n-a.n);
   out.bySupplier=[...out.bySupplier.values()].sort((a,b)=>b.bad-a.bad || b.n-a.n);
@@ -6258,6 +6294,16 @@ async function idashRender(){
   /* bar 宽度 = 该项自己的不合格率，跟旁边"x/n rate%"文字同一个数——不是这项
      占全部不合格的份额，两种口径混着看会觉得对不上号，见 new-module-ui-
      conventions 里那条踩过的坑 */
+  const iqMaxM=Math.max(1,...a.months.map(m=>m.judged));
+  $("#id-months").innerHTML=a.months.map(m=>{
+    const okN=m.judged-m.bad, w=m.judged/iqMaxM*100;
+    return '<div class="iqbar"><span class="lab">'+m.ym.slice(2)+'</span>'+
+      '<span class="track" style="width:'+w.toFixed(1)+'%">'+
+        '<i class="ok" style="width:'+pct(okN,m.judged||1)+'%"></i>'+
+        '<i class="no" style="flex:1"></i></span>'+
+      '<span class="num">'+okN+' / '+m.judged+'　'+(m.judged?pct(okN,m.judged)+"%":"—")+'</span></div>';
+  }).join("")||'<div class="iqan-empty">'+esc(tr("没有数据。"))+'</div>';
+
   $("#id-items").innerHTML=a.items.map(i=>
     '<div class="iqan-item"><span>'+esc(i.zh)+'</span>'+
     '<span class="track"><span class="fill" style="width:'+(i.n?pct(i.bad,i.n):0)+'%"></span></span>'+
@@ -9319,7 +9365,7 @@ async function ftDashAgg(){
   if(pt)   rows=rows.filter(x=>(x.productType||"")===pt);
   if(sku)  rows=rows.filter(x=>String(x.sku||"").toLowerCase().includes(sku));
 
-  const out={ n:0, pass:0, fail:0, unrated:0,
+  const out={ n:0, pass:0, fail:0, unrated:0, months:new Map(),
               phrrOnly:0, thrOnly:0, bothOver:0,
               phrr:[], thr:[], burn:[], burnUnparsed:0,
               phrrBands:new Array(FT_PHRR_LABELS.length).fill(0),
@@ -9345,6 +9391,13 @@ async function ftDashAgg(){
     const d=parseDMY(m.testDate);
     if(d && (!out.from||d<out.from)) out.from=d;
     if(d && (!out.to  ||d>out.to  )) out.to=d;
+    /* 月度就在这个循环里攒，所以产品类型 / SKU / 判定三个筛选它都跟着走。
+       口径跟上面那个合格率 KPI 一致：分母是**判过的**（pass+fail），未判定不算。 */
+    if(d && (v==="合格"||v==="不合格")){
+      const ym=ymOf(d);
+      let mo=out.months.get(ym); if(!mo) out.months.set(ym,mo={ym,pass:0,fail:0});
+      if(v==="合格") mo.pass++; else mo.fail++;
+    }
 
     const tk=(m.productType||"").trim()||"（未填）";
     let ts=out.byType.get(tk);
@@ -9360,6 +9413,7 @@ async function ftDashAgg(){
       ss.n++; if(v==="不合格") ss.fail++;
     }
   }
+  out.months=[...out.months.values()].sort((a,b)=>a.ym<b.ym?-1:1);
   out.byType=[...out.byType.values()].sort((a,b)=>b.n-a.n);
   out.bySku=[...out.bySku.values()].sort((a,b)=>b.fail-a.fail||b.n-a.n);
   return out;
@@ -9410,6 +9464,18 @@ async function ftdashRender(){
     [tr("合格"),tr("仅 PHRR 超标"),tr("仅 THR 超标"),tr("两项都超标"),tr("未判定")],
     [a.pass,a.phrrOnly,a.thrOnly,a.bothOver,a.unrated],
     a.n, ["ok","over","over","over",""]);
+
+  /* 条的总长按当月判过的条数占最大那个月的比例，绿红是这个月内部的构成 ——
+     跟成品/制程/实验室那三张一个读法。 */
+  const ftMaxM=Math.max(1,...a.months.map(m=>m.pass+m.fail));
+  $("#ftd-months").innerHTML=a.months.map(m=>{
+    const j=m.pass+m.fail, w=j/ftMaxM*100;
+    return '<div class="ftbar"><span class="lab">'+m.ym.slice(2)+'</span>'+
+      '<span class="track" style="width:'+w.toFixed(1)+'%">'+
+        '<i class="ok" style="width:'+pct(m.pass,j||1)+'%"></i>'+
+        '<i class="no" style="flex:1"></i></span>'+
+      '<span class="num">'+m.pass+' / '+j+'　'+(j?pct(m.pass,j)+"%":"—")+'</span></div>';
+  }).join("")||'<div class="frec-empty">'+esc(tr("没有数据。"))+'</div>';
 
   bars("#ftd-phrr", FT_PHRR_LABELS, a.phrrBands, a.phrr.length, inLimit(FT_PHRR_LABELS.length));
   bars("#ftd-thr",  FT_THR_LABELS,  a.thrBands,  a.thr.length,  inLimit(FT_THR_LABELS.length));
