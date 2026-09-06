@@ -5180,12 +5180,14 @@ function rangeFilter(rangeSel, dateSel, rows, get){
   }
   return rows;
 }
-/* 标题旁边那行小字：现在看的是哪一段、几条。「全部」还要说清楚被截断了 */
 /* 排序完再截：先排后截才能保证留下的是最近的那 200 条。
-   返回截断后的数组，顺便把小字写掉。 */
+   只返回截断后的数组 —— 小字是调用方紧跟着自己调 rangeNote 写的，这里一个字都不写。
+   照字面读成「rangeCap 顺便把小字写掉」的话，会以为后面那句 rangeNote 是多余的，
+   删掉就是五张表的范围小字一起消失。 */
 function rangeCap(rows){
   return rows.length>RANGE_CAP ? rows.slice(0,RANGE_CAP) : rows;
 }
+/* 标题旁边那行小字：现在看的是哪一段、几条。「全部」还要说清楚被截断了 */
 function rangeNote(sel, rangeSel, dateSel, shown, total){
   const n=$(sel); if(!n) return;
   const range=($(rangeSel)||{}).value||"month";
@@ -10048,7 +10050,9 @@ async function pushOne(rec){
      动作」，只有键的话 del 和 put 分不开，见下面那段。 */
   const snapOps = Object.assign({}, rec.photoOps);
   const lf = rec.fields||{}, lostName=(lf.itemNo||lf.po||lf.container||"").trim();
-  /* newAt / pushedSize 只装这一轮真正产生的东西 —— 结尾要靠它们判断「有没有值得
+  /* newAt 只装这一轮真正产生的结果，结尾靠它判断「有没有值得写盘的东西」；pushedSize
+     装的是这一轮**尝试推**的那个 blob，成功、4xx、clock_skew 都记（对账时要用它认
+     「期间这一格被换过图没有」，失败路径同样需要）。要靠它们判断「有没有值得
      写盘的结果」。直接往 rec.photoAt 上堆的话，老记录本来就有的条目会让那个判断
      永远为真，等于每轮都白跑一次读-改-写。 */
   /* lostWhy / adoptApplied 要留到结尾：报给用户的那句「你刚才的改动没有保存」
@@ -10119,7 +10123,7 @@ async function pushOne(rec){
         })).json();
         /* 服务端跟记录那头一样，对超前的时间戳回 200 + clock_skew（不是 4xx，
            4xx 会被下面的 catch 当成「这一张永远传不上去」直接丢掉）。这里
-           **什么都不动**：photoOps 留着、newAt/pushedSize 不记，这一格下一轮
+           **什么都不动**：photoOps 留着、newAt 不记，这一格下一轮
            再推 —— 跟上面记录的 clock_skew 分支同一个处理。偏差并进同一个
            CLOCK_SKEW，校时提示一轮还是只弹一次。 */
         if(put.status==="clock_skew"){
@@ -10130,8 +10134,8 @@ async function pushOne(rec){
            而且它现在会把超前的挡掉（见上一段），两边各算各的迟早对不上。这个值
            参与「要不要重下」的判断：服务端大 → 每次打开都把自己刚传的重下一遍；
            小 → 别人的重拍永远拉不下来。两个方向都不自愈。
-           顺带记下体积：结尾对账时靠它认出「这一格期间被换过图了」。
-           读一下响应也让 api() 的 body 超时真正盖住这次上传。 */
+           读一下响应也让 api() 的 body 超时真正盖住这次上传。
+           体积不在这儿记 —— 见上面发请求之前那一段，失败路径也要记得上。 */
         newAt[slot] = put.updatedAt || stamp;
       }else{
         await api("/api/photo/"+encodeURIComponent(rec.id)+"/"+encodeURIComponent(slot), { method:"DELETE" });
@@ -10150,10 +10154,21 @@ async function pushOne(rec){
          408/429 是服务端说"稍后再来"，跟 5xx、网络错误一样算临时，留着下轮再试。 */
       const st=(e && e.status)||0;
       if(st>=400 && st<500 && st!==408 && st!==429){
-        delete rec.photoOps[slot];
-        /* 403 是「这条被锁了 / 只有管理员能写」，不是这个文件本身的问题 —— 分开记，
-           不然人看到的是「多半是文件太大」，跑去压缩半天也没用。 */
-        if(st===403) photoLocked=true; else photoFail=true;
+        /* 403 单独拎出来：它是「这条被锁了 / 只有管理员能写」，属于**暂时**状态 ——
+           管理员一解锁就传得上去，跟 413（太大）、400（槽位非法）那种「这个文件永远
+           传不上去」不是一回事。丢掉待传标记就再也不会重传，而且 photoOps 一空，
+           adoptServer 的 `!serverPhotos[sl] && !photoOps[sl]` 成立，下一轮连本地 blob 一起
+           裁掉 —— 照片彻底没了，而现场收到的提示还写着「需要管理员解除锁定」，暗示
+           解锁之后能救。留着，下一轮再试。
+           代价是这条记录一直锁着的话每轮会报一次「被锁定」，跟时钟不准那个提示同一
+           个规矩：没修好就一直提醒，而且人是能去处理的。 */
+        if(st===403){ photoLocked=true; }
+        else{
+          /* 剩下的 4xx（413 太大、400 槽位非法/空文件）才是「这一张永远传不上去」，
+             丢掉待传标记，别每 60 秒白传一次。报成 photo，提示里会说「多半是文件太大」。 */
+          delete rec.photoOps[slot];
+          photoFail=true;
+        }
       }
     }
   }
