@@ -3039,6 +3039,7 @@ table.frec-table tbody tr.draft .lockdot,
         <option value="12">近 12 个月</option>
         <option value="all">全部</option>
       </select></label>
+          <label class="frec-field"><span>基准日期</span><input type="date" id="fd-date"></label>
     <label class="frec-field"><span>品名</span>
       <input id="fd-item" data-pm="fqcdesc" autocomplete="off" placeholder="全部品名"></label>
     <label class="frec-field"><span>床垫类型</span>
@@ -3465,6 +3466,7 @@ table.frec-table tbody tr.draft .lockdot,
           <option value="12">近 12 个月</option>
           <option value="all">全部</option>
         </select></label>
+          <label class="orec-field"><span>基准日期</span><input type="date" id="oqd-date"></label>
       <label class="orec-field"><span>床垫类型</span>
         <select id="oqd-type">
           <option value="">全部</option>
@@ -3672,6 +3674,7 @@ table.frec-table tbody tr.draft .lockdot,
             <option value="12">近 12 个月</option>
             <option value="all">全部</option>
           </select></label>
+          <label class="frec-field"><span>基准日期</span><input type="date" id="ftd-date"></label>
         <label class="frec-field"><span>产品类型</span>
           <select id="ftd-prodtype">
             <option value="">全部</option>
@@ -3929,6 +3932,7 @@ table.frec-table tbody tr.draft .lockdot,
             <option value="12">近 12 个月</option>
             <option value="all">全部</option>
           </select></label>
+          <label class="lfield" style="flex:0 0 150px"><span>基准日期</span><input type="date" id="ld-date"></label>
         <label class="lfield" style="flex:0 0 150px"><span>品号</span>
           <select id="ld-model"><option value="">全部品号</option></select></label>
         <button type="button" class="recbtn" id="ld-clear">清除筛选</button>
@@ -5423,7 +5427,7 @@ $("#frec-table").addEventListener("click",async e=>{
    2026-08-15 试过改成起止日期两个输入框，用户要求退回下拉。 */
 function fqcDashDefaultRange(){}
 async function fqcDashAgg(range,item,mattress){
-  const r=labRangeOf(range);
+  const r=labRangeOf(range, dashAnchor("#fd-date"));
   const cutoff=r.from?r.from.getTime():0;
   const upto  =r.to  ?r.to.getTime()  :Infinity;
   /* 品名按**包含**匹配，不是全等 —— 这是个筛选框，打 "K01" 应该把
@@ -5469,6 +5473,7 @@ async function fqcDashAgg(range,item,mattress){
   return out;
 }
 async function fqcDashRender(){
+  rangeToday("#fd-date");
   /* 候选来自**已有记录里出现过的品名**，不是整份产品基础资料 —— 基础资料里
      一千多个型号，绝大多数根本没做过成品检验，摆进筛选框只会添乱。 */
   FQC_DESCS=[...new Set((await metaAll()).filter(m=>m.type==="fqc")
@@ -5523,7 +5528,8 @@ async function fqcDashRender(){
 }
 $("#fdashbtn").addEventListener("click",()=>{ fqcShow($("#fdash").hidden?"dash":"form"); });
 $("#fd-close").addEventListener("click",()=>fqcShow("form"));
-["#fd-range","#fd-mattress"].forEach(id=>$(id).addEventListener("change",fqcDashRender));
+rangeWire("#fd-range","#fd-date",fqcDashRender);
+$("#fd-mattress").addEventListener("change",fqcDashRender);
 /* ── 数据分析的「清除筛选」：四个板块各一个 ──────────────────────────
    口径跟记录表那几个一致 —— **回到打开这一屏时的默认状态，不是清空**。
    区间清空了等于"全部"，几万条一次摊开，那不是用户点这个按钮想要的。
@@ -5531,6 +5537,7 @@ $("#fd-close").addEventListener("click",()=>fqcShow("form"));
    （下拉的 selected 项），来料/制程是「最近 30 天」的起止日期。 */
 $("#fd-clear").addEventListener("click",()=>{
   $("#fd-range").value="cur"; $("#fd-item").value=""; $("#fd-mattress").value="";
+  rangeToday("#fd-date", true);
   fqcDashRender();
 });
 /* 品名是输入框了：边打边筛。防抖 250ms，不然一千条记录每敲一下都要重算一遍。
@@ -8306,7 +8313,7 @@ async function oqcDashAgg(){
      三个板块同一个说法就得是同一个窗口。
      「全部」不按日期筛：没填装柜日期的柜也该出现，不然它在任何区间里都消失。 */
   if(range!=="all"){
-    const w=labRangeOf(range);
+    const w=labRangeOf(range, dashAnchor("#oqd-date"));
     const lo=w.from?w.from.getTime():0, hi=w.to?w.to.getTime():Infinity;
     rows=rows.filter(r=>{ const d=parseDMY(r.date); return d && d.getTime()>=lo && d.getTime()<hi; });
   }
@@ -8375,6 +8382,7 @@ async function oqcDashAgg(){
 }
 
 async function oqdashRender(){
+  rangeToday("#oqd-date");
   $("#oqd-kpis").innerHTML='<div class="oqan-kpi"><div class="n">…</div><div class="t">读取中</div></div>';
   const a=await oqcDashAgg();
   const judged=a.ok+a.no;
@@ -8432,9 +8440,11 @@ async function oqdashRender(){
 
 $("#odashbtn").addEventListener("click",()=>oqcShow($("#oqdash").hidden?"dash":"entry"));
 $("#oqd-close").addEventListener("click",()=>oqcShow("entry"));
-["#oqd-range","#oqd-type"].forEach(id=>$(id).addEventListener("change",oqdashRender));
+rangeWire("#oqd-range","#oqd-date",oqdashRender);
+$("#oqd-type").addEventListener("change",oqdashRender);
 $("#oqd-clear").addEventListener("click",()=>{
   $("#oqd-range").value="cur"; $("#oqd-type").value="";
+  rangeToday("#oqd-date", true);
   oqdashRender();
 });
 $("#orec-close").addEventListener("click",()=>oqcShow("entry"));
@@ -9245,7 +9255,7 @@ async function ftDashAgg(){
   /* 区间走共用的 labRangeOf，跟成品看板一模一样：当月 / 上个月 / 近 N 个月 /
      全部，都是完整自然月窗口（to 是本月 1 号，不含）。原来是两个手填的
      起止日期框，跟另外几个看板不是一套。 */
-  const r=labRangeOf($("#ftd-range").value);
+  const r=labRangeOf($("#ftd-range").value, dashAnchor("#ftd-date"));
   const pt=$("#ftd-prodtype").value;
   const sku=$("#ftd-sku").value.trim().toLowerCase();
   let rows=(await metaAll()).filter(x=>x.type==="cfr1633");
@@ -9308,6 +9318,7 @@ const ftMax = a => a.length ? Math.max(...a) : null;
 const ftNum = v => v==null ? "—" : nfmt(v);
 
 async function ftdashRender(){
+  rangeToday("#ftd-date");
   $("#ftd-kpis").innerHTML='<div class="ftan-kpi"><div class="n">…</div><div class="t">'+esc(tr("读取中"))+'</div></div>';
   const a=await ftDashAgg();
   const kpi=(n,t,c)=>'<div class="ftan-kpi'+(c?" "+c:"")+'"><div class="n">'+n+'</div><div class="t">'+esc(tr(t))+'</div></div>';
@@ -9384,10 +9395,12 @@ async function ftdashRender(){
 }
 $("#ftdashbtn").addEventListener("click",()=>ftShow($("#ftdash").hidden?"dash":"entry"));
 $("#ftd-close").addEventListener("click",()=>ftShow("entry"));
-["#ftd-range","#ftd-prodtype"].forEach(id=>$(id).addEventListener("change",ftdashRender));
+rangeWire("#ftd-range","#ftd-date",ftdashRender);
+$("#ftd-prodtype").addEventListener("change",ftdashRender);
 $("#ftd-sku").addEventListener("input",ftdashRender);   /* 文本框打一个字就重算 */
 $("#ftd-clear").addEventListener("click",()=>{
   $("#ftd-range").value="cur"; $("#ftd-prodtype").value=""; $("#ftd-sku").value="";
+  rangeToday("#ftd-date", true);
   ftdashRender();
 });
 
@@ -11600,6 +11613,7 @@ const I18N_ID={
   "点击或拖入上传测试报告（图片或 PDF）": "Klik atau tarik untuk upload laporan pengujian (gambar atau PDF)",
   "点击查看": "Klik untuk lihat",
   "增加报告": "Tambah Laporan",
+  "基准日期": "Tanggal Acuan",
   "减少照片": "Kurangi Foto",
   "减少报告": "Kurangi Laporan",
   "最后一格里有内容，连内容一起删掉？": "Kotak terakhir masih ada isinya — hapus sekalian isinya?",
@@ -12263,6 +12277,9 @@ const ymOf = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
    近1个月 is 7/1–7/31 and 近3个月 is 5/1–7/31. Counting back from today instead
    would fold in a part-month and make the window drift day by day, which is not
    how a monthly record sheet is read. 当月 is the separate, running one. */
+/* 看板的基准日期：跟记录表的日期框同一套 —— 默认今天（rangeToday），人挪了就
+   跟着挪。没有这个框的话，过去某个月的数据根本没法单独看。 */
+const dashAnchor = sel => parseDMY(fromDateInput(($(sel)||{}).value||"")) || null;
 function labRangeOf(v, anchor){
   /* anchor = 这个窗口从哪一天往回算。记录表传日期框选的那天 —— 日期框默认就是今天
      （rangeToday），所以不传和传「今天」结果一样，默认行为一个字都不变；但人一挪
@@ -12272,12 +12289,15 @@ function labRangeOf(v, anchor){
      六个看板没有日期框，照旧不传、以今天为准。 */
   const n=anchor||new Date(), y=n.getFullYear(), m=n.getMonth();
   if(v==="all") return {from:null,to:null,months:0};
-  if(v==="cur") return {from:new Date(y,m,1), to:null, months:0};
+  /* 「当月」= 锚点那个月的一整月。原来 to 是 null（不封顶）—— 没有锚点时那等于
+     「本月 1 号至今」，看着没问题；一旦能把锚点挪到过去，不封顶就会把那个月之后
+     的数据全带进来。收成下月 1 号（不含），跟上面那几档一个写法。 */
+  if(v==="cur") return {from:new Date(y,m,1), to:new Date(y,m+1,1), months:0};
   const k=+v||0;
   return { from:new Date(y,m-k,1), to:new Date(y,m,1), months:k };  /* to 为本月 1 号，不含 */
 }
 function labAgg(recs,range,onlyModel){
-  const r=labRangeOf(range);
+  const r=labRangeOf(range, dashAnchor("#ld-date"));
   const cutoff=r.from?r.from.getTime():0;
   const upto  =r.to  ?r.to.getTime()  :Infinity;
   const out={ batches:0, samples:0, pass:0, fail:0, unjudged:0, noStd:0,
@@ -12367,6 +12387,7 @@ async function labLoadAll(force){
   return (LAB_CACHE=out);
 }
 function labRenderDash(){
+  rangeToday("#ld-date");
   const recs=LAB_CACHE||[];
   const range=$("#ld-range").value, model=$("#ld-model").value;
   const want=labRangeOf(range).months;
@@ -12453,10 +12474,11 @@ async function labOpenDash(){
 }
 $("#ldashbtn").addEventListener("click",labToggle("dash",labOpenDash));
 $("#ld-close").addEventListener("click",()=>labShow("entry"));
-$("#ld-range").addEventListener("change",labRenderDash);
+rangeWire("#ld-range","#ld-date",labRenderDash);
 $("#ld-model").addEventListener("change",labRenderDash);
 $("#ld-clear").addEventListener("click",()=>{
   $("#ld-range").value="cur"; $("#ld-model").value="";
+  rangeToday("#ld-date", true);
   labRenderDash();
 });
 
