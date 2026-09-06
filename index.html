@@ -5174,8 +5174,9 @@ function rangeFilter(rangeSel, dateSel, rows, get){
     return rows.filter(r=>{ const t=dt(r);
       return t && t.getMonth()===d.getMonth() && t.getFullYear()===d.getFullYear(); });
   if(range!=="all"){
-    /* 近 N 个月：跟数据分析同一套完整自然月窗口，从今天往回算 */
-    const w=labRangeOf(range), from=w.from?w.from.getTime():0, to=w.to?w.to.getTime():Infinity;
+    /* 近 N 个月 / 上个月：跟数据分析同一套完整自然月窗口，从**日期框选的那天**往回算
+       （日期框默认是今天，所以默认行为不变）。「全部」不受日期框影响，照旧全给。 */
+    const w=labRangeOf(range, d), from=w.from?w.from.getTime():0, to=w.to?w.to.getTime():Infinity;
     return rows.filter(r=>{ const t=dt(r); return t && t.getTime()>=from && t.getTime()<to; });
   }
   return rows;
@@ -12133,7 +12134,7 @@ function labRecRecords(full){
                           return t&&t.getMonth()===d.getMonth()&&t.getFullYear()===d.getFullYear(); });
   else if(range!=="all"){
     /* 近 N 个月：和数据分析同一套完整自然月窗口 */
-    const w=labRangeOf(range);
+    const w=labRangeOf(range, d);      /* 跟另外四张表一样，从日期框那天往回算 */
     const from=w.from?w.from.getTime():0, to=w.to?w.to.getTime():Infinity;
     recs=recs.filter(r=>{ const t=labBatchDate(r);
                           return t&&t.getTime()>=from&&t.getTime()<to; });
@@ -12287,8 +12288,14 @@ const ymOf = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
    近1个月 is 7/1–7/31 and 近3个月 is 5/1–7/31. Counting back from today instead
    would fold in a part-month and make the window drift day by day, which is not
    how a monthly record sheet is read. 当月 is the separate, running one. */
-function labRangeOf(v){
-  const n=new Date(), y=n.getFullYear(), m=n.getMonth();
+function labRangeOf(v, anchor){
+  /* anchor = 这个窗口从哪一天往回算。记录表传日期框选的那天 —— 日期框默认就是今天
+     （rangeToday），所以不传和传「今天」结果一样，默认行为一个字都不变；但人一挪
+     日期框，「上个月」「近 N 个月」就真的跟着挪了。
+     原来这里写死 new Date()，于是日期框停在三月、选「上个月」拿到的却是八月，而小字
+     只写「上个月」，界面上没有任何地方能让人看出来。
+     六个看板没有日期框，照旧不传、以今天为准。 */
+  const n=anchor||new Date(), y=n.getFullYear(), m=n.getMonth();
   if(v==="all") return {from:null,to:null,months:0};
   if(v==="cur") return {from:new Date(y,m,1), to:null, months:0};
   const k=+v||0;
