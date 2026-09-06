@@ -6241,17 +6241,12 @@ async function iqcDashAgg(){
   out.bySupplier=[...out.bySupplier.values()].sort((a,b)=>b.bad-a.bad || b.n-a.n);
   return out;
 }
-function iqcDashDefaultRange(){
-  /* 只在为空时才补默认值，不是每次打开都重算——参照实验室记录表那次"每次都
-     重算默认值"改出来的教训，一旦用户自己选过区间，重新打开这个屏不应该
-     把选择冲掉 */
-  if(!$("#id-to").value) $("#id-to").value=toDateInput(today());
-  if(!$("#id-from").value){
-    const d=new Date(); d.setDate(d.getDate()-30);
-    const p=n=>String(n).padStart(2,"0");
-    $("#id-from").value=d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
-  }
-}
+/* 跟制程用同一个 rollMonthRange：起 = 当月 1 号、止 = 今天，每天往后滚、月初自动
+   翻页。原来是自己写的一份「今天减 30 天」—— 会跨月，月初打开大半是上个月的数据，
+   跟「本月做得怎么样」对不上；而且判「要不要补默认值」用的是「框是不是空的」，
+   跟另一份用 RANGE_TOUCHED 的口径不一样，清除筛选那儿还得先手动清空才生效。
+   现在两个板块同一套。 */
+function iqcDashDefaultRange(){ rollMonthRange("#id-from","#id-to"); }
 const iqcRankTable=list=>!list.length
   ? '<tbody><tr><td class="irec-empty" colspan="4">没有数据。</td></tr></tbody>'
   : '<tbody>'+list.map(x=>{
@@ -6308,13 +6303,12 @@ async function idashRender(){
 $("#idashbtn").addEventListener("click",()=>{ iqcShow($("#idash").hidden?"dash":"entry"); });
 $("#id-close").addEventListener("click",()=>iqcShow("entry"));
 ["#id-from","#id-to","#id-cat"].forEach(id=>$(id).addEventListener("change",idashRender));
+/* 人自己动过起止框就别再拿默认值覆盖 —— rollMonthRange 靠这个标记 */
+["#id-from","#id-to"].forEach(id=>$(id).addEventListener("change",()=>{ RANGE_TOUCHED[id]=true; }));
 $("#id-supplier").addEventListener("input",idashRender);
 $("#id-clear").addEventListener("click",()=>{
   $("#id-cat").value=""; $("#id-supplier").value="";
-  /* 先清空再调 —— iqcDashDefaultRange() 只在框是空的时候才补默认值，
-     不清空的话它什么都不做，日期就留在用户上次选的那段上了 */
-  $("#id-from").value=""; $("#id-to").value="";
-  iqcDashDefaultRange();
+  rollMonthRange("#id-from","#id-to", true);   /* 回到默认窗口，不是清空 */
   idashRender();
 });
 
