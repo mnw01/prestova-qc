@@ -11240,6 +11240,9 @@ const I18N_ID={
   "包装材料是否和工艺单一致？": "Apakah material packing sesuai dengan lembar proses?",
   "区间": "Periode",
   "区间内": "Dalam periode ini ada",
+  "选的是近": "dipilih",
+  "个月，其中": "bulan terakhir, dan ada data di",
+  "个月有记录": "bulan",
   "单位": "Satuan",
   "占总不良": "% dari Total NG",
   "印尼荣升家居生活有限公司": "PT. Prestova Home Living Indonesia",
@@ -12403,10 +12406,15 @@ function labRenderDash(){
   /* Say how much of the chosen window actually holds records. Picking 近6个月
      over a database that only has today looks identical to 近12个月, and that
      reads as a broken filter rather than as thin data. */
+  /* 句式跟另外四个看板对齐：「区间内 N 批，实际数据在 D ~ D」。原来是
+     「区间 D ~ D　N 个月有记录」—— 语序和内容都自成一套，而且整句没过 tr()，
+     印尼语下这一行一直是中文。「几个月有记录」那层信息没丢，挪到后面的补充里。 */
   $("#ld-scope").textContent = a.batches
-    ? "区间 "+fmtD(a.from)+" ~ "+fmtD(a.to)+"　"+a.months.length+" 个月有记录"
-      +(want && a.months.length<want ? "（选的是近 "+want+" 个月，其余月份还没有数据）" : "")
-      +(model?"　品号 "+model:"")
+    ? tr("区间内")+" "+a.batches+" "+tr("批，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
+      +(want && a.months.length<want
+          ? "（"+tr("选的是近")+" "+want+" "+tr("个月，其中")+" "+a.months.length+" "+tr("个月有记录")+"）"
+          : "")
+      +(model?"　"+tr("品号")+" "+model:"")
     : "这个区间没有数据。旧记录还在 Excel 里的话，去「记录表」页用「导入数据」把表整份导进来。";
 
   const maxS=Math.max(1,...a.months.map(m=>m.samples));
