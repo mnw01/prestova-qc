@@ -7219,7 +7219,7 @@ function ipqcFillWsProc(){
    看着像已经填了。空选项只在当前值为空时出现，正常填过的记录看不到它。 */
 function ipqcFillShift(){
   const s=$("#ip-shift"); if(!s) return;
-  const cur=PR.fields.shift||"";
+  const cur=nShift(PR.fields.shift||"");
   s.innerHTML=(cur?"":'<option value="">—</option>')+
     IPQC_SHIFTS.map(x=>'<option value="'+esc(x[0])+'">'+
       esc(LANG==="id"?(x[1]||x[0]):x[0])+'</option>').join('');
