@@ -9046,7 +9046,7 @@ function ftPhotoKeys(){
 let ftPhotoCounter=0;
 function ftMakePhotoBox(k){
   const box=document.createElement("div");
-  box.className="ftpbox"; box.title="点击上传或拖入照片";
+  box.className="ftpbox"; box.title=FT&&FT.locked?tr("点击查看"):tr("点击上传或拖入照片");
   box.dataset.ftslot=k;                     /* ftPaintSlot 靠它认格子 */
   box.innerHTML='<img alt=""><span class="ftplabel">📷 照片</span><button type="button" class="ftpdel" title="删除照片">✕</button>';
   ftBindPhotoBox(box,k);
@@ -9158,7 +9158,7 @@ function ftMakeRptBox(k){
      里有 FT.locked 守卫，放行 click 不会让人改到东西（实测过：锁定后能看、
      删不掉、也传不上）。 */
   box.setAttribute("data-lockok","");
-  box.title=tr("点击或拖入上传测试报告（图片或 PDF）");
+  box.title=FT&&FT.locked?tr("点击查看"):tr("点击或拖入上传测试报告（图片或 PDF）");
   box.innerHTML='<img alt=""><span class="ftplabel">📄 '+esc(tr("测试报告"))+'</span>'+
     '<button type="button" class="ftpdel" title="'+esc(tr("删除"))+'">✕</button>';
   ftBindPhotoBox(box,k);
