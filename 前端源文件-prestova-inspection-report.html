@@ -11250,6 +11250,7 @@ const I18N_ID={
   "40% 抗压硬度 下": "Kekerasan 40% Bawah",
   "40% 抗压硬度 中": "Kekerasan 40% Tengah",
   "40%抗压": "Kekerasan 40%",
+  "8 万次疲劳": "Fatigue 80.000×",
   "8 万次疲劳测试": "Tes Fatigue 80.000 Kali",
   "Auto: GW − NW": "Otomatis: GW − NW",
   "Delete photo": "Hapus foto",
@@ -11354,6 +11355,7 @@ const I18N_ID={
   "厚度": "Ketebalan",
   "外观": "Penampilan",
   "厚度减少 %": "Penurunan Ketebalan %",
+  "厚度减少%": "Penurunan Ketebalan %",
   "厚度减少 %（≤6）": "Penurunan Ketebalan % (≤6)",
   "产品尺寸和原始尺寸已按产品基础资料填入": "Ukuran produk dan ukuran asli terisi dari data master produk",
   "原始尺寸？": "Ukuran asli?",
@@ -11472,6 +11474,7 @@ const I18N_ID={
   "批次信息": "Info Batch",
   "批次判定": "Hasil Batch",
   "批，实际数据在": "batch; data sebenarnya dari",
+  "抗压减少%": "Penurunan Kekerasan %",
   "抗压硬度减少 N": "Penurunan Kekerasan N",
   "抗压范围": "Rentang Kekerasan 40%",
   "报告编号": "No. Laporan",
@@ -12272,13 +12275,13 @@ function labRenderRec(){
   const anyFat=recs.some(r=>{ const f=r.lab.fat||{};
     return f.on && (lnum(f.h)!=null || lnum(f.i)!=null); });
   const head='<thead><tr>'+
-    '<th rowspan="2">序号</th><th rowspan="2">品名</th><th rowspan="2">批号</th>'+
-    '<th rowspan="2">测试日期</th><th rowspan="2">测试备注</th>'+
-    LAB_ITEMS.map(it=>'<th colspan="2">'+esc(it.zh)+'<br>'+esc(it.un)+'</th>').join('')+
-    (anyFat?'<th colspan="2">8 万次疲劳</th>':'')+
-    '<th rowspan="2">判定</th><th rowspan="2">状态/操作</th></tr><tr>'+
-    LAB_ITEMS.map(()=>'<th>执行标准</th><th>测试结果</th>').join('')+
-    (anyFat?'<th>厚度减少%</th><th>抗压减少%</th>':'')+'</tr></thead>';
+    '<th rowspan="2">'+esc(tr("序号"))+'</th><th rowspan="2">'+esc(tr("品名"))+'</th><th rowspan="2">'+esc(tr("批号"))+'</th>'+
+    '<th rowspan="2">'+esc(tr("测试日期"))+'</th><th rowspan="2">'+esc(tr("测试备注"))+'</th>'+
+    LAB_ITEMS.map(it=>'<th colspan="2">'+esc(tr(it.zh))+'<br>'+esc(it.un)+'</th>').join('')+
+    (anyFat?'<th colspan="2">'+esc(tr("8 万次疲劳"))+'</th>':'')+
+    '<th rowspan="2">'+esc(tr("判定"))+'</th><th rowspan="2">'+esc(tr("状态/操作"))+'</th></tr><tr>'+
+    LAB_ITEMS.map(()=>'<th>'+esc(tr("执行标准"))+'</th><th>'+esc(tr("测试结果"))+'</th>').join('')+
+    (anyFat?'<th>'+esc(tr("厚度减少%"))+'</th><th>'+esc(tr("抗压减少%"))+'</th>':'')+'</tr></thead>';
 
   let n=0; const body=[];
   recs.forEach(r=>{
