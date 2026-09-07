@@ -7095,24 +7095,26 @@ const IPQC_DEFECTS={
    实测 2514 个 (日期,车间,工序) 分组里 2481 组的检查数量只有一个值，证实了
    这一点。这里把检查数量放回它该在的层级，辅助列和重复计算的风险一起消失。 */
 /* 班次。做成固定词表而不是自由输入框：它是拿来筛选和分组的字段，一旦能手打，
-   「白班 / 白 / A班」迟早同时存在。来料检验的「物料类别」就是自由输入，2026-08-26
+   「早班 / 早 / A班」迟早同时存在。来料检验的「物料类别」就是自由输入，2026-08-26
    实测下拉里出现了两个肉眼一模一样的「防火螺纹布(KainUlir)」—— 一个半角括号一个
    全角括号，记录表筛不全、数据分析还拆成两行。
    跟 IPQC_WS 一样 [中文, 印尼语]：存进记录的永远是中文 value，印尼语只是渲染层。 */
-const IPQC_SHIFTS=[["白班","Shift Siang"],["夜班","Shift Malam"]];
-/* 跟 tProc 同一个套路。查不到（旧记录是空的、或者哪天词表改了）就原样返回。 */
+const IPQC_SHIFTS=[["早班","Shift Pagi"],["晚班","Shift Malam"]];
+const _shiftLegacy={"白班":"早班","夜班":"晚班"};
+function nShift(v){ return _shiftLegacy[v]||v; }
 function tShift(v){
-  if(LANG!=="id") return v||"";
-  const hit=IPQC_SHIFTS.find(s=>s[0]===v);
-  return (hit && hit[1]) || v || "";
+  const nv=nShift(v);
+  if(LANG!=="id") return nv||"";
+  const hit=IPQC_SHIFTS.find(s=>s[0]===nv);
+  return (hit && hit[1]) || nv || "";
 }
 function ipqcBlankDefect(){ return {model:"",spec:"",desc:"",n:"1"}; }
 function ipqcBlank(){
   return {
     /* 新记录**只带今天的日期**，班次/车间/工序/检验员一律留空（2026-08-30 改）。
 
-       原来这几格取词表第一项（白班 / 弹簧床垫车间 / 围边）。两个毛病：
-         · 夜班的人点「+新记录」拿到的是白班，漏改一次就静默记成白班 ——
+       原来这几格取词表第一项（早班 / 弹簧床垫车间 / 围边）。两个毛病：
+         · 晚班的人点「+新记录」拿到的是早班，漏改一次就静默记成早班 ——
            跟"旧记录不补默认值"那条理由是同一个：默认值会凭空造数据。
          · 有默认值就没法用"这几格填了没"判断这条记录有没有人在用，
            空记录自动清理因此对制程完全失效（实测攒到 17 条空壳）。
@@ -7213,7 +7215,7 @@ function ipqcFillWsProc(){
   PR.fields.proc=$("#ip-proc").value;
 }
 /* 班次下拉。旧记录（8-26 之前）没有这个字段，给它们额外补一个空选项 ——
-   不补的话 <select> 会自动落在第一项上，屏幕上写着「白班」而记录里其实是空的，
+   不补的话 <select> 会自动落在第一项上，屏幕上写着「早班」而记录里其实是空的，
    看着像已经填了。空选项只在当前值为空时出现，正常填过的记录看不到它。 */
 function ipqcFillShift(){
   const s=$("#ip-shift"); if(!s) return;
@@ -7501,7 +7503,7 @@ async function iprecRows(){
   try{ rows=(await metaAll()).filter(r=>r.type==="ipqc"); }catch(e){ return null; }
   if(from) rows=rows.filter(r=>toDateInput(r.date)>=from);
   if(to)   rows=rows.filter(r=>toDateInput(r.date)<=to);
-  if(shift) rows=rows.filter(r=>(r.shift||"")===shift);
+  if(shift) rows=rows.filter(r=>nShift(r.shift||"")===shift);
   if(ws) rows=rows.filter(r=>(r.ws||"")===ws);
   if(proc) rows=rows.filter(r=>(r.proc||"")===proc);
   recSort(rows, r=>r.date);
@@ -7567,13 +7569,13 @@ async function ipqcCsv(metas){
     used++;
     const dt=ipqcCsvDate(f.date);
     if(!ds.length){
-      out.push([dt,"","","个",qty,0,f.ws||"",f.proc||"","",f.inspector||"",f.shift||""]);
+      out.push([dt,"","","个",qty,0,f.ws||"",f.proc||"","",f.inspector||"",nShift(f.shift||"")]);
       lines++; continue;
     }
     ds.forEach((d,i)=>{
       out.push([dt, d.model||"", d.spec||"", "个",
                 i===0?qty:0, lnum(d.n)||0,
-                f.ws||"", f.proc||"", d.desc||"", f.inspector||"", f.shift||""]);
+                f.ws||"", f.proc||"", d.desc||"", f.inspector||"", nShift(f.shift||"")]);
       lines++;
     });
   }
@@ -7642,7 +7644,7 @@ async function ipqcDashAgg(){
   let rows=(await metaAll()).filter(r=>r.type==="ipqc");
   if(from) rows=rows.filter(r=>toDateInput(r.date)>=from);
   if(to)   rows=rows.filter(r=>toDateInput(r.date)<=to);
-  if(shift) rows=rows.filter(r=>(r.shift||"")===shift);
+  if(shift) rows=rows.filter(r=>nShift(r.shift||"")===shift);
   if(ws)   rows=rows.filter(r=>(r.ws||"")===ws);
   if(proc) rows=rows.filter(r=>(r.proc||"")===proc);
 
@@ -8817,7 +8819,7 @@ function isBlankReport(rec){
          lab ? [...] : iqc ? [...] : ["inspDate"]
      fqc 的字段名当了兜底，于是后加的 ipqc / oqc 全掉进去 —— 它们的日期字段叫
      date 不叫 inspDate，永远匹配不上，下面那个循环就把 ipqcBlank() 默认填的
-     白班/车间/工序当成"有内容"，一律 return false。结果这两个板块的废弃草稿
+     早班/车间/工序当成"有内容"，一律 return false。结果这两个板块的废弃草稿
      一条都清理不掉，而下面专门为它们写的判据（检查数量 / 不良明细 / 勾选项）
      根本执行不到。2026-08-30 实测：制程 110 条有效记录里 17 条是这种空壳。
 
