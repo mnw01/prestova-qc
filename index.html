@@ -219,9 +219,7 @@ input,textarea,button,select{font:inherit;color:inherit}
 .hcorner > *{min-height:26px}
 .hhead h1{font-family:var(--serif);font-weight:700;font-size:21px;line-height:1.3;text-wrap:balance;color:var(--ink)}
 .hhead .cn{font-family:var(--sans)}
-/* 印尼语下标题里那半截中文公司名是多余的（前半已经是印尼语的正式名称），
-   翻成印尼语只会把同一个名字写两遍 */
-html[lang="id"] .hhead h1 .cn{display:none}
+/* 公司名称不随语言切换变化：两行（PT 名 + 中文名）始终都显示 */
 .hsub{margin-top:7px;font-size:11.5px;letter-spacing:.16em;color:var(--ink-3);text-transform:uppercase}
 .hsub .cn{letter-spacing:.06em}
 @media (prefers-color-scheme:dark){.hhead h1{color:#e7eaef}.hsub{color:#8b949f}}
@@ -4226,7 +4224,7 @@ const tr = zh => {
 /* 打印件不翻：那几张 A4 是对外的正式单据，版式里本来就是英文 + 中文两行，
    把中文那半换成印尼语会破坏他们盖章存档的格式。要翻再单独说。 */
 const I18N_SKIP_TAG={SCRIPT:1,STYLE:1,TEXTAREA:1,NOSCRIPT:1};
-const I18N_SKIP_SEL=".sheet,.oqsheet,.lsheet,.labsheet,.lrsheet";
+const I18N_SKIP_SEL=".sheet,.oqsheet,.lsheet,.labsheet,.lrsheet,.hhead .cn,.hsub .cn";
 /* .prtfoot 是唯一的例外：打印按钮虽然长在 .sheet 那张纸上，但它是界面元素、
    不是单据内容（打印时 display:none），所以照常翻。不开这个口子，印尼语下
    它会一直显示「打印 / 存 PDF」。 */
@@ -7828,9 +7826,9 @@ function oqcGSum(gs){
     if(oqcMismatch(g)) bad++;
   });
   const tail = !filled ? "　"+tr("实际未填")
-             : bad ? "　"+bad+" 行对不上"
-             : filled<gs.length ? "　已填 "+filled+"/"+gs.length+" 行，均相符"
-             : "　全部相符";
+             : bad ? "　"+bad+" "+tr("行对不上")
+             : filled<gs.length ? "　"+tr("已填")+" "+filled+"/"+gs.length+" "+tr("行")+tr("，均相符")
+             : "　"+tr("全部相符");
   return { plan, act, bad, filled,
            text: gs.length ? gs.length+" "+tr("行")+"　"+tr("计划")+" "+nfmt(plan)+
                              "　"+tr("实际")+" "+nfmt(act)+tail : "" };
@@ -7972,21 +7970,21 @@ function oqcSlotNode(gk,zh,i){
   s.className="oqslot";
   s.innerHTML='<div class="oqimg" data-os="'+k+'">'+
     '<img alt="">'+
-    '<button type="button" class="oqcam" data-ocam="'+k+'"><span class="camico">📷</span><span>拍照</span></button>'+
-    '<button type="button" class="oqadd" data-oadd="'+k+'"><span>＋</span><span>相册</span></button>'+
-    '<button type="button" class="oqx" data-odel="'+k+'" title="删除">✕</button>'+
+    '<button type="button" class="oqcam" data-ocam="'+k+'"><span class="camico">📷</span><span>'+esc(tr("拍照"))+'</span></button>'+
+    '<button type="button" class="oqadd" data-oadd="'+k+'"><span>＋</span><span>'+esc(tr("相册"))+'</span></button>'+
+    '<button type="button" class="oqx" data-odel="'+k+'" title="'+esc(tr("删除"))+'">✕</button>'+
     '</div>'+
-    '<input class="oqcapi" data-ocap="'+k+'" placeholder="'+esc(zh)+' '+(i+1)+'">';
+    '<input class="oqcapi" data-ocap="'+k+'" placeholder="'+esc(tr(zh)+' '+(i+1))+'">';
   return s;
 }
 /* 组的外壳（标题 + 网格 + ＋/− 那一格）只建一次，跟 mount($("#grid1"),PHOTOS_1) 对应 */
 function oqcMountPhotos(){
   $("#oq-photos").innerHTML=OQC_PGROUPS.map(g=>
-    '<div class="oqpg" data-opg="'+g.k+'"><div class="oqpgh"><b>'+esc(g.zh)+'</b><span>'+esc(g.tip)+'</span></div>'+
+    '<div class="oqpg" data-opg="'+g.k+'"><div class="oqpgh"><b>'+esc(tr(g.zh))+'</b><span>'+esc(tr(g.tip))+'</span></div>'+
       '<div class="oqgrid">'+
         '<div class="oqpgctl">'+
-          '<button type="button" data-opadd="'+g.k+'">＋ 加一张</button>'+
-          '<button type="button" data-opdel="'+g.k+'">− 减一张</button>'+
+          '<button type="button" data-opadd="'+g.k+'">'+esc(tr("＋ 加一张"))+'</button>'+
+          '<button type="button" data-opdel="'+g.k+'">'+esc(tr("− 减一张"))+'</button>'+
         '</div>'+
       '</div></div>').join('');
 }
@@ -11340,6 +11338,7 @@ const I18N_ID={
   "全部打 √": "Centang Semua √",
   "全部（最近 200 条）": "Semua (200 baris terakhir)",
   "全部（最近 200 批）": "Semua (200 batch terakhir)",
+  "全部相符": "Semua Sesuai",
   "关一半门 / 门全关 / 封条条码 / 整体": "Pintu setengah / pintu tertutup / barcode segel / keseluruhan",
   "关闭": "Tutup",
   "其他 / 无标准…": "Lainnya / Tanpa standar…",
@@ -11464,6 +11463,8 @@ const I18N_ID={
   "锁定后检验员不能再修改，需要管理员解除。": "Setelah dikunci, QC tidak bisa mengubah lagi; perlu admin membuka kunci.",
   "解除锁定？解除后检验员可以继续修改这份报告。": "Buka kunci? Setelah dibuka, QC bisa mengubah laporan ini lagi.",
   "已存": "Tersimpan",
+  "已填": "Terisi",
+  "，均相符": ", semua sesuai",
   "布套是否起皱或被撕裂？": "Apakah sarung berkerut atau sobek?",
   "幅宽": "Lebar Kain",
   "床垫类型": "Jenis Kasur",
@@ -11634,6 +11635,8 @@ const I18N_ID={
   "空柜检查": "Cek Kontainer Kosong",
   "空柜检查 1": "Cek Kontainer Kosong 1",
   "空柜检查 2": "Cek Kontainer Kosong 2",
+  "空柜检查 3": "Cek Kontainer Kosong 3",
+  "空柜检查 4": "Cek Kontainer Kosong 4",
   "管理员": "Admin",
   "类别": "Kategori",
   "类型": "Jenis",
@@ -11654,6 +11657,7 @@ const I18N_ID={
   "荣升家居 · 质检报告系统": "Prestova · Sistem Laporan QC",
   "蓝色海绵": "Busa Biru",
   "行": "baris",
+  "行对不上": "baris tidak cocok",
   "裁切": "Cutting Foam",
   "装到一半 / 2/3 / 装满": "Setengah / 2/3 / Penuh",
   "装柜后如有较大缝隙需用填充物塞满。": "Bila masih ada celah besar setelah dimuat, isi penuh dengan pengganjal.",
