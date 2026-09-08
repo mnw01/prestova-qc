@@ -357,6 +357,64 @@ input,textarea,button,select{font:inherit;color:inherit}
    ipqc / oqc 上线时就是漏在这里，实测两个容器一直是 static + 高度 0。 */
 #picklist,#lpicklist,#ipicklist,#ppicklist,#opicklist,#ftpicklist{
   position:fixed;inset:0;z-index:95;background:transparent}
+/* ── 公告浮层 ────────────────────────────────────────────────────────
+   跟 .plbox 一样属于「有意复用的公共外壳」，写在板块 CSS 段之外，类名进
+   check-isolation.js 的 SHARED。铺满屏是功能不是装饰：没有捕捉层的话
+   点背景关不掉（.plbox 上面那段注释记的就是这个坑）。 */
+#ntcwrap{position:fixed;inset:0;z-index:96;background:rgba(12,16,22,.44);
+  display:flex;align-items:center;justify-content:center;padding:16px}
+.ntcbox{
+  background:var(--paper);color:var(--ink);border:1px solid var(--hairline);
+  border-radius:8px;width:min(520px,100%);max-height:min(78vh,620px);
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 18px 48px -14px rgba(20,26,36,.5);
+}
+.ntchead{display:flex;align-items:center;gap:8px;padding:11px 12px;flex:0 0 auto;
+  border-bottom:1px solid var(--hairline);font-size:11.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-3)}
+.ntchead .ntct{flex:1 1 auto}
+.ntcbody{flex:1 1 auto;min-height:0;overflow:auto;padding:10px 12px}
+.ntcitem{padding:10px 0;border-bottom:1px solid var(--rule-2)}
+.ntcitem:last-child{border-bottom:0}
+/* 公告正文照原样显示：管理员打的换行要留着，长词不能撑破浮层 */
+.ntcitem .ntcmsg{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13.5px;line-height:1.6}
+.ntcitem .ntcmeta{margin-top:5px;font-size:11.5px;color:var(--ink-3);
+  font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.ntcitem.unread .ntcmsg{font-weight:600}
+.ntcitem.unread .ntcmsg::before{content:"●";color:var(--accent);font-size:9px;
+  vertical-align:2px;margin-right:6px}
+.ntcdel{border:0;background:transparent;color:var(--ink-3);cursor:pointer;
+  font-size:11.5px;padding:1px 5px;border-radius:4px}
+.ntcdel:hover{background:color-mix(in srgb,var(--fail) 14%,transparent);color:var(--fail)}
+.ntcempty{color:var(--ink-3);font-size:12.5px;padding:16px 2px;text-align:center}
+.ntcnew{flex:0 0 auto;border-top:1px solid var(--hairline);padding:10px 12px}
+.ntcnew textarea{width:100%;box-sizing:border-box;font:inherit;font-size:13px;
+  padding:8px 9px;border:1px solid var(--hairline);border-radius:5px;
+  background:var(--paper);color:var(--ink);resize:vertical}
+.ntcrow{display:flex;justify-content:flex-end;margin-top:8px}
+/* 首页那颗喇叭按钮。图标按 MICONS 那套（24 视框 / currentColor），所以
+   hover 时整枚跟着字色变，不用另配一份图标颜色。
+   position:relative 是给角标定位用的；.hcorner 没有 overflow:hidden，
+   角标探出按钮边界不会被裁掉。 */
+/* flex:0 0 30px —— **不能只写 width**。它是 .hcorner 这个 flex 行里的一项，
+   默认 flex-shrink:1，行一挤就被压扁：实测宽度塌到 2px（只剩左右边框），
+   里面的 svg 跟着塌成 0 宽，按钮看着就是一条竖线。图标按钮没有可压缩的内容，
+   直接禁掉收缩。svg 同理 —— 它在按钮这个 flex 容器里也是一项。 */
+.ntcbtn{position:relative;display:flex;align-items:center;justify-content:center;
+  flex:0 0 30px;height:26px;padding:0;border-radius:5px;border:1px solid var(--rule-2);
+  background:transparent;color:var(--ink-3);cursor:pointer}
+/* hover 用 accent 不用 --no：退出那颗变红是因为它是个「离开」的动作，
+   公告只是打开一个浮层，套同一个红会让人以为点了要出事。 */
+.ntcbtn:hover{color:var(--accent);border-color:var(--accent)}
+.ntcbtn svg{flex:none;width:15px;height:15px;display:block}
+/* 未读条数角标。min-width + padding 让「1」是个圆、「12」自然撑成胶囊；
+   tabular-nums 免得两位数时宽度跳。 */
+.ntcbadge{position:absolute;top:-6px;right:-6px;
+  min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;
+  border-radius:8px;background:var(--fail);color:#fff;
+  font-size:9.5px;font-weight:700;line-height:16px;text-align:center;
+  font-variant-numeric:tabular-nums;letter-spacing:0}
+
 .plbox{
   position:absolute;
   background:var(--paper);color:var(--ink);border:1px solid var(--hairline);
@@ -2805,7 +2863,9 @@ table.frec-table tbody tr.draft .lockdot,
   .langsw button{font-size:12px;background:var(--card);color:var(--ink-2)}
   .langsw button.on{background:var(--accent-fill);color:var(--accent-on);font-weight:600}
   .rolechip{border-radius:var(--r-ctl);background:var(--seg-bg);color:var(--ink-2);font-weight:600}
-  .logoutbtn{border-radius:var(--r-ctl);border-color:var(--field-line);background:var(--card);color:var(--ink-2)}
+  /* 公告那颗铃铛跟「退出」并在同一条：底色 / 圆角 / 描边一模一样，
+     以后这排控件再改样子也不会漏掉它。 */
+  .logoutbtn,.ntcbtn{border-radius:var(--r-ctl);border-color:var(--field-line);background:var(--card);color:var(--ink-2)}
 }
 
 /* ── 分析屏的条形图：手机版 ────────────────────────────────────────
@@ -2844,6 +2904,7 @@ table.frec-table tbody tr.draft .lockdot,
         <button type="button" data-lang="zh">中文</button>
         <button type="button" data-lang="id">Bahasa</button>
       </div>
+      <button type="button" class="ntcbtn" id="ntcbtn" title="公告" aria-label="公告"><span class="ntcbadge" id="ntcdot" hidden></span></button>
       <span class="rolechip" id="rolename"></span>
       <button type="button" class="logoutbtn" id="logout">退出</button>
     </div>
@@ -2854,6 +2915,25 @@ table.frec-table tbody tr.draft .lockdot,
     <div id="recentlist"></div>
   </section>
 </section>
+
+<!-- 公告：浮层。管理员写什么语言就显示什么语言（原文照登，不翻译）——
+     公告是当场打的字，tr() 只认词典里的固定词条，翻不了；机器翻译又可能把
+     「本周起改用新标准」这种话翻拧，比不翻更糟。 -->
+<div id="ntcwrap" hidden>
+  <div class="ntcbox" role="dialog" aria-modal="true" aria-labelledby="ntctitle">
+    <div class="ntchead">
+      <span class="ntct" id="ntctitle">公告</span>
+      <button type="button" class="plx" id="ntcx" aria-label="关闭">✕</button>
+    </div>
+    <div class="ntcbody" id="ntclist"></div>
+    <div class="ntcnew" id="ntcnew" hidden>
+      <textarea id="ntctext" rows="3" placeholder="写一条公告…"></textarea>
+      <div class="ntcrow">
+        <button type="button" class="recbtn key" id="ntcadd">发布</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="mod" hidden>
 <div class="bar">
@@ -4125,7 +4205,14 @@ const MICONS={
   /* 火焰只用一笔、而且左边留那个内卷的钩 —— 第一版画成了左右对称的外廓
      加一颗内芯，13px 的标签里看着就是一滴水。对称 = 水滴，不对称 + 卷边
      = 火，这个区别在小尺寸下才是决定性的。 */
-  cfr1633:'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4.1 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5Z"/>'
+  cfr1633:'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4.1 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5Z"/>',
+  /* 公告的铃铛。**不是板块** —— 借这张表只是为了共用同一套画法（24 视框 /
+     1.6 描边 / currentColor），micon() 是查表不是遍历，多一个键不影响任何人。
+     第一版画的是喇叭（号筒梯形 + 把手弧），在 15px 上那两笔糊成一团认不出
+     是什么。铃铛的外廓是一笔连续的钟形、底下一道小弧，笔画少、轮廓整，
+     小尺寸下才立得住 —— 跟火焰那个图标记的是同一条经验。 */
+  notice:'<path d="M18 8.4a6 6 0 1 0-12 0c0 6.4-2.6 8.2-2.6 8.2h17.2S18 14.8 18 8.4Z"/>'+
+         '<path d="M13.8 20.2a2 2 0 0 1-3.6 0"/>'
 };
 /* sw：描边粗细。水印那枚要放大到 110px，1.6 的线在那个尺寸上会显得笨重，
    给 1.1 才是「淡淡一层」而不是「一个大图标」。
@@ -4268,13 +4355,23 @@ function readCookie(name){
   }
   return null;
 }
-const ROLE = readCookie("qc_role")==="admin" ? "admin" : "qc";
+const _role = readCookie("qc_role");
+const ROLE = _role==="admin" ? "admin" : _role==="viewer" ? "viewer" : "qc";
 const isAdmin = () => ROLE==="admin";
+/* 观察者：只看不写。前端这一层只管别把「点了会写」的东西摆出来 ——
+   真正的闸门在 worker.js 路由最前面那句「viewer 且非 GET → 403」。
+   只读是靠**复用锁定态**实现的：paintLockUI 给表单根节点强制加 .locked
+   （白得全套只读 CSS 和照片仍可看大图），lockGate 也认这个角色。 */
+const isViewer = () => ROLE==="viewer";
 /* 管理员专属的按钮：一改就影响所有人的（基础资料 / 标准表 / 覆盖式导入），
    加上删除（服务端会清空内容并把 R2 里的照片真删掉，救不回来）。 */
 const ADMIN_ONLY=["#del","#ldel","#idel","#odel","#pdel","#ftdel",
                   "#lstdbtn","#ld-import","#imatbtn","#pmatbtn","#oimpbtn"];
+/* 观察者还要再收掉「新建」——六个板块记录表卡片头上那颗 .recnew。
+   剩下的写操作由 .locked 那套 CSS + lockGate 兜住，见 paintLockUI。 */
+const VIEWER_HIDE=["#new","#inew","#pnew","#onew","#ftnew","#lnew"];
 function applyRole(){
+  if(isViewer()) VIEWER_HIDE.forEach(sel=>{ const n=$(sel); if(n) n.hidden=true; });
   if(isAdmin()) return;
   ADMIN_ONLY.forEach(sel=>{ const n=$(sel); if(n) n.hidden=true; });
 }
@@ -5236,10 +5333,17 @@ function lockBarText(ts, adm){
     (adm ? tr("管理员可解除锁定") : tr("需要管理员解除才能修改"));
 }
 function paintLockUI(rec, rootSel, btnSel, barSel){
-  const on = !!(rec && rec.locked), adm = isAdmin();
-  const w=$(rootSel); if(w) w.classList.toggle("locked", on);
+  const on = !!(rec && rec.locked), adm = isAdmin(), ro = isViewer();
+  /* 观察者一律按锁定态渲染 —— .locked 那套 CSS 已经把「点了会改记录」的控件
+     全收掉了，照片还能点开看大图，正是只读要的样子，不用再写一套。
+     .viewonly 只用来把下面的按钮和提示条换成「只读账号」的说法：记录本身
+     没锁，说「已提交锁定」是假话。 */
+  const w=$(rootSel);
+  if(w){ w.classList.toggle("locked", on || ro); w.classList.toggle("viewonly", ro); }
   const b=$(btnSel);
   if(b){
+    /* 提交/解锁按钮对观察者没有意义，直接藏掉 */
+    b.hidden = ro;
     b.textContent = !on ? tr("提交并锁定") : adm ? tr("解除锁定") : tr("已锁定");
     b.disabled = on && !adm;
     /* 不给未锁那版加 .key —— 旁边「打印」已经是主按钮，两个蓝的会打架；
@@ -5247,7 +5351,11 @@ function paintLockUI(rec, rootSel, btnSel, barSel){
     b.classList.toggle("danger", on && adm);
   }
   const bar=$(barSel);
-  if(bar){ bar.hidden = !on; if(on) bar.textContent = lockBarText(rec.locked, adm); }
+  if(bar){
+    bar.hidden = !on && !ro;
+    if(on) bar.textContent = lockBarText(rec.locked, adm);
+    else if(ro) bar.textContent = tr("只读账号：可以查看和打印，不能新增或修改。");
+  }
 }
 /* 问一句再改 rec.locked，改了返回 true（外面负责 save + 重画）。
    statSel 是工具栏那条"还差…"，用来在确认框里提醒一句：
@@ -5273,16 +5381,19 @@ function lockAsk(rec, statSel){
    以后新加监听还会再忘。这里一道闸，新监听自动也被管住。
    例外：照片还要能点开看大图（CSS 那边也只关输入控件和角上的操作键，
    不是整块 pointer-events:none）。 */
+/* 观察者跟「记录已锁」在这一层是同一件事：都是「这一屏不许写」。
+   在闸里认掉，六个板块的调用点一个都不用改。 */
 function lockGate(rootSel, isLocked){
   const root=$(rootSel); if(!root) return;
+  const shut = () => isViewer() || isLocked();
   ["input","change","click","drop","paste"].forEach(t=>root.addEventListener(t,e=>{
-    if(!isLocked()) return;
+    if(!shut()) return;
     if(e.target.closest && e.target.closest("img,[data-lockok]")) return;
     e.stopImmediatePropagation(); e.preventDefault();
   },true));
   /* pointer-events:none 挡得住鼠标，挡不住 Tab 进去再打字 */
   root.addEventListener("keydown",e=>{
-    if(!isLocked()) return;
+    if(!shut()) return;
     if(!e.target.matches || !e.target.matches("input,textarea,select")) return;
     if(e.ctrlKey||e.metaKey||/^(Tab|Escape|Arrow|Page|Home|End|F\d)/.test(e.key)) return;
     e.preventDefault();
@@ -9838,12 +9949,121 @@ $("#langsw").addEventListener("click",e=>{
 function paintLangSw(){
   $("#langsw").querySelectorAll("[data-lang]").forEach(b=>
     b.classList.toggle("on", b.dataset.lang===LANG));
-  $("#rolename").textContent = isAdmin() ? tr("管理员") : tr("检验员 QC");
+  $("#rolename").textContent = isAdmin() ? tr("管理员") : isViewer() ? tr("观察员 · 只读") : tr("检验员 QC");
 }
 $("#logout").addEventListener("click",async()=>{
   if(!confirm(tr("退出登录？换个口令进来可以切换身份。"))) return;
   try{ await fetch("/api/logout",{method:"POST",credentials:"same-origin"}); }catch(e){}
   location.reload();
+});
+
+/* ── 公告 ──────────────────────────────────────────────────────────────
+   一条 type:"notice" 的配置记录（跟基础资料 / 标准表同一路数），payload 里
+   是一个数组。这么存的代价：两个管理员同时发会 last-write-wins 覆盖掉一条。
+   知道且接受 —— 发公告的就一两个人，为这个上「一条公告一条记录」不划算。
+
+   权限**不在这里**：worker.js 的 ADMIN_TYPES 里有 "notice"，QC 和观察者
+   PUT 上去直接 403。前端只管别把「发布」按钮摆给他们看。
+
+   语言：管理员写什么就显示什么，不翻译。tr() 只认词典里的固定词条，翻不了
+   当场打的字；机器翻译又可能把「本周起改用新标准」这类话翻拧，比不翻更糟。
+   代价是中文公告印尼籍工人看不懂 —— 发的人自己决定用哪种语言写。 */
+const NOTICE_ID="__notice";
+let NOTICES=[];
+const NOTICE_READ_KEY="qc-notice-read";
+function noticeLastRead(){
+  try{ return Number(localStorage.getItem(NOTICE_READ_KEY))||0; }catch(e){ return 0; }
+}
+function noticeMarkRead(){
+  try{ localStorage.setItem(NOTICE_READ_KEY,String(Date.now())); }catch(e){}
+}
+const noticeUnread = () => NOTICES.filter(n=>(n.at||0)>noticeLastRead()).length;
+async function noticeLoad(){
+  let rec=null;
+  try{ rec=await dbGet(NOTICE_ID); }catch(e){}
+  NOTICES = (rec && Array.isArray(rec.notice)) ? rec.notice : [];
+  /* 新的排前面 */
+  NOTICES.sort((a,b)=>(b.at||0)-(a.at||0));
+}
+async function noticeSave(list){
+  const rec={ id:NOTICE_ID, type:"notice", updatedAt:Date.now(),
+              fields:{}, notice:list, syncedAt:0, photoOps:{}, serverPhotos:{},
+              caps:{}, flags:{}, fits:{}, photos:{} };
+  try{
+    const old=await dbGet(NOTICE_ID);
+    if(old) rec.syncedAt=old.syncedAt||0;
+  }catch(e){}
+  try{ await dbPut(rec); NOTICES=list; scheduleSync(300); }
+  catch(e){ toast(tr("公告保存失败")); }
+}
+/* 角标：0 条就藏起来，有几条显示几条。超过 99 收成 99+ —— 三位数会把
+   胶囊撑得比按钮还宽，而且「到底 100 还是 132」对看的人没有区别。 */
+function noticePaintBadge(){
+  const d=$("#ntcdot"); if(!d) return;
+  const n=noticeUnread();
+  d.hidden = n===0;
+  d.textContent = n>99 ? "99+" : String(n);
+}
+/* 喇叭图标插在角标前面。用 insertAdjacentHTML 而不是 innerHTML= ——
+   后者会把角标那个 span 一起冲掉，它是 JS 拿 id 抓着的。 */
+function noticePaintIcon(){
+  const b=$("#ntcbtn");
+  if(b && !b.querySelector("svg")) b.insertAdjacentHTML("afterbegin", micon("notice"));
+}
+function noticeRender(){
+  const host=$("#ntclist"); if(!host) return;
+  const lastRead=noticeLastRead();
+  if(!NOTICES.length){
+    host.innerHTML='<div class="ntcempty">'+esc(tr("还没有公告。"))+'</div>';
+  }else{
+    host.innerHTML=NOTICES.map(n=>{
+      const isNew=(n.at||0)>lastRead;
+      const when=n.at?fmtDT(n.at):"";
+      return '<div class="ntcitem'+(isNew?' unread':'')+'">'+
+        '<div class="ntcmsg">'+esc(n.text||"")+'</div>'+
+        '<div class="ntcmeta"><span>'+esc(when)+'</span>'+
+        (isAdmin()?'<button type="button" class="ntcdel" data-ntcdel="'+esc(n.id)+'">'+
+                   esc(tr("删除"))+'</button>':'')+
+        '</div></div>';
+    }).join("");
+  }
+  $("#ntcnew").hidden = !isAdmin();
+}
+/* 公告的时间戳单独格式化：全站的 fmtD 只给日期，公告要看到几点发的 */
+function fmtDT(ms){
+  const d=new Date(ms), p=n=>String(n).padStart(2,"0");
+  return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear()+" "+p(d.getHours())+":"+p(d.getMinutes());
+}
+function noticeOpen(){
+  noticeRender();
+  $("#ntcwrap").hidden=false;
+  /* 标记已读放在**关闭**时，不是打开时 —— 打开就清掉的话，粗心点开又关掉
+     的人再也不会看到那个红点了。 */
+}
+function noticeClose(){
+  $("#ntcwrap").hidden=true;
+  noticeMarkRead(); noticePaintBadge();
+}
+$("#ntcbtn").addEventListener("click",noticeOpen);
+$("#ntcx").addEventListener("click",noticeClose);
+/* 点浮层背景（不是内容框）也关掉 —— 跟批次选择器一个手感 */
+$("#ntcwrap").addEventListener("click",e=>{ if(e.target.id==="ntcwrap") noticeClose(); });
+$("#ntcadd").addEventListener("click",async()=>{
+  if(!isAdmin()) return;
+  const ta=$("#ntctext"), text=(ta.value||"").trim();
+  if(!text){ toast(tr("先写点内容")); return; }
+  const list=[{ id:uid(), text, at:Date.now() }].concat(NOTICES);
+  await noticeSave(list);
+  ta.value="";
+  /* 自己发的那条不该把自己的红点点亮 */
+  noticeMarkRead(); noticeRender(); noticePaintBadge();
+  toast(tr("公告已发布"));
+});
+$("#ntclist").addEventListener("click",async e=>{
+  const b=e.target.closest("[data-ntcdel]"); if(!b || !isAdmin()) return;
+  if(!confirm(tr("删除这条公告？"))) return;
+  await noticeSave(NOTICES.filter(n=>n.id!==b.dataset.ntcdel));
+  noticeRender(); noticePaintBadge();
 });
 async function showHome(){
   $("#mod").hidden=true; $("#lab").hidden=true; $("#iqc").hidden=true; $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true;
@@ -9854,10 +10074,15 @@ async function showHome(){
   try{ rows=await metaAll(); }
   catch(e){ toast(tr("无法使用本地存储（隐私模式？）—— 记录不会被保存")); }
   renderCards(rows); renderRecent(rows);
+  noticePaintIcon();
+  await noticeLoad(); noticePaintBadge();
   /* pick up what other devices wrote, then redraw with the fresh counts */
   syncNow().then(async()=>{
     if($("#home").hidden) return;
     try{ const fresh=await metaAll(); renderCards(fresh); renderRecent(fresh); }catch(e){}
+    /* 同步可能带回别人刚发的公告 —— 红点要跟着亮，浮层开着就一并重画 */
+    await noticeLoad(); noticePaintBadge();
+    if(!$("#ntcwrap").hidden) noticeRender();
   });
 }
 async function enterModule(id,reportId){
@@ -9955,7 +10180,7 @@ const MOD_TTL=7*24*60*60*1000;
 /* 三条配置记录永远同步：一共才 3 行，而 ipqcmat（产品基础资料）是制程 /
    装柜 / 成品三个板块共用的品名建议来源 —— 漏了会变成"下拉是空的"这种
    很难往同步上想的问题。 */
-const CFG_TYPES=["labstd","iqcmat","ipqcmat"];
+const CFG_TYPES=["labstd","iqcmat","ipqcmat","notice"];
 /* {板块id: 上次进入的毫秒时间戳} */
 function modsMap(){
   try{
@@ -10114,7 +10339,7 @@ const SYNC_CONCURRENCY = 10;
    Undefined keys are dropped by JSON.stringify, so an fqc report is unchanged. */
 /* payload 里的板块数据键。payloadOf 写它们、adoptServer 清它们 —— 原来这份清单
    在三个地方各抄了一遍，加板块时要记得三处都改。 */
-const PAYLOAD_KEYS=["lab","std","iqc","mat","oqc","ipqc","cfr1633"];
+const PAYLOAD_KEYS=["lab","std","iqc","mat","oqc","ipqc","cfr1633","notice"];
 
 function payloadOf(r){
   const p={ fields:r.fields||{}, checks:r.checks||{}, caps:r.caps||{},
@@ -11321,6 +11546,20 @@ const I18N_ID={
   "还没做": "belum tersedia",
   "无法使用本地存储（隐私模式？）—— 记录不会被保存": "Penyimpanan lokal tidak tersedia (mode privat?) —— catatan tidak akan tersimpan",
   "会话已过期 —— 正在重新加载": "Sesi berakhir —— memuat ulang",
+
+  /* ── 公告 / 观察者角色 ──────────────────────────────────────────────
+     公告**正文**不在这里，也翻不了：那是管理员当场打的字，不是固定词条。
+     写公告的人自己决定用中文还是印尼语，原文照登。这里只有外壳文案。 */
+  "公告": "Pengumuman",
+  "还没有公告。": "Belum ada pengumuman.",
+  "写一条公告…": "Tulis pengumuman…",
+  "发布": "Terbitkan",
+  "公告已发布": "Pengumuman diterbitkan",
+  "公告保存失败": "Gagal menyimpan pengumuman",
+  "删除这条公告？": "Hapus pengumuman ini?",
+  "先写点内容": "Tulis isinya dulu",
+  "观察员 · 只读": "Pengamat · Baca saja",
+  "只读账号：可以查看和打印，不能新增或修改。": "Akun baca-saja: bisa melihat dan mencetak, tidak bisa menambah atau mengubah.",
 
   "+ 新增品号": "+ Tambah Kode Barang",
   "+ 新批次": "+ Batch Baru",

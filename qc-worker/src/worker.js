@@ -62,6 +62,11 @@ async function sign(secret, msg) {
   return b64url(await crypto.subtle.sign("HMAC", key, enc.encode(msg)));
 }
 
+/* 认得的角色**只此一份**。加角色时只改这里 —— 早先 tokenRole 里写的是
+   `role !== "qc" && role !== "admin"`，跟登录那边的名单各存一份；加 viewer 时
+   漏了这处，结果令牌发得出去、下一个请求验签就被打回，整个角色静默失效。 */
+const ROLES = new Set(["qc", "admin", "viewer"]);
+
 async function makeToken(env, role) {
   const exp = String(Date.now() + TTL_MS);
   const msg = `${exp}.${role}`;
@@ -80,7 +85,7 @@ async function tokenRole(env, token) {
   if (parts.length !== 2) return null;
   const [exp, role] = parts;
   if (!/^\d+$/.test(exp) || Number(exp) < Date.now()) return null;
-  if (role !== "qc" && role !== "admin") return null;
+  if (!ROLES.has(role)) return null;
   return safeEqual(sig, await sign(env.QC_COOKIE_SECRET, msg)) ? role : null;
 }
 
@@ -164,6 +169,7 @@ button:disabled{opacity:.6;cursor:default}
   <select id="r" name="r">
     <option value="qc">QC Inspector</option>
     <option value="admin">Administrator</option>
+    <option value="viewer">Observer (read-only)</option>
   </select>
   <label for="p">Passcode</label>
   <input id="p" name="p" type="password" autocomplete="current-password" autofocus>
@@ -199,7 +205,7 @@ f.addEventListener("submit",async ev=>{
    反而正常，表现为「每台设备数据都不一样」。PUT 那条路没有白名单，所以数据
    上得去、下不来。test.mjs 里有一条针对这个的回归。 */
 const SYNC_TYPES = new Set(["fqc", "lab", "iqc", "ipqc", "oqc", "cfr1633",
-                            "labstd", "iqcmat", "ipqcmat"]);
+                            "labstd", "iqcmat", "ipqcmat", "notice"]);
 
 /* 不带 ?types= 就是全量，跟这个参数存在之前完全一样 —— 管理员和任何老客户端
    走的都是这条路。传了但一个合法值都没有时也回退到全量：宁可多读，
@@ -339,7 +345,9 @@ async function apiDeleteReport(env, id) {
 
 /* 基础资料 / 标准表这类"配置记录"：一改就影响所有人、覆盖式导入还会整份换掉，
    所以只有管理员能写。判据用 type 和 id 两条，任意一条命中就算。 */
-const ADMIN_TYPES = new Set(["labstd", "iqcmat", "ipqcmat"]);
+/* notice（公告）也在内：公告是「管理层发的」，QC 和观察者都不能写。
+   走的是跟基础资料同一道闸，不用另写权限判断。 */
+const ADMIN_TYPES = new Set(["labstd", "iqcmat", "ipqcmat", "notice"]);
 const isConfigRecord = (id, type) => ADMIN_TYPES.has(type) || /^__/.test(id);
 
 const photoKey = (id, slot) => `${id}/${slot}.jpg`;
@@ -441,9 +449,10 @@ export default {
       let body;
       try { body = await request.json(); } catch (_) { return json({ error: "bad_json" }, 400); }
       const pc = body.passcode ?? "";
-      const want = body.role === "admin" || body.role === "qc" ? body.role : null;
+      const want = ROLES.has(body.role) ? body.role : null;
       const isAdminPc = !!env.QC_ADMIN_PASSCODE && safeEqual(pc, env.QC_ADMIN_PASSCODE);
       const isQcPc = safeEqual(pc, env.QC_PASSCODE);
+      const isViewerPc = !!env.QC_VIEWER_PASSCODE && safeEqual(pc, env.QC_VIEWER_PASSCODE);
 
       /* 登录页那个下拉**不是**权限，口令才是。下拉只决定"拿哪个口令来比"：
          **选哪个身份就必须给出那个身份的口令，一一对应，不互相顶替。**
@@ -454,9 +463,17 @@ export default {
         if (isAdminPc || (!env.QC_ADMIN_PASSCODE && isQcPc)) role = "admin";
       } else if (want === "qc") {
         if (isQcPc) role = "qc";
+      } else if (want === "viewer") {
+        /* 观察者有自己的口令，**不回退到 QC 口令** —— 回退的话「只读」就变成
+           「知道 QC 口令的人自愿降级」，防不住任何人：真想写的人不选这个角色
+           就是了。没配 QC_VIEWER_PASSCODE 就谁也进不来，这是想要的行为：
+           免得漏配一个 secret 就等于把全部检验数据对着网址公开。 */
+        if (isViewerPc) role = "viewer";
       } else {
-        /* 没带 role（老客户端 / 脚本）：按口令自动判 */
-        if (isAdminPc) role = "admin";
+        /* 没带 role（老客户端 / 脚本）：按口令自动判。观察者口令排最前，免得
+           跟另外两个撞了之后被判成权限更大的那个。 */
+        if (isViewerPc) role = "viewer";
+        else if (isAdminPc) role = "admin";
         else if (isQcPc) role = env.QC_ADMIN_PASSCODE ? "qc" : "admin";
       }
       if (!role) return json({ error: "bad_passcode" }, 401);
@@ -479,6 +496,16 @@ export default {
     if (p.startsWith("/api/")) {
       const seg = p.split("/").filter(Boolean); // ["api", ...]
       const m = request.method;
+
+      /* 观察者：只读，一句话拦在路由最前面。
+         **故意不逐条加判断** —— qc 那种「挡特定几样」（配置记录、删除）的写法
+         每加一个新接口都要记得补一次，漏一次就是个洞。观察者的语义是「所有写
+         都不行」，那就按方法名一刀切：以后新增任何写接口都自动被这条盖住。
+         GET 之外全挡，包括 PUT/DELETE/POST。登录/登出在这之前就处理完了，
+         不受影响。 */
+      if (role === "viewer" && m !== "GET") {
+        return json({ error: "forbidden", need: "qc", role: "viewer" }, 403);
+      }
 
       if (seg[1] === "index" && m === "GET")
         return apiIndex(env, parseTypes(url), url.searchParams.get("v") !== "2");

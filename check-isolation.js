@@ -31,6 +31,9 @@ const SHARED = new Set([
   'frec-table', 'frec-badge', 'frec-open', 'frec-empty',
   /* 月度合格率条形图：六个板块（含首页成品）共用同一套 .qc-bars / .qc-bar */
   'qc-bars', 'qc-bar',
+  /* 公告浮层：长在首页，跟 .plbox 一样属于有意复用的公共外壳 */
+  'ntcbox', 'ntchead', 'ntct', 'ntcbody', 'ntcitem', 'ntcmsg', 'ntcmeta',
+  'ntcdel', 'ntcempty', 'ntcnew', 'ntcrow', 'ntcbtn', 'ntcbadge',
 ]);
 
 /* 成品检验在 document 上挂了几个「全局委托监听」，靠 data 属性认元素：

@@ -384,7 +384,7 @@ console.log("\n— input validation —");
 console.log("\n— 角色：QC / 管理员 —");
 {
   /* 单独一套 env：配上管理员口令，才是他们线上的最终形态 */
-  const env2 = { ...env, QC_ADMIN_PASSCODE: "boss9999" };
+  const env2 = { ...env, QC_ADMIN_PASSCODE: "boss9999", QC_VIEWER_PASSCODE: "look0000" };
   const hit2 = (path, opts = {}) =>
     worker.fetch(new Request("https://qc.example.com" + path, opts), env2);
   const login = async (pc) => {
@@ -407,6 +407,7 @@ console.log("\n— 角色：QC / 管理员 —");
   ok("角色副本 cookie 一起下发", qc.roleCookie === "qc" && ad.roleCookie === "admin");
   ok("错口令仍然 401", (await login("nope")).status === 401);
 
+
   const put = (h, id, type) => hit2("/api/report/" + id, {
     method: "PUT", headers: { "content-type": "application/json", ...h.headers },
     body: JSON.stringify({ type, updatedAt: Date.now(), payload: { fields: {} } }),
@@ -415,6 +416,51 @@ console.log("\n— 角色：QC / 管理员 —");
   /* 普通记录：两个角色都能写 */
   ok("QC 能写普通记录", (await put(qc.hdr, "role-r1", "ipqc")).status === 200);
   ok("管理员能写普通记录", (await put(ad.hdr, "role-r2", "ipqc")).status === 200);
+
+  /* ── 观察者：自己的口令、进来只能读 ────────────────────────────────
+     两条都要钉住：
+       · 口令 —— 观察者有独立口令，**不接受 QC 口令**。回退的话「只读」就成了
+         自愿降级，防不住人。
+       · 只读 —— 路由最前面那句 `viewer 且非 GET → 403` 一旦被改坏，下面全红。
+     另外还钉住一条实现细节：tokenRole() 的角色白名单要认得 viewer。写这批
+     测试时就是它漏了 —— 令牌发得出去、下一个请求验签被打回，表现成「登进去
+     又被踢回登录页」，很不好查。 */
+  const loginRole = async (role, pc) => {
+    const r = await hit2("/api/login", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ passcode: pc ?? "", role }),
+    });
+    const cookies = r.headers.getSetCookie ? r.headers.getSetCookie() : [r.headers.get("set-cookie")];
+    const sess = cookies.map(c => /qc_session=([^;]+)/.exec(c || "")).find(Boolean);
+    const rolec = cookies.map(c => /qc_role=([^;]+)/.exec(c || "")).find(Boolean);
+    return { status: r.status, body: await r.json(), roleCookie: rolec && rolec[1],
+             hdr: sess ? { headers: { cookie: "qc_session=" + sess[1] } } : {} };
+  };
+  const vw = await loginRole("viewer", "look0000");
+  ok("观察者口令 → role viewer", vw.status === 200 && vw.body.role === "viewer", JSON.stringify(vw.body));
+  ok("观察者角色副本 cookie 是 viewer", vw.roleCookie === "viewer");
+  ok("观察者不带口令 → 401", (await loginRole("viewer")).status === 401);
+  ok("观察者错口令 → 401", (await loginRole("viewer", "nope")).status === 401);
+  /* 这条钉的是那个设计决定：**不接受用 QC 口令登观察者**。允许的话「只读」
+     就成了自愿降级 —— 想写的人不选这个角色就是了，等于没有这道限制。 */
+  ok("拿 QC 口令选观察者 → 401（不接受降级）",
+     (await loginRole("viewer", "test1234")).status === 401);
+
+  ok("观察者能读索引", (await hit2("/api/index", vw.hdr)).status === 200);
+  ok("观察者能读记录", (await hit2("/api/report/role-r2", vw.hdr)).status === 200);
+  ok("观察者写记录 → 403", (await put(vw.hdr, "role-vw", "ipqc")).status === 403);
+  ok("被拦下的那条根本没进库",
+     (await (await hit2("/api/report/role-vw", vw.hdr)).json()).error === "not_found");
+  ok("观察者删记录 → 403",
+     (await hit2("/api/report/role-r2", { method: "DELETE", ...vw.hdr })).status === 403);
+  ok("观察者传照片 → 403",
+     (await hit2("/api/photo/role-r2/vw1", { method: "PUT", body: new Uint8Array([1]), ...vw.hdr })).status === 403);
+  ok("观察者删照片 → 403",
+     (await hit2("/api/photo/role-r2/p1", { method: "DELETE", ...vw.hdr })).status === 403);
+  ok("观察者写公告 → 403", (await put(vw.hdr, "__notice", "notice")).status === 403);
+  ok("QC 写公告也 → 403（公告是管理层发的）",
+     (await put(qc.hdr, "__notice", "notice")).status === 403);
+  ok("管理员写公告 → 200", (await put(ad.hdr, "__notice", "notice")).status === 200);
 
   /* 基础资料 / 标准表：只有管理员 */
   ok("QC 写产品基础资料 → 403",
