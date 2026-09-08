@@ -5671,7 +5671,7 @@ function iqcSuggShow(list){
   host.hidden=false;
 }
 $("#imatbtn").addEventListener("click",()=>{
-  if(!confirm("当前物料基础资料共 "+IQC_MAT.length+" 项。\n重新导入「在库一览.xlsx」覆盖？"))
+  if(!confirm("当前物料基础资料共 "+IQC_MAT.length+" 项。\n重新导入 xlsx 覆盖？"))
     return;
   $("#iqmatpick").click();
 });
