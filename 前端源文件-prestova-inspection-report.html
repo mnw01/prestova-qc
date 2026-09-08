@@ -10907,8 +10907,14 @@ async function refreshHomeIfVisible(){
      「停在同一屏等别人的改动冒出来」。
      浮层开着就顺手重画一遍，否则新公告要关掉再开才看得到。 */
   try{
+    const before=NOTICES.map(n=>n.id).join(",");
     await noticeLoad(); noticePaintBadge();
-    if($("#ntcwrap") && !$("#ntcwrap").hidden) noticeRender();
+    /* 浮层开着才需要重画，而且**只在真的变了才画**。noticeRender 是整块
+       innerHTML 重建，无条件每 60 秒来一次的话，**选中的文字会被清掉** ——
+       想复制一条公告发出去，选好了等一会儿选区就没了（实测过：滚动位置倒是
+       保得住，内容高度不变时浏览器不动 scrollTop，选区不然）。
+       按 id 列表比对够了：公告只能发和删，不能改。 */
+    if($("#ntcwrap") && !$("#ntcwrap").hidden && NOTICES.map(n=>n.id).join(",")!==before) noticeRender();
   }catch(e){}
 }
 
