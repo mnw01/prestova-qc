@@ -10429,8 +10429,15 @@ async function pullAll(){
      属性上），所以还要看板块本身开着没有 */
   if(fqcChanged && !$("#mod").hidden && !$("#frec").hidden) await frecRender();
   if(ftChanged && !$("#cfr1633").hidden && !$("#ftrec").hidden) await ftrecRender();
-  /* 看板也吃同一批数据，开着的时候要跟着重算 */
-  if(ftChanged && !$("#cfr1633").hidden && !$("#ftdash").hidden) await ftdashRender();
+  /* ⚠ 到记录表为止，**数据分析看板一律不刷**。这是有意的，别"顺手补上" ——
+     它看着很像漏了（六个板块都有看板、render 函数都现成、60 秒轮询也确实把新
+     数据拉下来了），但记录表和看板是两种屏：
+       记录表是一张列表，多一行少一行不挡你正在看的那一行；
+       看板是一屏带筛选的统计，每 60 秒重算一次，人正读着的 KPI 和月度条会自己
+       跳动，而筛选条件还都是他自己设的 —— 读到一半数字变了，比晚看到更难受。
+     要最新的：切走再切回来，或者动一下筛选，都会重算。
+     防火原来多写了一句 ftdashRender()，是六个板块里唯一会自己跳的那个，随
+     3a528cf 加看板时带进来的，不是为修什么问题加的 —— 已删，改回跟另外五个一致。 */
 }
 
 /** Photos are fetched only when a report is actually opened. */
