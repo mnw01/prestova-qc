@@ -1,7 +1,7 @@
 # 印尼荣升 · 在线质检报告系统
 
 PT. Prestova Home Living Indonesia 的现场质检系统。QC 用手机在车间录入，
-**断网照常干活，有网自动同步**；管理端出 A4 检验报告。
+**断网照常干活，有网自动同步**。
 
 线上 `https://qc.prestova.workers.dev`（口令进入，见 [角色与口令](#角色与口令)）
 
