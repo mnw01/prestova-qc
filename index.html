@@ -10395,7 +10395,13 @@ async function pushOne(rec){
     }catch(err){
       /* 服务端 403：要么这条已经被管理员锁了、要么 QC 在改基础资料这类
          只有管理员能写的记录。两种情况本地这次修改都赢不了 —— 按"输掉了"
-         处理，拉服务端那份覆盖掉。不这么做就会永远卡在「N 条推不上去」。 */
+         处理，拉服务端那份覆盖掉。不这么做就会永远卡在「N 条推不上去」。
+
+         ⚠ 还有第三种成因：观察者角色的**任何**写都会 403。走到这里的话，
+         「拉服务端那份覆盖掉」就变成了丢数据 —— 那台设备上没推上去的改动会被
+         服务端的旧版盖掉，提示还说「已被提交锁定」，完全对不上。所以在
+         runSync 那头就把观察者挡在推送阶段之外，不让它走到这一句（见那段注释）。
+         以后再加角色，先想清楚它的 403 属于哪一类，别默认落进「输掉了」。 */
       if(!err || err.status!==403) throw err;
       res = { status:"stale" }; lostWhy="locked";
     }
@@ -10859,7 +10865,16 @@ async function runSync(){
   try{
     const rows = await metaAll();
     let stuck=0;
-    const dirty = rows.filter(m=>(m.updatedAt||0)!==(m.syncedAt||0) || m.photoPending);
+    /* ⚠ 观察者一条都不推。**这不是省流量，是防丢数据**：
+       服务端对 viewer 的任何非 GET 一律 403，而 pushOne 那边把 403 解释成
+       「这条被锁了 / 只有管理员能写」——「本地这次修改赢不了」，于是**拉服务端
+       那份把本地覆盖掉**，还弹一句「已被提交锁定」。那个判断写在 viewer 这个
+       角色存在之前，它只知道 403 的两种成因，不知道第三种。
+       后果是真的：车间共用平板上 QC 离线填了几条还没推上去，换人用观察者身份
+       登进来，那几条就被服务端的旧版盖掉了，提示还说得像是被谁锁了。
+       观察者本来也没有什么可推的（能写的入口全关了），直接不进这一段。 */
+    const dirty = isViewer() ? []
+      : rows.filter(m=>(m.updatedAt||0)!==(m.syncedAt||0) || m.photoPending);
     const toPush=[];
     for(const m of dirty){
       /* The server rejects ids outside SAFE_ID with 400. A rejected push used
