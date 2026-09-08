@@ -9924,7 +9924,7 @@ $("#langsw").addEventListener("click",e=>{
 function paintLangSw(){
   $("#langsw").querySelectorAll("[data-lang]").forEach(b=>
     b.classList.toggle("on", b.dataset.lang===LANG));
-  $("#rolename").textContent = isAdmin() ? tr("管理员") : isViewer() ? tr("观察员 · 只读") : tr("检验员 QC");
+  $("#rolename").textContent = isAdmin() ? tr("管理员") : isViewer() ? tr("观察者 · 只读") : tr("检验员 QC");
 }
 $("#logout").addEventListener("click",async()=>{
   if(!confirm(tr("退出登录？换个口令进来可以切换身份。"))) return;
@@ -11533,7 +11533,7 @@ const I18N_ID={
   "公告保存失败": "Gagal menyimpan pengumuman",
   "删除这条公告？": "Hapus pengumuman ini?",
   "先写点内容": "Tulis isinya dulu",
-  "观察员 · 只读": "Pengamat · Baca saja",
+  "观察者 · 只读": "Pengamat · Baca saja",
   "只读账号：可以查看和打印，不能新增或修改。": "Akun baca-saja: bisa melihat dan mencetak, tidak bisa menambah atau mengubah.",
 
   "+ 新增品号": "+ Tambah Kode Barang",
