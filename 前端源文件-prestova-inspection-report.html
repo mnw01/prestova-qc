@@ -11207,7 +11207,16 @@ async function labLoad(id){
 
    车间 / 工序 / 不良描述**不在这里** —— 那三类是用户给的 list NG.xlsx 里的
    原文，直接从 IPQC_WS / IPQC_DEFECTS 灌进来（见 i18nFillDomain），免得同一
-   份词抄两遍、改一处漏一处。 */
+   份词抄两遍、改一处漏一处。
+
+   ⚠ 这是一张**扁平全局表**：一个中文串只能有一个译法，不分板块。加词条前先
+   搜一下键在不在 —— 对象字面量里重复键是**后者静默覆盖前者**，不报错。
+   2026-09-08 清掉过 7 个重复键，其中 4 个两边值不一样：加 16 CFR 1633 那节时
+   在表尾追加了「测试日期 / 测试结果」，把上面通用区的译法连**实验室**的一起
+   改掉了（那两个板块共用这两个中文串）。当时没出错 —— 四组都是近义词，屏幕上
+   显示的都对 —— 真正的代价是上面那条被覆盖的成了死代码：有人照着它改译法，
+   界面纹丝不动，而这种问题很难往「重复键」上想。
+   同一个中文串在不同板块要不同措辞的话，这张表表达不了，得先改键的结构。 */
 const I18N_ID={
   /* ── toast / confirm 的提示语 ──────────────────────────────────────
      这一批以前是「英文（成品）+ 裸中文（其余五个板块）」混着的，印尼语下
@@ -11361,7 +11370,7 @@ const I18N_ID={
   "全月": "Sebulan penuh",
   "全部": "Semua",
   "全部品号": "Semua Kode Barang",
-  "全部品名": "Semua Nama Barang",
+  "全部品名": "Semua Nama Produk",
   "全部打 √": "Centang Semua √",
   "全部（最近 200 条）": "Semua (200 baris terakhir)",
   "全部（最近 200 批）": "Semua (200 batch terakhir)",
@@ -11382,7 +11391,6 @@ const I18N_ID={
   "删除": "Hapus",
   "删除这一行": "Hapus baris ini",
   "删除这一条": "Hapus baris ini",
-  "删除这一行": "Hapus baris ini",
   "判定": "Hasil",
   "制程检验": "Pemeriksaan Proses",
   "制程检验记录": "Catatan Pemeriksaan Proses",
@@ -11576,7 +11584,7 @@ const I18N_ID={
   "有没有漏或放错标签？": "Apakah ada label yang terlewat atau salah pasang?",
   "有没有漏放错放标签，说明书在纸箱内？": "Apakah label dan buku petunjuk di dalam karton ada yang terlewat atau salah?",
   "有问题写原因": "Tulis alasan bila bermasalah",
-  "未判定": "Belum ada hasil",
+  "未判定": "Belum dinilai",
   "未命名": "Tanpa nama",
   "未填品号": "Kode barang belum diisi",
   "未填柜号": "No. kontainer belum diisi",
@@ -11638,8 +11646,8 @@ const I18N_ID={
   "没问题打 √，有问题打 × 并在备注写原因。": "Beri √ bila tidak ada masalah, × bila bermasalah dan tulis alasannya di keterangan.",
   "测了哪项就勾哪项，标准照送货单手填": "Centang item yang diperiksa saja; standar diketik manual sesuai surat jalan",
   "测试备注": "Catatan Tes",
-  "测试日期": "Tanggal Tes",
-  "测试结果": "Hasil Tes",
+  "测试日期": "Tanggal Uji",
+  "测试结果": "Hasil Pengujian",
   "海绵床垫": "Kasur Busa",
   "海绵气孔过大，孔径不均匀。": "Pori busa terlalu besar atau tidak rata.",
   "海绵物性测试表": "Tabel Tes Fisik Busa",
@@ -11672,7 +11680,6 @@ const I18N_ID={
   "纸箱上唛头和标签是否正确？": "Apakah shipping mark dan label pada karton sudah benar?",
   "纸箱尺寸（厘米）": "Ukuran Karton (cm)",
   "纸箱应无破损、严重变形。": "Karton tidak boleh rusak atau penyok parah.",
-  "全部品名": "Semua Nama Produk",
   "结束日期": "Tanggal Selesai",
   "结果显示": "Tampilan Hasil",
   "结论": "Kesimpulan",
@@ -11763,9 +11770,6 @@ const I18N_ID={
   "成品燃烧测试，峰值热释放率/总热释放量": "Uji bakar produk jadi, PHRR / THR",
   "测试信息": "Info Pengujian",
   "产品类型": "Tipe Produk",
-  "弹簧床垫": "Kasur Spring",
-  "海绵床垫": "Kasur Busa",
-  "测试日期": "Tanggal Uji",
   "生产日期": "Tanggal Produksi",
   "测试视频编号": "No. Video Pengujian",
   "检测人员": "Penguji",
@@ -11788,7 +11792,6 @@ const I18N_ID={
   "PDF 或图片，单个不超过 8 MB": "PDF atau gambar, maks. 8 MB per berkas",
   "超过 8 MB 上限，传不上去。请压缩后再选一次。": "melebihi batas 8 MB dan tidak bisa diunggah. Kompres dulu, lalu pilih ulang.",
   "📷 照片": "📷 Foto",
-  "测试结果": "Hasil Pengujian",
   "峰值热释放率 PHRR (kW)": "Laju Pelepasan Panas Puncak PHRR (kW)",
   "总热释放量 THR (MJ)": "Total Pelepasan Panas THR (MJ)",
   "燃烧时间": "Waktu Pembakaran",
@@ -11830,7 +11833,6 @@ const I18N_ID={
   "仅 PHRR 超标": "Hanya PHRR melebihi",
   "仅 THR 超标": "Hanya THR melebihi",
   "两项都超标": "Keduanya melebihi",
-  "未判定": "Belum dinilai",
   "条未判定（PHRR / THR 没填全）": "catatan belum dinilai (PHRR / THR belum lengkap)",
   "条的燃烧时间读不出分钟数，未计入": "catatan waktu bakarnya tidak terbaca dalam menit, tidak dihitung",
 };
