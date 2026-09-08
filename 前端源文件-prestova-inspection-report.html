@@ -9897,7 +9897,10 @@ function renderCards(rows){
 }
 function renderRecent(rows){
   const host=$("#recentlist"); host.innerHTML="";
-  const list=rows.filter(r=>r.type!=="labstd" && r.type!=="iqcmat" && r.type!=="ipqcmat")  /* config records, not reports */
+  /* 配置记录不是报告，别混进来。用 CFG_TYPES 而不是把类型名再抄一遍 ——
+     原来这里硬写着 labstd/iqcmat/ipqcmat 三个，加公告时就漏了：__notice 混进
+     列表，点下去还会调 enterModule("notice")，找不到板块，是一行死的。 */
+  const list=rows.filter(r=>CFG_TYPES.indexOf(r.type)<0)
     .slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,8);
   if(!list.length){ host.innerHTML='<div class="rempty">还没有报告，选一个板块开始。</div>'; return; }
   const p=n=>String(n).padStart(2,"0");
@@ -10055,9 +10058,8 @@ async function showHome(){
   syncNow().then(async()=>{
     if($("#home").hidden) return;
     try{ const fresh=await metaAll(); renderCards(fresh); renderRecent(fresh); }catch(e){}
-    /* 同步可能带回别人刚发的公告 —— 红点要跟着亮，浮层开着就一并重画 */
-    await noticeLoad(); noticePaintBadge();
-    if(!$("#ntcwrap").hidden) noticeRender();
+    /* 公告不用在这儿重画：runSync 结尾必定走 refreshHomeIfVisible()，那边统一
+       管着（每 60 秒的轮询也走那条，这里只覆盖「刚进首页」这一次）。 */
   });
 }
 async function enterModule(id,reportId){
@@ -10899,6 +10901,15 @@ async function runSync(){
 async function refreshHomeIfVisible(){
   if(!$("#home") || $("#home").hidden) return;
   try{ const rows=await metaAll(); renderCards(rows); renderRecent(rows); }catch(e){}
+  /* 公告也吃这一轮同步的结果。原来只有 showHome() 里做了这件事，而那只在
+     「进首页」时跑一次 —— 人停在首页不动的话，别人刚发的公告数据同步下来了、
+     角标却一直不亮，要切走再回来才看得见。而 60 秒轮询的**全部意义**就是
+     「停在同一屏等别人的改动冒出来」。
+     浮层开着就顺手重画一遍，否则新公告要关掉再开才看得到。 */
+  try{
+    await noticeLoad(); noticePaintBadge();
+    if($("#ntcwrap") && !$("#ntcwrap").hidden) noticeRender();
+  }catch(e){}
 }
 
 async function refreshPending(){
