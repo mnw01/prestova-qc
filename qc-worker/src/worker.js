@@ -168,8 +168,8 @@ button:disabled{opacity:.6;cursor:default}
   <label for="r">Role</label>
   <select id="r" name="r">
     <option value="qc">QC Inspector</option>
+    <option value="viewer">Viewer</option>
     <option value="admin">Administrator</option>
-    <option value="viewer">Viewer (read-only)</option>
   </select>
   <label for="p">Passcode</label>
   <input id="p" name="p" type="password" autocomplete="current-password" autofocus>

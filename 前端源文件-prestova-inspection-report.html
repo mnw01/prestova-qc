@@ -10141,9 +10141,14 @@ const NO_BACKEND = location.protocol==="file:" || location.protocol==="blob:";
    关心的那部分。最坏情况是"没进过的板块看不到数据"——看得见、可预期，
    不是静默丢数据。
 
-   管理员不过滤，走的还是原来那条 /api/index，因为首页「最近报告」是跨板块
-   总览，而管理员用办公室电脑，这点流量无所谓。省流量和看全局这两个需求
-   正好互斥，角色系统已经把这两类人分开了。 */
+   管理员和观察者不过滤，走的还是原来那条 /api/index，因为首页「最近报告」是
+   跨板块总览，而这两类人都是坐办公室看全局的，这点流量无所谓。省流量和看全局
+   这两个需求正好互斥，角色系统已经把这两类人分开了。
+
+   ⚠ 观察者这一档要留意成本：不过滤那条是全表扫描（管理员那份索引 461KB）。
+   管理员就一两个所以无所谓；观察者要是发给很多人（比如客户），每人每 60 秒
+   一次全表读，D1 的账会明显不一样。真到那一步，先把观察者的轮询放慢
+   （只读的人不需要 60 秒的新鲜度），别去动过滤 —— 一过滤他就看不到全局了。 */
 const MODS_KEY="qc-mods";
 /* 7 天没进过就不再同步它。手滑点进过一次实验室不该让这台手机永远背着
    那 1,371 行。每次进板块都会刷新时间戳，所以是滑动窗口，不是首次进入起算。
@@ -10185,7 +10190,7 @@ function markModUsed(id){
                那条查询本来就在跑，所以 /api/index 里那份全库快照是白读的。
    不带 v=2 的老客户端拿到的还是完整索引，所以升级期间新旧并存没有窗口。 */
 function indexUrl(){
-  if(isAdmin()) return "/api/index?v=2";
+  if(isAdmin() || isViewer()) return "/api/index?v=2";
   return "/api/index?types="+usedMods().concat(CFG_TYPES).join(",")+"&v=2";
 }
 try{ window.__SYNC = SYNC; }catch(e){}   /* read-only handle for diagnostics */
