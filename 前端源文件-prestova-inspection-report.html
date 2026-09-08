@@ -4654,7 +4654,7 @@ campick.addEventListener("change",()=>onPicked(campick));
    next EMPTY slots in form order so nothing already filled gets clobbered. */
 async function distribute(fileList,startKey){
   const files=[...fileList].filter(f=>/^image\//.test(f.type));
-  if(!files.length){ toast("No usable image files"); return; }
+  if(!files.length){ toast(tr("没有可用的图片文件")); return; }
 
   const targets=[];
   let i=0;
@@ -4663,25 +4663,25 @@ async function distribute(fileList,startKey){
     const k=FILL_ORDER[i++];
     if(!R.photos[k] && targets.indexOf(k)<0) targets.push(k);
   }
-  if(!targets.length){ toast("No empty slots — delete one first"); return; }
+  if(!targets.length){ toast(tr("没有空格子了 —— 先删掉一张")); return; }
 
   const n=Math.min(files.length,targets.length);
   for(let j=0;j<n;j++){
-    if(n>1) toast("Processing "+(j+1)+" / "+n+" …");
+    if(n>1) toast(tr("处理中")+" "+(j+1)+" / "+n+" …");
     await ingest(targets[j],files[j],true);
   }
   const skipped=files.length-n;
-  toast(n===1 ? "1 photo added" : n+" photos added" + (skipped?" · "+skipped+" had no empty slot":""));
+  toast(tr("已添加")+" "+n+" "+tr("张")+(skipped?" · "+skipped+" "+tr("张没有空格子"):""));
 }
 
 async function ingest(key,file,quiet){
-  if(!/^image\//.test(file.type)){ toast("Please choose an image file"); return; }
-  if(!quiet) toast("Processing…");
+  if(!/^image\//.test(file.type)){ toast(tr("请选择图片文件")); return; }
+  if(!quiet) toast(tr("处理中…"));
   try{
     const blob = await shrink(file);
     R.photos[key]=blob; R.photoOps[key]="put"; paintSlot(key); await save();
-    if(!quiet) toast("Added ("+Math.round(blob.size/1024)+" KB)");
-  }catch(e){ toast("Could not process photo — try again"); }
+    if(!quiet) toast(tr("已添加")+"（"+Math.round(blob.size/1024)+" KB）");
+  }catch(e){ toast(tr("照片处理失败 —— 再试一次")); }
 }
 
 /* Without these, a photo dropped slightly off-target makes the browser
@@ -4790,7 +4790,7 @@ function save(){
     saveTimer=setTimeout(async()=>{
       /* 1500 而不是默认的 1600：成品这层保存防抖是 500ms 不是 400，凑够端到端 2 秒 */
       try{ await dbPut(R); relabel(); markSaved(); refreshPending(); scheduleSync(1500); }
-      catch(e){ toast("Save failed — storage may be full"); }
+      catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
       const w=saveWaiters; saveWaiters=[]; w.forEach(f=>f());
     },500);
   });
@@ -5065,10 +5065,10 @@ $("#new").addEventListener("click",async()=>{
   Object.keys(urls).forEach(k=>setURL(k,null));
   R=blank(); paintAll(); await dbPut(R); await refreshList();
   frecShow(false);        /* the point of "+ New" is to fill it in — show the form */
-  toast("New blank report created");
+  toast(tr("新报告已建"));
 });
 $("#del").addEventListener("click",async()=>{
-  if(!confirm("Delete this report? Its photos are deleted too. This cannot be undone.")) return;
+  if(!confirm(tr("删除这份报告？照片一并删除，不可撤销。"))) return;
   await deleteEverywhere(R);
   const mine=ofModule(await metaAll(),CURRENT);
   if(mine.length){ await load(mine[0].id); }
@@ -5076,7 +5076,7 @@ $("#del").addEventListener("click",async()=>{
   /* 留在记录表上删的话得把表重画，不然删掉那行还杵在那儿，要刷新页面才没。
      来料/制程/装柜三个板块本来就有这一行，成品漏了。 */
   if(!$("#frec").hidden) await frecRender();
-  toast("Deleted");
+  toast(tr("已删除"));
 });
 $("#back").addEventListener("click",()=>{
   if($("#frec").hidden) fqcShow("rec");          /* 先退回记录表 */
@@ -5592,7 +5592,7 @@ async function saveIqcMat(list){
     if(old) rec.syncedAt=old.syncedAt||0;
   }catch(e){}
   try{ await dbPut(rec); IQC_MAT=list; iqcMatReindex(); scheduleSync(300); }
-  catch(e){ toast("物料基础资料保存失败"); }
+  catch(e){ toast(tr("物料基础资料保存失败")); }
 }
 /* 「在库一览」导出：A=类别名称 B=品号 C=品名 D=规格描述 E=库存单位，正式数据从
    「品号」这行表头之后开始 — 找表头而不是硬编在第几行，导出格式稍微变一下也不怕。
@@ -5646,22 +5646,22 @@ function iqcSuggShow(list){
   host.hidden=false;
 }
 $("#imatbtn").addEventListener("click",()=>{
-  if(!confirm("当前物料基础资料共 "+IQC_MAT.length+" 项。\n重新导入 xlsx 覆盖？"))
+  if(!confirm(tr("当前物料基础资料共")+" "+IQC_MAT.length+" "+tr("项。")+"\n"+tr("重新导入 xlsx 覆盖？")))
     return;
   $("#iqmatpick").click();
 });
 $("#iqmatpick").addEventListener("change",async e=>{
   const file=e.target.files&&e.target.files[0]; e.target.value="";
   if(!file) return;
-  if(!/\.xlsx$/i.test(file.name)){ toast("请选择 .xlsx 文件"); return; }
-  toast("正在读表…");
+  if(!/\.xlsx$/i.test(file.name)){ toast(tr("请选择 .xlsx 文件")); return; }
+  toast(tr("正在读表…"));
   try{
     const list=iqcMatFromXlsx(await readXlsx(await file.arrayBuffer()));
-    if(!list.length){ toast("没有读到有效的品号数据"); return; }
+    if(!list.length){ toast(tr("没有读到有效的品号数据")); return; }
     await saveIqcMat(list);
     await iqcFillCatFilter();
-    toast("物料基础资料已更新，共 "+list.length+" 项");
-  }catch(err){ toast("读取失败："+(err && err.message || err)); }
+    toast(tr("物料基础资料已更新，共")+" "+list.length+" "+tr("项"));
+  }catch(err){ toast(tr("读取失败：")+(err && err.message || err)); }
 });
 
 /* ── 来料检验：一批 ───────────────────────────────────────────────── */
@@ -5738,7 +5738,7 @@ function iqcSave(){
       await dbPut(IR);
       iqcMarkSaved(); scheduleSync();
       if(!$("#irec").hidden) await irecRender();
-    }catch(e){ toast("保存失败 — 存储空间可能已满"); }
+    }catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
   },400);
 }
 function iqcMarkSaved(){
@@ -5901,18 +5901,18 @@ $("#inew").addEventListener("click",async()=>{
   IR=iqcBlank();
   iqcPaintAll(); await dbPut(IR);
   irecShow(false);        /* 新建就是要填它，直接进录入页 */
-  toast("新批次已建");
+  toast(tr("新批次已建"));
 });
 $("#idel").addEventListener("click",async()=>{
   if(!IR) return;
-  if(!confirm("删除这一批记录？不可撤销。")) return;
+  if(!confirm(tr("删除这一批记录？不可撤销。"))) return;
   await deleteEverywhere(IR);
   const mine=(await metaAll()).filter(m=>m.type==="iqc")
     .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   if(mine.length) await iqcLoad(mine[0].id);
   else { IR=iqcBlank(); iqcPaintAll(); await dbPut(IR); }
   if(!$("#irec").hidden) await irecRender();
-  toast("已删除");
+  toast(tr("已删除"));
 });
 /* ── 批次选择器 ─────────────────────────────────────────────────────
    跟实验室的 #lpicklist 同一套外壳（.pl* 那些 class 在 check-isolation.js 的
@@ -6297,7 +6297,7 @@ async function pmSave(list){
               caps:{}, flags:{}, fits:{}, photos:{} };
   try{ const old=await dbGet(PM_ID); if(old) rec.syncedAt=old.syncedAt||0; }catch(e){}
   try{ await dbPut(rec); PMAT=list; pmReindex(); scheduleSync(300); }
-  catch(e){ toast("产品基础资料保存失败"); }
+  catch(e){ toast(tr("产品基础资料保存失败")); }
 }
 /* 表头认「型号」「规格」「类型」三列（大小写/空格忽略），只有型号是必须的。
    列名多给几个别名，免得导出文件叫法不一样就卡住——来料检验那边为这个吃过亏。 */
@@ -6331,21 +6331,21 @@ const pmTypes = () => {
   return out;
 };
 $("#pmatbtn").addEventListener("click",()=>{
-  if(!confirm("当前产品基础资料共 "+PMAT.length+" 个型号。\n重新导入 xlsx 覆盖？")) return;
+  if(!confirm(tr("当前产品基础资料共")+" "+PMAT.length+" "+tr("个型号。")+"\n"+tr("重新导入 xlsx 覆盖？"))) return;
   $("#ipmatpick").click();
 });
 $("#ipmatpick").addEventListener("change",async e=>{
   const file=e.target.files&&e.target.files[0]; e.target.value="";
   if(!file) return;
-  if(!/\.xlsx$/i.test(file.name)){ toast("请选择 .xlsx 文件"); return; }
-  toast("正在读表…");
+  if(!/\.xlsx$/i.test(file.name)){ toast(tr("请选择 .xlsx 文件")); return; }
+  toast(tr("正在读表…"));
   try{
     const list=pmFromXlsx(await readXlsx(await file.arrayBuffer()));
-    if(!list.length){ toast("没有读到型号数据"); return; }
+    if(!list.length){ toast(tr("没有读到型号数据")); return; }
     await pmSave(list);
     const withT=list.filter(m=>m[2]).length;
-    toast("产品基础资料已更新，共 "+list.length+" 个型号"+(withT?"（"+withT+" 个带类型）":""));
-  }catch(err){ toast("读取失败："+(err && err.message || err)); }
+    toast(tr("产品基础资料已更新，共")+" "+list.length+" "+tr("个型号")+(withT?"（"+withT+" "+tr("个带类型")+"）":""));
+  }catch(err){ toast(tr("读取失败：")+(err && err.message || err)); }
 });
 
 
@@ -7114,7 +7114,7 @@ function ipqcSave(){
       await dbPut(PR);
       ipqcMarkSaved(); scheduleSync();
       if(!$("#iprec").hidden) await iprecRender();
-    }catch(e){ toast("保存失败 — 存储空间可能已满"); }
+    }catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
   },400);
 }
 function ipqcPickLabel(m){
@@ -7284,18 +7284,18 @@ $("#pnew").addEventListener("click",async()=>{
   PR=ipqcBlank();
   ipqcPaintAll(); await dbPut(PR);
   ipqcShow("entry");
-  toast("新记录已建");
+  toast(tr("新记录已建"));
 });
 $("#pdel").addEventListener("click",async()=>{
   if(!PR) return;
-  if(!confirm("删除这条制程检验记录？不可撤销。")) return;
+  if(!confirm(tr("删除这条制程检验记录？不可撤销。"))) return;
   await deleteEverywhere(PR);
   const mine=(await metaAll()).filter(m=>m.type==="ipqc")
     .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   if(mine.length) await ipqcLoad(mine[0].id);
   else { PR=ipqcBlank(); ipqcPaintAll(); await dbPut(PR); }
   if(!$("#iprec").hidden) await iprecRender();
-  toast("已删除");
+  toast(tr("已删除"));
 });
 $("#ip-date").addEventListener("change",e=>{ PR.fields.date=fromDateInput(e.target.value); ipqcSave(); });
 $("#ip-shift").addEventListener("change",e=>{
@@ -7525,10 +7525,10 @@ async function ipqcCsv(metas){
 }
 $("#iprec-csv").addEventListener("click",async()=>{
   const metas=await iprecRows();
-  if(!metas || !metas.length){ toast("当前筛选下没有记录"); return; }
-  toast("正在生成…");
+  if(!metas || !metas.length){ toast(tr("当前筛选下没有记录")); return; }
+  toast(tr("正在生成…"));
   const { text, lines, used } = await ipqcCsv(metas);
-  if(!lines){ toast("当前筛选下没有可导出的明细"); return; }
+  if(!lines){ toast(tr("当前筛选下没有可导出的明细")); return; }
   /* 文件名带上筛选条件，导好几份放一个文件夹里也分得清 */
   const from=$("#iprec-from").value, to=$("#iprec-to").value;
   const tag=[(from||to) ? (from||"最早")+"至"+(to||"最新") : "",
@@ -7539,7 +7539,7 @@ $("#iprec-csv").addEventListener("click",async()=>{
   a.download="制程检验明细-"+tag+".csv";
   document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500);
-  toast(used+" 条记录 · "+lines+" 行明细已导出");
+  toast(used+" "+tr("条记录")+" · "+lines+" "+tr("行明细已导出"));
 });
 
 $("#iprec-table").addEventListener("click",async e=>{
@@ -7811,7 +7811,7 @@ function oqcSave(){
       await dbPut(OR);
       oqcMarkSaved(); scheduleSync();
       if(!$("#orec").hidden) await orecRender();
-    }catch(e){ toast("保存失败 — 存储空间可能已满"); }
+    }catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
   },400);
 }
 /* 显示「PO/DI · 柜号」——封条号不放这里，选柜的时候认的是 PO 和柜号 */
@@ -8062,18 +8062,18 @@ $("#onew").addEventListener("click",async()=>{
   OR=oqcBlank();
   oqcPaintAll(); await dbPut(OR);
   oqcShow("entry");
-  toast("新柜已建");
+  toast(tr("新柜已建"));
 });
 $("#odel").addEventListener("click",async()=>{
   if(!OR) return;
-  if(!confirm("删除这一柜记录？照片一并删除，不可撤销。")) return;
+  if(!confirm(tr("删除这一柜记录？照片一并删除，不可撤销。"))) return;
   await deleteEverywhere(OR);
   const mine=(await metaAll()).filter(m=>m.type==="oqc")
     .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   if(mine.length) await oqcLoad(mine[0].id);
   else { OR=oqcBlank(); oqcPaintAll(); await dbPut(OR); }
   if(!$("#orec").hidden) await orecRender();
-  toast("已删除");
+  toast(tr("已删除"));
 });
 $("#oq-date").addEventListener("change",e=>{ OR.fields.date=fromDateInput(e.target.value); oqcSave(); });
 [["oq-container","container"],["oq-seal","seal"],["oq-carrier","carrier"],
@@ -8112,7 +8112,7 @@ $("#oq-goods").addEventListener("change",e=>{
 });
 $("#oq-goods").addEventListener("click",e=>{
   const d=e.target.closest("[data-gdel]"); if(!d) return;
-  if(!confirm("删除这一行货物明细？")) return;
+  if(!confirm(tr("删除这一行货物明细？"))) return;
   OR.oqc.goods.splice(+d.dataset.gdel,1);
   oqcPaintGoods(); oqcSave();
 });
@@ -8166,7 +8166,7 @@ $("#oq-photos").addEventListener("click",e=>{
   if(del){
     const k=del.dataset.odel;
     if(!OR.photos[k]) return;
-    if(!confirm("删除这张照片？")) return;
+    if(!confirm(tr("删除这张照片？"))) return;
     delete OR.photos[k]; OR.photoOps[k]="del"; delete OR.serverPhotos[k];
     oqcPaintSlot(k); oqcSave();
     return;
@@ -8233,7 +8233,7 @@ async function oqcTakeFiles(e){
   /* 一次选多张就从这一格往后依次填空格，填不下的自动给这一组加格子 */
   const g=oqPendingSlot.split("-")[1];
   let i=+oqPendingSlot.split("-")[2];
-  toast("处理中…");
+  toast(tr("处理中…"));
   for(const f of files){
     while(OR.photos[OQ_SLOT(g,i)] && i<OR.oqc.pn[g]) i++;
     if(i>=OR.oqc.pn[g]) OR.oqc.pn[g]=i+1;
@@ -8241,12 +8241,12 @@ async function oqcTakeFiles(e){
       const blob=await shrink(f);
       const k=OQ_SLOT(g,i);
       OR.photos[k]=blob; OR.photoOps[k]="put";
-    }catch(err){ toast("有一张照片处理失败"); }
+    }catch(err){ toast(tr("有一张照片处理失败")); }
     i++;
   }
   oqPendingSlot=null;
   oqcPaintPhotos(); oqcSave();
-  toast("已添加 "+files.length+" 张");
+  toast(tr("已添加")+" "+files.length+" "+tr("张"));
 }
 $("#oqpick").addEventListener("change",oqcTakeFiles);   /* 相册，可多选 */
 $("#oqcam").addEventListener("change",oqcTakeFiles);    /* 拍照，capture 只能单张 */
@@ -8596,18 +8596,18 @@ $("#oimpbtn").addEventListener("click",()=>$("#oqplanpick").click());
 $("#oqplanpick").addEventListener("change",async e=>{
   const file=e.target.files&&e.target.files[0]; e.target.value="";
   if(!file) return;
-  if(!/\.xlsx$/i.test(file.name)){ toast("请选择 .xlsx 文件"); return; }
-  toast("正在读表…");
+  if(!/\.xlsx$/i.test(file.name)){ toast(tr("请选择 .xlsx 文件")); return; }
+  toast(tr("正在读表…"));
   let plans;
   try{ plans=oqcPlanFromXlsx(await readXlsx(await file.arrayBuffer())); }
-  catch(err){ toast("读取失败："+(err&&err.message||err)); return; }
-  if(!plans.length){ toast("没读到柜数据"); return; }
+  catch(err){ toast(tr("读取失败：")+(err&&err.message||err)); return; }
+  if(!plans.length){ toast(tr("没读到柜数据")); return; }
   const existing={};
   try{ (await metaAll()).filter(m=>m.type==="oqc").forEach(m=>{ existing[m.id]=1; }); }catch(e){}
   const dup=plans.filter(p=>existing[oqcId(p.container)]).length;
-  if(!confirm("读到 "+plans.length+" 个柜，共 "+plans.reduce((n,p)=>n+p.goods.length,0)+" 行货物明细。\n"+
-      (dup?"其中 "+dup+" 个柜已经存在，会更新它们的货物明细（已经填好的实际数量、装柜顺序、备注、检查项和照片都保留）。\n":"")+
-      "\n导入后会同步到所有设备。确定导入？")) return;
+  if(!confirm(tr("读到")+" "+plans.length+" "+tr("个柜，共")+" "+plans.reduce((n,p)=>n+p.goods.length,0)+" "+tr("行货物明细。")+"\n"+
+      (dup?tr("其中")+" "+dup+" "+tr("个柜已经存在，会更新它们的货物明细（已经填好的实际数量、装柜顺序、备注、检查项和照片都保留）。")+"\n":"")+
+      "\n"+tr("导入后会同步到所有设备。确定导入？"))) return;
   let added=0, updated=0;
   for(const p of plans){
     const id=oqcId(p.container);
@@ -8639,12 +8639,12 @@ $("#oqplanpick").addEventListener("change",async e=>{
       rec.fields.itemNo=p.container; rec.fields.po=rec.fields.podi||"";
       added++;
     }
-    try{ await dbPut(rec); }catch(err){ toast("导入中断：存储可能已满"); break; }
+    try{ await dbPut(rec); }catch(err){ toast(tr("导入中断：存储可能已满")); break; }
   }
   if(OR){ const again=await dbGet(OR.id); if(again){ OR=oqcNorm(again); oqcPaintAll(); } }
   if(!$("#orec").hidden) await orecRender();
   scheduleSync(300);
-  toast("导入完成：新建 "+added+" 个柜，更新 "+updated+" 个");
+  toast(tr("导入完成：新建")+" "+added+" "+tr("个柜，更新")+" "+updated+" "+tr("个柜"));
 });
 
 /* ── 装柜检验：打印（装柜检验记录 / 提货清单） ────────────────────────
@@ -8935,7 +8935,7 @@ function ftSave(){
     try{
       await dbPut(FT);
       ftMarkSaved(); scheduleSync();
-    }catch(e){ toast("保存失败"); }
+    }catch(e){ toast(tr("保存失败")); }
   },400);
 }
 
@@ -9502,18 +9502,18 @@ $("#ftnew").addEventListener("click",async()=>{
   FT=ftBlank();
   ftPaintAll(); await dbPut(FT);
   ftShow("entry");
-  toast("新记录已建");
+  toast(tr("新记录已建"));
 });
 $("#ftdel").addEventListener("click",async()=>{
   if(!FT) return;
-  if(!confirm("删除这条防火检验记录？不可撤销。")) return;
+  if(!confirm(tr("删除这条防火检验记录？不可撤销。"))) return;
   await deleteEverywhere(FT);
   const mine=(await metaAll()).filter(m=>m.type==="cfr1633")
     .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   if(mine.length) await ftLoad(mine[0].id);
   else { FT=ftBlank(); ftPaintAll(); await dbPut(FT); }
   if(!$("#ftrec").hidden) await ftrecRender();
-  toast("已删除");
+  toast(tr("已删除"));
 });
 $("#ftlockbtn").addEventListener("click",async()=>{
   if(!lockAsk(FT, "#ftstat")) return;
@@ -9779,7 +9779,7 @@ function renderCards(rows){
       '<span class="mwm">'+micon(m.id,1.1)+'</span>';
     b.addEventListener("click",()=>{
       if(m.ready) location.hash="#/"+m.id;
-      else toast("「"+m.zh+"」 is not set up yet");
+      else toast("「"+m.zh+"」"+tr("还没做"));
     });
     host.appendChild(b);
   });
@@ -9827,7 +9827,7 @@ async function showHome(){
   document.title=tr("荣升家居 · 质检报告系统");
   let rows=[];
   try{ rows=await metaAll(); }
-  catch(e){ toast("Storage unavailable (private mode?) — entries will not be saved"); }
+  catch(e){ toast(tr("无法使用本地存储（隐私模式？）—— 记录不会被保存")); }
   renderCards(rows); renderRecent(rows);
   /* pick up what other devices wrote, then redraw with the fresh counts */
   syncNow().then(async()=>{
@@ -10648,7 +10648,7 @@ async function runSync(){
        后端。命中窗口正是 !SYNC.probed：车间平板早上打开、网还没稳的那一次。 */
     const noBackend = NO_BACKEND || st==="404" || !!(e && e.noBackend);
     if(SYNC.err==="auth"){
-      toast("Session expired — reloading");
+      toast(tr("会话已过期 —— 正在重新加载"));
       setTimeout(()=>location.reload(), 1200);
     }else if(!SYNC.probed && noBackend){
       SYNC.enabled=false;
@@ -10944,7 +10944,7 @@ async function saveLabStd(){
     const old=await dbGet(LAB_STD_ID);
     if(old) rec.syncedAt=old.syncedAt||0;
   }catch(e){}
-  try{ await dbPut(rec); scheduleSync(300); }catch(e){ toast("标准表保存失败"); }
+  try{ await dbPut(rec); scheduleSync(300); }catch(e){ toast(tr("标准表保存失败")); }
 }
 
 /* ── a batch ──────────────────────────────────────────────────────── */
@@ -10973,7 +10973,7 @@ function labSave(){
       await dbPut(LR);
       labMarkSaved(); scheduleSync();
       await labRefreshList();
-    }catch(e){ toast("保存失败 — 存储空间可能已满"); }
+    }catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
   },400);
 }
 function labMarkSaved(){
@@ -11209,6 +11209,85 @@ async function labLoad(id){
    原文，直接从 IPQC_WS / IPQC_DEFECTS 灌进来（见 i18nFillDomain），免得同一
    份词抄两遍、改一处漏一处。 */
 const I18N_ID={
+  /* ── toast / confirm 的提示语 ──────────────────────────────────────
+     这一批以前是「英文（成品）+ 裸中文（其余五个板块）」混着的，印尼语下
+     一句都不翻。2026-09-08 统一：英文改中文、调用点全包 tr()、词条补这里。
+     带数字的句子按 ftFileErr / reportClockSkew 的写法切成短语拼接，所以下面
+     会有「项。」「个柜，共」这种半句 —— 它们只从 toast/confirm 里进来，
+     上面那遍 DOM 替换按整段文本精确匹配，不会误伤界面标签（加之前查过）。 */
+  "没有可用的图片文件": "Tidak ada file gambar yang bisa dipakai",
+  "没有空格子了 —— 先删掉一张": "Tidak ada kotak kosong —— hapus satu dulu",
+  "处理中": "Memproses",
+  "处理中…": "Memproses…",
+  "已添加": "Ditambahkan",
+  "张": "lembar",
+  "张没有空格子": "lembar tidak ada kotak kosong",
+  "请选择图片文件": "Pilih file gambar",
+  "照片处理失败 —— 再试一次": "Gagal memproses foto —— coba lagi",
+  "有一张照片处理失败": "Satu foto gagal diproses",
+  "保存失败": "Gagal menyimpan",
+  "保存失败 — 存储空间可能已满": "Gagal menyimpan — penyimpanan mungkin penuh",
+  "新报告已建": "Laporan baru dibuat",
+  "新批次已建": "Batch baru dibuat",
+  "新柜已建": "Kontainer baru dibuat",
+  "已删除": "Terhapus",
+  "删除这份报告？照片一并删除，不可撤销。": "Hapus laporan ini? Foto ikut terhapus, tidak bisa dibatalkan.",
+  "删除这一批记录？不可撤销。": "Hapus batch catatan ini? Tidak bisa dibatalkan.",
+  "删除这条制程检验记录？不可撤销。": "Hapus catatan IPQC ini? Tidak bisa dibatalkan.",
+  "删除这一柜记录？照片一并删除，不可撤销。": "Hapus catatan kontainer ini? Foto ikut terhapus, tidak bisa dibatalkan.",
+  "删除这一行货物明细？": "Hapus baris rincian barang ini?",
+  "删除这张照片？": "Hapus foto ini?",
+  "删除品号": "Hapus kode barang",
+  "物料基础资料保存失败": "Gagal menyimpan data dasar material",
+  "当前物料基础资料共": "Data dasar material saat ini ada",
+  "项。": "item.",
+  "重新导入 xlsx 覆盖？": "Impor ulang xlsx untuk menimpa?",
+  "物料基础资料已更新，共": "Data dasar material diperbarui, total",
+  "产品基础资料保存失败": "Gagal menyimpan data dasar produk",
+  "当前产品基础资料共": "Data dasar produk saat ini ada",
+  "个型号。": "model.",
+  "个型号": "model",
+  "个带类型": "punya jenis",
+  "产品基础资料已更新，共": "Data dasar produk diperbarui, total",
+  "没有读到型号数据": "Tidak ada data model yang terbaca",
+  "没有读到有效的品号数据": "Tidak ada data kode barang yang valid",
+  "请选择 .xlsx 文件": "Pilih file .xlsx",
+  "正在读表…": "Membaca tabel…",
+  "读取失败：": "Gagal membaca: ",
+  "表读不了：": "Tabel tidak terbaca: ",
+  "文件读不了：不是有效的 xlsx 或 JSON": "File tidak terbaca: bukan xlsx atau JSON yang valid",
+  "文件里没有可导入的记录": "Tidak ada catatan yang bisa diimpor dalam file",
+  "当前筛选下没有记录": "Tidak ada catatan pada filter ini",
+  "当前筛选下没有可导出的明细": "Tidak ada rincian yang bisa diekspor pada filter ini",
+  "正在生成…": "Membuat…",
+  "行明细已导出": "baris rincian diekspor",
+  "行已导出": "baris diekspor",
+  "没读到柜数据": "Tidak ada data kontainer yang terbaca",
+  "读到": "Terbaca",
+  "个柜，共": "kontainer, total",
+  "行货物明细。": "baris rincian barang.",
+  "其中": "Di antaranya",
+  "个柜已经存在，会更新它们的货物明细（已经填好的实际数量、装柜顺序、备注、检查项和照片都保留）。": "kontainer sudah ada, rincian barangnya akan diperbarui (jumlah aktual, urutan muat, catatan, item periksa, dan foto yang sudah diisi tetap dipertahankan).",
+  "导入后会同步到所有设备。确定导入？": "Setelah diimpor akan disinkronkan ke semua perangkat. Yakin impor?",
+  "导入": "Impor",
+  "导入中…": "Mengimpor…",
+  "导入中断：存储可能已满": "Impor terhenti: penyimpanan mungkin penuh",
+  "导入完成：新建": "Impor selesai: dibuat",
+  "个柜，更新": "kontainer, diperbarui",
+  "个柜": "kontainer",
+  "批历史记录？": "batch catatan lama?",
+  "批已导入": "batch diimpor",
+  "已存在的同一批号会被覆盖，重复导入不会产生副本": "Nomor batch yang sudah ada akan ditimpa, impor ulang tidak membuat duplikat",
+  "导入后会同步到所有设备，不只是这一台": "Setelah diimpor akan disinkronkan ke semua perangkat, bukan hanya yang ini",
+  "原表的判定只作对照保存，判定按当前标准表重算": "Penilaian dari tabel asli hanya disimpan sebagai pembanding; penilaian dihitung ulang dengan tabel standar saat ini",
+  "条历史记录已修复编号，现在可以同步了": "catatan lama nomornya sudah diperbaiki, sekarang bisa disinkronkan",
+  "标准表保存失败": "Gagal menyimpan tabel standar",
+  "先选品名": "Pilih nama produk dulu",
+  "报告编号要 8 位：年月日 + 流水": "Nomor laporan harus 8 digit: tanggal + urutan",
+  "还没做": "belum tersedia",
+  "无法使用本地存储（隐私模式？）—— 记录不会被保存": "Penyimpanan lokal tidak tersedia (mode privat?) —— catatan tidak akan tersimpan",
+  "会话已过期 —— 正在重新加载": "Sesi berakhir —— memuat ulang",
+
   "+ 新增品号": "+ Tambah Kode Barang",
   "+ 新批次": "+ Batch Baru",
   "+ 新报告": "+ Laporan Baru",
@@ -11837,11 +11916,11 @@ $("#lnew").addEventListener("click",async()=>{
   }
   labPaintAll(); await dbPut(LR); await labRefreshList();
   labShow("entry");        /* these act on the open batch, so show it */
-  toast("新批次已建");
+  toast(tr("新批次已建"));
 });
 $("#ldel").addEventListener("click",async()=>{
   if(!LR) return;
-  if(!confirm("删除这一批记录？不可撤销。")) return;
+  if(!confirm(tr("删除这一批记录？不可撤销。"))) return;
   await deleteEverywhere(LR);
   const mine=(await metaAll()).filter(m=>m.type==="lab")
     .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
@@ -11855,7 +11934,7 @@ $("#ldel").addEventListener("click",async()=>{
      那条的旧数据。品号下拉一并重建。跟同步里 labChanged 那段是同一套动作。 */
   if(!$("#lsheetv").hidden){ await labLoadAll(true); labFillRecModels(); labRenderRec(); }
   else labShow("entry");
-  toast("已删除");
+  toast(tr("已删除"));
 });
 
 /* head fields */
@@ -12036,7 +12115,7 @@ $("#lstdt").addEventListener("input",e=>{
 $("#lstdt").addEventListener("change",()=>labRenderStd());
 $("#lstdt").addEventListener("click",e=>{
   const b=e.target.closest("[data-del]"); if(!b) return;
-  if(!confirm("删除品号 "+LAB_STD[+b.dataset.del].m+"？")) return;
+  if(!confirm(tr("删除品号")+" "+LAB_STD[+b.dataset.del].m+"？")) return;
   LAB_STD.splice(+b.dataset.del,1); labRenderStd();
 });
 
@@ -12079,7 +12158,7 @@ function labCSV(recs,month){
 $("#lcsv").addEventListener("click",async()=>{
   if(!LAB_CACHE) await labLoadAll(true);
   const recs=labRecRecords(true);
-  if(!recs.length){ toast("当前筛选下没有记录"); return; }
+  if(!recs.length){ toast(tr("当前筛选下没有记录")); return; }
   const sel=$("#lrec-range").selectedOptions[0];
   const tag=($("#lrec-range").value==="day"   ? fromDateInput($("#lrec-date").value).replace(/\//g,"-") :
              $("#lrec-range").value==="month" ? (fromDateInput($("#lrec-date").value)||"").slice(3).replace(/\//g,"-") :
@@ -12090,7 +12169,7 @@ $("#lcsv").addEventListener("click",async()=>{
   a.download="海绵物性测试表-"+tag+".csv";
   document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500);
-  toast(recs.length+" 批 · "+recs.length*3+" 行已导出");
+  toast(recs.length+" "+tr("批")+" · "+recs.length*3+" "+tr("行已导出"));
 });
 
 /* ── 视图切换 ──────────────────────────────────────────────────────
@@ -12807,25 +12886,25 @@ $("#histpick").addEventListener("change",async e=>{
   if(!file) return;
   let recs=null, note="";
   if(/\.xlsx$/i.test(file.name)){
-    toast("正在读表…");
+    toast(tr("正在读表…"));
     try{
       const {recs:r,stat}=xlsxToBatches(await readXlsx(await file.arrayBuffer()));
       recs=r;
       note="来自 "+stat.months+" 个月工作表，共 "+stat.rows+" 行"+
            (stat.odd?"（其中 "+stat.odd+" 行批号不规则，按所在月份归档）":"");
-    }catch(err){ toast("表读不了："+(err&&err.message||err)); return; }
+    }catch(err){ toast(tr("表读不了：")+(err&&err.message||err)); return; }
   }else{
     try{
       const data=JSON.parse(await file.text());
       recs=data&&Array.isArray(data.recs)?data.recs:null;
-    }catch(err){ toast("文件读不了：不是有效的 xlsx 或 JSON"); return; }
+    }catch(err){ toast(tr("文件读不了：不是有效的 xlsx 或 JSON")); return; }
   }
-  if(!recs||!recs.length){ toast("文件里没有可导入的记录"); return; }
-  if(!confirm("导入 "+recs.length+" 批历史记录？\n"+(note?note+"\n":"")+"\n"+
-              "· 已存在的同一批号会被覆盖，重复导入不会产生副本\n"+
-              "· 导入后会同步到所有设备，不只是这一台\n"+
-              "· 原表的判定只作对照保存，判定按当前标准表重算")) return;
-  toast("导入中…");
+  if(!recs||!recs.length){ toast(tr("文件里没有可导入的记录")); return; }
+  if(!confirm(tr("导入")+" "+recs.length+" "+tr("批历史记录？")+"\n"+(note?note+"\n":"")+"\n"+
+              "· "+tr("已存在的同一批号会被覆盖，重复导入不会产生副本")+"\n"+
+              "· "+tr("导入后会同步到所有设备，不只是这一台")+"\n"+
+              "· "+tr("原表的判定只作对照保存，判定按当前标准表重算"))) return;
+  toast(tr("导入中…"));
   let n=0;
   for(const c of recs){
     const rec=labBlank();
@@ -12843,7 +12922,7 @@ $("#histpick").addEventListener("change",async e=>{
     try{ await dbPut(rec); n++; }catch(err){ break; }
   }
   LAB_CACHE=null;
-  toast(n+" 批已导入");
+  toast(n+" "+tr("批已导入"));
   await labRefreshList();
   scheduleSync(500);
   if(!$("#lsheetv").hidden) await labOpenSheet();
@@ -12889,7 +12968,7 @@ function labPaintRpt(){
   LRPT_FIELDS.forEach(([id,k])=>{ $("#"+id).value=d[k]; });
 }
 function labOpenReport(){
-  if(!LR.lab.model){ toast("先选品名"); return; }
+  if(!LR.lab.model){ toast(tr("先选品名")); return; }
   labShow("entry");          /* the report form lives on the entry screen */
   $("#lrpt").hidden=false;
   labPaintRpt();
@@ -12905,7 +12984,7 @@ $(".lstep",$("#lrpt")).addEventListener("click",e=>{
   const b=e.target.closest("[data-rno]"); if(!b) return;
   const cur=$("#lr-no").value.trim();
   const m=/^(\d{6})(\d{2})$/.exec(cur);
-  if(!m){ toast("报告编号要 8 位：年月日 + 流水"); return; }
+  if(!m){ toast(tr("报告编号要 8 位：年月日 + 流水")); return; }
   const n=Math.max(1,Math.min(99,parseInt(m[2],10)+(+b.dataset.rno)));
   $("#lr-no").value=m[1]+String(n).padStart(2,"0");
   LR.lab.rpt.no=$("#lr-no").value; labSave();
@@ -13063,7 +13142,7 @@ applyRole();
 (async function boot(){
   try{ await ensureMeta(); }catch(e){ /* storage unavailable — route still works */ }
   const fixed=await migrateLabIds();
-  if(fixed) toast(fixed+" 条历史记录已修复编号，现在可以同步了");
+  if(fixed) toast(fixed+" "+tr("条历史记录已修复编号，现在可以同步了"));
   await migrateOqcPodi();
   route();
   refreshPending();
