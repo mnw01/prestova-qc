@@ -1263,7 +1263,7 @@ table.frec-table tbody tr.draft .lockdot,
 }
 .frec-empty{color:var(--ink-3);padding:14px 4px;text-align:center}
 
-/* 成品检验数据分析——KPI 卡片和月度趋势条，跟实验室看板的 .lkpi/.lbar 一个
+/* 成品检验数据分析——KPI 卡片和月度趋势条，跟实验室看板的 .lkpi/.qc-bar 一个
    样子，类名不同（.fd- 前缀）：fqc 不在 check-isolation.js 的隔离名单里，
    本来就是裸样式，这里延续同样的写法，不是新开先例 */
 .fd-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:4px}
@@ -1287,14 +1287,14 @@ table.frec-table tbody tr.draft .lockdot,
    得靠 inline style 把居中掰回左对齐。规格照抄 #lab .lnote / #ipqc .iphint /
    #iqc .iqhint —— 那三处早就统一在 11.5px / --ink-3 / 400。 */
 .fd-note{font-size:11.5px;color:var(--ink-3);font-weight:400;line-height:1.5;margin-top:8px}
-.fd-bars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
-.fd-bar{display:grid;grid-template-columns:64px 1fr 140px;gap:10px;align-items:center;font-size:12.5px}
-.fd-bar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
-.fd-bar .track{height:17px;border-radius:3px;overflow:hidden;display:flex;background:var(--rule-2)}
-.fd-bar .ok{background:#3f9d67}
-.fd-bar .no{background:#c9483c}
-.fd-bar .num{color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right}
-.fd-bar .num b{color:var(--ink);font-weight:600}
+.qc-bars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+.qc-bar{display:grid;grid-template-columns:64px 1fr 140px;gap:10px;align-items:center;font-size:12.5px}
+.qc-bar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
+.qc-bar .track{height:17px;border-radius:3px;overflow:hidden;display:flex;background:var(--rule-2)}
+.qc-bar .ok{background:#3f9d67}
+.qc-bar .no{background:#c9483c}
+.qc-bar .num{color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.qc-bar .num b{color:var(--ink);font-weight:600}
 @media(prefers-color-scheme:dark){
   .fd-kpi.bad .n{color:#e88b81}
   .fd-kpi.good .n{color:#5fbf8d}
@@ -1454,13 +1454,6 @@ table.frec-table tbody tr.draft .lockdot,
 /* 不合格项分析——跟实验室看板的 .litem 同一个样子 */
 /* 月度合格率：同上。来料的窗口是自选起止日期，不是预设档位 —— 但月度图只关心
    窗口里有哪些记录，跟窗口怎么选出来的无关，选 3 天就 1 根条，选一年最多 12 根。 */
-#iqc .iqbars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
-#iqc .iqbar{display:grid;grid-template-columns:64px 1fr 150px;gap:10px;align-items:center;font-size:12.5px}
-#iqc .iqbar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
-#iqc .iqbar .track{height:17px;border-radius:3px;overflow:hidden;display:flex;background:var(--rule-2)}
-#iqc .iqbar .ok{background:#3f9d67}
-#iqc .iqbar .no{background:#c9483c}
-#iqc .iqbar .num{color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 #iqc .iqan-items{display:flex;flex-direction:column;gap:12px;margin-top:4px}
 #iqc .iqan-item{display:grid;grid-template-columns:80px 1fr 150px;gap:10px;align-items:center;font-size:12.5px}
 #iqc .iqan-item .track{height:13px;background:var(--rule-2);border-radius:3px;overflow:hidden}
@@ -1598,15 +1591,8 @@ table.frec-table tbody tr.draft .lockdot,
 #ipqc .ipan-kpi .t{font-size:11.5px;color:var(--ink-3);margin-top:2px;letter-spacing:.02em}
 #ipqc .ipan-kpi.bad .n{color:var(--no)}
 #ipqc .ipan-kpi.good .n{color:var(--ok)}
-/* 月度合格率：照抄 #lab .lbar —— 标签 | 绿红两段的条 | 数字。条的**总长**按当月
+/* 月度合格率：共用 .qc-bar —— 标签 | 绿红两段的条 | 数字。条的**总长**按当月
    检查数量占最大那个月的比例，绿红是这个月内部的构成，跟成品/实验室一个读法。 */
-#ipqc .ipbars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
-#ipqc .ipbar{display:grid;grid-template-columns:64px 1fr 150px;gap:10px;align-items:center;font-size:12.5px}
-#ipqc .ipbar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
-#ipqc .ipbar .track{height:17px;border-radius:3px;overflow:hidden;display:flex;background:var(--rule-2)}
-#ipqc .ipbar .ok{background:#3f9d67}
-#ipqc .ipbar .no{background:#c9483c}
-#ipqc .ipbar .num{color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 #ipqc .ipan-items{display:flex;flex-direction:column;gap:10px;margin-top:4px}
 #ipqc .ipan-item{display:grid;grid-template-columns:minmax(90px,140px) 1fr 150px;gap:10px;
   align-items:center;font-size:12.5px}
@@ -1701,18 +1687,11 @@ table.frec-table tbody tr.draft .lockdot,
 #cfr1633 .ftan-kpi.good .n{color:var(--ok)}
 /* 月度合格率：跟成品/制程/实验室同一个读法 —— 标签 | 绿红两段的条 | 数字。
    条的总长按当月记录数占最大那个月的比例，绿红是这个月内部的构成。 */
-#cfr1633 .ftbars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
-#cfr1633 .ftbar{display:grid;grid-template-columns:64px 1fr 150px;gap:10px;align-items:center;font-size:12.5px}
-#cfr1633 .ftbar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
-#cfr1633 .ftbar .track{height:17px;border-radius:3px;overflow:hidden;display:flex;background:var(--rule-2)}
-#cfr1633 .ftbar .ok{background:#3f9d67}
-#cfr1633 .ftbar .no{background:#c9483c}
-#cfr1633 .ftbar .num{color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 #cfr1633 .ftan-items{display:flex;flex-direction:column;gap:10px;margin-top:4px}
 #cfr1633 .ftan-item{display:grid;grid-template-columns:minmax(90px,140px) 1fr 150px;gap:10px;
   align-items:center;font-size:12.5px}
 #cfr1633 .ftan-item .track{height:13px;background:var(--rule-2);border-radius:3px;overflow:hidden}
-/* 条形图全站就两种颜色，照抄成品 .fd-bar / 实验室 .lbar 那一对字面值：
+/* 条形图全站就两种颜色，照抄共用 .qc-bar 那一对字面值：
      合格 / 在限值内  #3f9d67
      不合格 / 超限值  #c9483c
    没有限值可言的那种分档（燃烧时间）用中性 --ink-3，不硬套语义。
@@ -1930,7 +1909,7 @@ table.frec-table tbody tr.draft .lockdot,
 #oqc .orec-badge.ok{background:var(--okbg);color:var(--ok)}
 #oqc .orec-badge.no{background:var(--nobg);color:var(--no)}
 #oqc .orec-badge.na{background:var(--accent-soft);color:var(--ink-3)}
-/* ── 数据分析屏：跟实验室 (#lab .lkpi / .lbar / .litem) 同构 ──────────
+/* ── 数据分析屏：跟实验室 (#lab .lkpi / .qc-bar / .litem) 同构 ──────────
    底色、圆角、内边距、字号一律**不在这里写** —— 样式表末尾那段共用视觉系统
    统一管（.fd-kpi,#iqc .iqan-kpi,… 那几条，#oqc .oqan-kpi 已加进去）。
    在这里另写一套就是第一版的错：用了 --accent-soft（蓝的，评审否掉过），
@@ -1944,17 +1923,9 @@ table.frec-table tbody tr.draft .lockdot,
 #oqc .oqan-kpi.bad .n{color:var(--no)}
 #oqc .oqan-kpi.good .n{color:var(--ok)}
 
-/* 月度合格率：照抄 #lab .lbar —— 标签 | 绿红两段的条 | 数字。
+/* 月度合格率：共用 .qc-bar —— 标签 | 绿红两段的条 | 数字。
    条的**总宽**按当月柜数占最大月的比例，条**内部**按合格/不合格分段，
    跟实验室一个读法。 */
-#oqc .oqbars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
-#oqc .oqbar{display:grid;grid-template-columns:64px 1fr 118px;gap:10px;align-items:center;font-size:12.5px}
-#oqc .oqbar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
-#oqc .oqbar .track{height:17px;border-radius:3px;overflow:hidden;display:flex;background:var(--rule-2)}
-#oqc .oqbar .ok{background:#3f9d67}
-#oqc .oqbar .no{background:#c9483c}
-#oqc .oqbar .num{color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right}
-#oqc .oqbar .num b{color:var(--ink);font-weight:600}
 
 /* 不合格项：照抄 #lab .litem / #ipqc .ipan-item —— **条拿 1fr，文字列封顶**。
    第一版把 1fr 给了文字、条只剩 160px，比别的板块短一大截，评审指出。
@@ -2295,14 +2266,6 @@ table.frec-table tbody tr.draft .lockdot,
 #lab .lkpi.good .n{color:var(--ok)}
 
 /* month rows: a bar per month, pass green / fail red, count on the right */
-#lab .lbars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
-#lab .lbar{display:grid;grid-template-columns:64px 1fr 118px;gap:10px;align-items:center;font-size:12.5px}
-#lab .lbar .lab{color:var(--ink-2);font-variant-numeric:tabular-nums}
-#lab .lbar .track{height:17px;border-radius:3px;overflow:hidden;display:flex;background:var(--rule-2)}
-#lab .lbar .ok{background:#3f9d67}
-#lab .lbar .no{background:#c9483c}
-#lab .lbar .num{color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right}
-#lab .lbar .num b{color:var(--ink);font-weight:600}
 
 /* per-item failure share. The number column is fixed wide enough for the
    longest real value ("1244 / 3562  34.9%") plus nowrap — it used to be 96px
@@ -2847,7 +2810,7 @@ table.frec-table tbody tr.draft .lockdot,
 
 /* ── 分析屏的条形图：手机版 ────────────────────────────────────────
    六个板块的看板里有两种条，桌面上都是「标签 | 条 | 数字」三列：
-     月度条  #fdash .fd-bar / #lab .lbar / #oqc .oqbar   标签是月份这种短词
+     月度条  .qc-bar（六个板块共用）              标签是月份这种短词
      明细条  #iqc .iqan-item / #ipqc .ipan-item / #oqc .oqan-item /
              #cfr1633 .ftan-item / #lab .litem           标签是整句检验项目
    两侧那两列写死了 64~150px，手机上不缩，条就被挤没了。375 宽实测条长：
@@ -2864,7 +2827,7 @@ table.frec-table tbody tr.draft .lockdot,
      「别处的无作用域裸类规则」挡下来（它是按行首认的）。
    整段只在 ≤560px 生效：桌面一个像素不动，打印件也不涉及（看板不打印）。 */
 @media (max-width:560px){
-  #fdash .fd-bar,#lab .lbar,#oqc .oqbar{grid-template-columns:auto 1fr auto}
+  .qc-bar{grid-template-columns:auto 1fr auto}
   #iqc .iqan-item,#ipqc .ipan-item,#oqc .oqan-item,#cfr1633 .ftan-item,#lab .litem{grid-template-columns:1fr auto;gap:5px 10px}
   #iqc .iqan-item > span:first-child,#ipqc .ipan-item > span:first-child,#oqc .oqan-item > span:first-child,#cfr1633 .ftan-item > span:first-child,#lab .litem > span:first-child{grid-area:1 / 1}
   #iqc .iqan-item .track,#ipqc .ipan-item .track,#oqc .oqan-item .track,#cfr1633 .ftan-item .track,#lab .litem .track{grid-area:2 / 1 / 3 / -1}
@@ -3107,12 +3070,12 @@ table.frec-table tbody tr.draft .lockdot,
 
 <section class="frec-card">
   <h2>月度合格率</h2>
-  <div class="fd-bars" id="fd-months"></div>
+  <div class="qc-bars" id="fd-months"></div>
 </section>
 
 <section class="frec-card">
   <h2>按床垫类型</h2>
-  <div class="fd-bars" id="fd-mattresses"></div>
+  <div class="qc-bars" id="fd-mattresses"></div>
 </section>
 
 <section class="frec-card">
@@ -3252,7 +3215,7 @@ table.frec-table tbody tr.draft .lockdot,
 
     <section class="iqcard">
       <h2>月度合格率</h2>
-      <div class="iqbars" id="id-months"></div>
+      <div class="qc-bars" id="id-months"></div>
     </section>
 
     <section class="iqcard">
@@ -3368,7 +3331,7 @@ table.frec-table tbody tr.draft .lockdot,
 
     <section class="ipcard">
       <h2>月度合格率</h2>
-      <div class="ipbars" id="ipd-months"></div>
+      <div class="qc-bars" id="ipd-months"></div>
     </section>
 
     <section class="ipcard">
@@ -3542,7 +3505,7 @@ table.frec-table tbody tr.draft .lockdot,
 
   <section class="oqcard">
     <h2>月度合格率 <span class="oqhint">按柜计 · 绿=合格 红=不合格</span></h2>
-    <div class="oqbars" id="oqd-months"></div>
+    <div class="qc-bars" id="oqd-months"></div>
   </section>
 
   <section class="oqcard">
@@ -3750,7 +3713,7 @@ table.frec-table tbody tr.draft .lockdot,
 
     <section class="ftcard">
       <h2>月度合格率</h2>
-      <div class="ftbars" id="ftd-months"></div>
+      <div class="qc-bars" id="ftd-months"></div>
     </section>
 
     <section class="ftcard">
@@ -4008,7 +3971,7 @@ table.frec-table tbody tr.draft .lockdot,
 
     <section class="lcard">
       <h2>月度合格率 <span class="lhint">按支计 · 绿=合格 红=不合格</span></h2>
-      <div class="lbars" id="ld-months"></div>
+      <div class="qc-bars" id="ld-months"></div>
     </section>
 
     <section class="lcard">
@@ -5557,7 +5520,7 @@ async function fqcDashRender(){
   const maxN=Math.max(1,...a.months.map(m=>m.n));
   $("#fd-months").innerHTML=a.months.map(m=>{
     const j=m.n, w=m.n/maxN*100, okN=j-m.bad;
-    return '<div class="fd-bar"><span class="lab">'+m.ym.slice(2)+'</span>'+
+    return '<div class="qc-bar"><span class="lab">'+m.ym.slice(2)+'</span>'+
       '<span class="track" style="width:'+w.toFixed(1)+'%">'+
         '<i class="ok" style="width:'+pct(okN,j||1)+'%"></i>'+
         '<i class="no" style="flex:1"></i></span>'+
@@ -5571,7 +5534,7 @@ async function fqcDashRender(){
   const maxM=Math.max(1,...a.byMattress.map(x=>x.n));
   $("#fd-mattresses").innerHTML=a.byMattress.map(x=>{
     const j=x.n, okN=j-x.bad, w=j/maxM*100;
-    return '<div class="fd-bar"><span class="lab">'+esc(tr(x.k))+'</span>'+
+    return '<div class="qc-bar"><span class="lab">'+esc(tr(x.k))+'</span>'+
       '<span class="track" style="width:'+w.toFixed(1)+'%">'+
         '<i class="ok" style="width:'+pct(okN,j||1)+'%"></i>'+
         '<i class="no" style="flex:1"></i></span>'+
@@ -6306,7 +6269,7 @@ async function idashRender(){
   const iqMaxM=Math.max(1,...a.months.map(m=>m.judged));
   $("#id-months").innerHTML=a.months.map(m=>{
     const okN=m.judged-m.bad, w=m.judged/iqMaxM*100;
-    return '<div class="iqbar"><span class="lab">'+m.ym.slice(2)+'</span>'+
+    return '<div class="qc-bar"><span class="lab">'+m.ym.slice(2)+'</span>'+
       '<span class="track" style="width:'+w.toFixed(1)+'%">'+
         '<i class="ok" style="width:'+pct(okN,m.judged||1)+'%"></i>'+
         '<i class="no" style="flex:1"></i></span>'+
@@ -7706,7 +7669,7 @@ async function ipdashRender(){
   const maxQ=Math.max(1,...a.months.map(m=>m.qty));
   $("#ipd-months").innerHTML=a.months.map(m=>{
     const okN=m.qty-m.bad, w=m.qty/maxQ*100;
-    return '<div class="ipbar"><span class="lab">'+m.ym.slice(2)+'</span>'+
+    return '<div class="qc-bar"><span class="lab">'+m.ym.slice(2)+'</span>'+
       '<span class="track" style="width:'+w.toFixed(1)+'%">'+
         '<i class="ok" style="width:'+pct(okN,m.qty||1)+'%"></i>'+
         '<i class="no" style="flex:1"></i></span>'+
@@ -8514,7 +8477,7 @@ async function oqdashRender(){
         /* j 为 0（那个月的柜一项都没判）时不能走 pct(x, j||1)：那会算出绿 0%、
            红 flex:1，整条画成红的，右边文字却写着「—」，图跟数字互相矛盾。
            这时整条留中性灰（两段都不画）。 */
-        return '<div class="oqbar"><span class="lab">'+esc(m.ym.slice(2))+'</span>'+
+        return '<div class="qc-bar"><span class="lab">'+esc(m.ym.slice(2))+'</span>'+
           '<span class="track" style="width:'+(m.n/maxM*100).toFixed(1)+'%">'+
             (j ? '<i class="ok" style="width:'+pct(m.pass,j)+'%"></i>'+
                  '<i class="no" style="flex:1"></i>' : '')+'</span>'+
@@ -9482,7 +9445,7 @@ async function ftdashRender(){
   const ftMaxM=Math.max(1,...a.months.map(m=>m.pass+m.fail));
   $("#ftd-months").innerHTML=a.months.map(m=>{
     const j=m.pass+m.fail, w=j/ftMaxM*100;
-    return '<div class="ftbar"><span class="lab">'+m.ym.slice(2)+'</span>'+
+    return '<div class="qc-bar"><span class="lab">'+m.ym.slice(2)+'</span>'+
       '<span class="track" style="width:'+w.toFixed(1)+'%">'+
         '<i class="ok" style="width:'+pct(m.pass,j||1)+'%"></i>'+
         '<i class="no" style="flex:1"></i></span>'+
@@ -12561,7 +12524,7 @@ function labRenderDash(){
   const maxS=Math.max(1,...a.months.map(m=>m.samples));
   $("#ld-months").innerHTML=a.months.map(m=>{
     const j=m.pass+m.fail, w=m.samples/maxS*100;
-    return '<div class="lbar"><span class="lab">'+m.ym.slice(2)+'</span>'+
+    return '<div class="qc-bar"><span class="lab">'+m.ym.slice(2)+'</span>'+
       '<span class="track" style="width:'+w.toFixed(1)+'%">'+
         '<i class="ok" style="width:'+pct(m.pass,j||1)+'%"></i>'+
         '<i class="no" style="flex:1"></i></span>'+

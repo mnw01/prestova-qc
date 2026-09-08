@@ -29,6 +29,8 @@ const SHARED = new Set([
   /* 记录表外壳：五个板块 + cfr1633 共用 frec-card / frec-table 那套样式 */
   'frec-card', 'frec-head', 'frec-bar', 'frec-field', 'frec-wrap',
   'frec-table', 'frec-badge', 'frec-open', 'frec-empty',
+  /* 月度合格率条形图：六个板块（含首页成品）共用同一套 .qc-bars / .qc-bar */
+  'qc-bars', 'qc-bar',
 ]);
 
 /* 成品检验在 document 上挂了几个「全局委托监听」，靠 data 属性认元素：
