@@ -156,5 +156,45 @@ console.log("\n— 返回形状：调用方只有 .json() / .blob() 两个口 �
   ok("blob() 也走同一道 guard", (await r.blob()) === "BLOB" && t.delays.length === 2);
 }
 
+/* ── isBlankReport：配置记录永远不能被判成空壳 ─────────────────────────
+   2026-09-08 线上事故：加公告（type:"notice"）时，isBlankReport 和 cleanupBlanks
+   里那两份**各自硬写的**配置类型清单都没跟着加。公告记录没有 fields、没有照片、
+   AUTO_FIELDS 里也查不到，一路走到底被判成空白 —— 满 BLANK_TTL（1 小时）就被
+   cleanupBlanks 清掉，而且 syncedAt>0 时连服务端一起 DELETE。
+   现场表现：昨天发的公告第二天全没了，payload 被清空、救不回来。
+   现在两处都改成读 CFG_TYPES，这里钉住它。 */
+console.log("\n— isBlankReport：配置记录不算空壳 —");
+{
+  const cfgAt = src.indexOf("const CFG_TYPES=");
+  const cfgEnd = src.indexOf("\n", cfgAt);
+  const fnAt2 = src.indexOf("function isBlankReport(rec){");
+  const end2 = src.indexOf("\n}\n", fnAt2);
+  if (cfgAt < 0 || fnAt2 < 0 || end2 < 0) {
+    ok("切得出 isBlankReport", false, "源文件标记变了，先改切片逻辑");
+  } else {
+    const ctx = vm.createContext({ lnum: v => Number(v) || 0 });
+    vm.runInContext(src.slice(cfgAt, cfgEnd) + "\n" + src.slice(fnAt2, end2 + 2), ctx);
+    const blank = (type, extra) => Object.assign(
+      { type, fields: {}, photos: {}, photoOps: {}, caps: {}, flags: {}, fits: {} }, extra || {});
+
+    /* 出事的那一条 */
+    ok("公告记录不算空壳（否则满 1 小时被连服务端一起删）",
+       ctx.isBlankReport(blank("notice", { notice: [{ id: "n1", text: "公告", at: 1 }] })) === false);
+    /* 连正文都空的公告记录也不能收 —— 它仍然是配置记录，判据是 type 不是内容 */
+    ok("空的公告记录也不算空壳", ctx.isBlankReport(blank("notice")) === false);
+    /* 原有三类不能因为改用 CFG_TYPES 而回归 */
+    for (const t of ["labstd", "iqcmat", "ipqcmat"])
+      ok(t + " 仍然不算空壳", ctx.isBlankReport(blank(t)) === false);
+
+    /* 反面：真空壳还得能被认出来，否则这组断言是假的 */
+    ok("真·空白 fqc 仍然判为空壳",
+       ctx.isBlankReport(blank("fqc", { fields: { inspDate: "08/09/2026" } })) === true);
+    ok("填过字的 fqc 不算空壳",
+       ctx.isBlankReport(blank("fqc", { fields: { itemNo: "A-1" } })) === false);
+    ok("已提交锁定的绝不算空壳",
+       ctx.isBlankReport(blank("fqc", { locked: 1 })) === false);
+  }
+}
+
 console.log("\n" + pass + " passed, " + fail + " failed\n");
 process.exit(fail ? 1 : 0);
