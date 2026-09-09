@@ -519,6 +519,21 @@ export default {
            所以这一条只给管理员，前端藏按钮只是顺带。 */
         if (m === "DELETE") {
           if (role !== "admin") return json({ error: "forbidden", need: "admin" }, 403);
+          /* 配置记录（__ 开头 / ADMIN_TYPES）**谁都不许删**，管理员也不行。
+             跟锁定记录那道闸同一个道理：**这不是安全加固，是功能必需** ——
+             删除是客户端发起的，而客户端可能是旧版本。
+
+             2026-09-09 实际发生：加公告时漏了 cleanupBlanks 的类型清单，
+             __notice 被当成空壳，满 1 小时就被删。客户端那边补上之后公告**又
+             没了** —— 因为修的是客户端，而 DELETE 是发给服务端的：一台还没
+             刷新、跑着旧 JS 的管理员设备，启动时照样把它删掉，墓碑再经 pullAll
+             扩散到所有设备。一台旧客户端就能毒死全公司，客户端补丁挡不住。
+
+             配置记录本来也没有「删除」这个操作：公告删单条走的是 PUT（改数组），
+             基础资料/标准表是覆盖式导入。所以这里一刀切没有误伤。 */
+          if (isConfigRecord(id)) {
+            return json({ error: "forbidden", reason: "config_record" }, 403);
+          }
           return apiDeleteReport(env, id);
         }
         return json({ error: "method" }, 405);

@@ -462,6 +462,24 @@ console.log("\n— 角色：QC / 管理员 —");
      (await put(qc.hdr, "__notice", "notice")).status === 403);
   ok("管理员写公告 → 200", (await put(ad.hdr, "__notice", "notice")).status === 200);
 
+  /* ── 配置记录不许删，管理员也不行 ────────────────────────────────
+     2026-09-09 线上事故的第二轮：公告被 cleanupBlanks 当空壳删掉，客户端补了
+     类型清单之后**又没了** —— 因为修的是客户端，而 DELETE 是发给服务端的。
+     一台还没刷新、跑着旧 JS 的管理员设备，启动时照样删，墓碑经 pullAll 扩散
+     到所有设备。客户端补丁永远挡不住旧客户端，这道闸只能长在服务端。
+     配置记录本来也没有「删除」操作：公告删单条走 PUT（改数组），基础资料
+     和标准表是覆盖式导入。 */
+  for (const id of ["__notice", "__labstd", "__iqcmat", "__ipqcmat"]) {
+    ok("管理员删 " + id + " → 403（配置记录谁都不许删）",
+       (await hit2("/api/report/" + id, { method: "DELETE", ...ad.hdr })).status === 403);
+  }
+  ok("被拦下之后公告还在、没变成墓碑",
+     (await (await hit2("/api/report/__notice", ad.hdr)).json()).deleted === false);
+  /* 反面：普通记录该删还得删得掉，别把这道闸开太大 */
+  await put(ad.hdr, "role-del-ok", "ipqc");
+  ok("普通记录管理员照样删得掉",
+     (await hit2("/api/report/role-del-ok", { method: "DELETE", ...ad.hdr })).status === 200);
+
   /* 基础资料 / 标准表：只有管理员 */
   ok("QC 写产品基础资料 → 403",
      (await put(qc.hdr, "__ipqcmat", "ipqcmat")).status === 403);
