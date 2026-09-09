@@ -193,6 +193,42 @@ console.log("\n— isBlankReport：配置记录不算空壳 —");
        ctx.isBlankReport(blank("fqc", { fields: { itemNo: "A-1" } })) === false);
     ok("已提交锁定的绝不算空壳",
        ctx.isBlankReport(blank("fqc", { locked: 1 })) === false);
+
+    /* ── 六个板块的自动清理都不能被这次改动影响 ──────────────────────
+       改的是共用函数，集合从 {labstd,iqcmat,ipqcmat} 变成多一个 notice。
+       理论上只多挡一种 type，但「理论上」不算数：每个板块各验一对
+       —— 只有建记录时自动填的那几格 → 仍然清得掉；人动过一下 → 保得住。
+       任何一条翻了，就是把别的板块的空壳清理弄坏了。 */
+    const CASES = [
+      ["fqc",     { inspDate: "08/09/2026" },                    { desc: "床垫" }],
+      ["lab",     { testDate: "08/09/2026", itemNo: "M1", po: "B1" }, { inspector: "阿明" }],
+      ["iqc",     { date: "08/09/2026", itemNo: "M1", po: "供应商" },  { inspector: "阿明" }],
+      ["ipqc",    { date: "08/09/2026", itemNo: "车间", po: "工序" },   { qty: "100" }],
+      ["oqc",     { date: "08/09/2026" },                        { container: "CONT-1" }],
+      ["cfr1633", { testDate: "08/09/2026", itemNo: "M1", po: "P1" },  { sku: "S-1" }],
+    ];
+    for (const [type, autoOnly, touched] of CASES) {
+      ok(type + "：只有自动填的字段 → 仍判为空壳（清理照常）",
+         ctx.isBlankReport(blank(type, { fields: autoOnly })) === true);
+      ok(type + "：人动过一格 → 保得住",
+         ctx.isBlankReport(blank(type, { fields: Object.assign({}, autoOnly, touched) })) === false);
+    }
+    /* 各板块存在 fields 之外的内容也要继续保护住 */
+    ok("lab：有读数就保得住",
+       ctx.isBlankReport(blank("lab", { fields: { testDate: "08/09/2026" },
+                                        lab: { v: { density: ["21.5", "", ""] } } })) === false);
+    ok("ipqc：有不良明细就保得住",
+       ctx.isBlankReport(blank("ipqc", { fields: { date: "08/09/2026" },
+                                         ipqc: { defects: [{ model: "", desc: "起皱", n: 2 }] } })) === false);
+    ok("oqc：勾了检查项就保得住",
+       ctx.isBlankReport(blank("oqc", { fields: { date: "08/09/2026" },
+                                        oqc: { checks: { c1: { r: "ok" } } } })) === false);
+    ok("iqc：检查项开了就保得住",
+       ctx.isBlankReport(blank("iqc", { fields: { date: "08/09/2026" },
+                                        iqc: { items: { i1: { on: true } } } })) === false);
+    ok("有照片就保得住",
+       ctx.isBlankReport(blank("fqc", { fields: { inspDate: "08/09/2026" },
+                                        photos: { p1: {} } })) === false);
   }
 }
 
