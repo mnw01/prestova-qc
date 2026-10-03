@@ -5587,12 +5587,13 @@ $("#frec-table").addEventListener("click",async e=>{
    不用像来料检验那样补默认值。
    2026-08-15 试过改成起止日期两个输入框，用户要求退回下拉。 */
 function fqcDashDefaultRange(){}
-/* 软硬度分布的档位：左闭右开，最后一档 9~10 两头都含（10 分算进去）。
-   用户 2026-10-03 定的六档。 */
+/* 软硬度分布的档位：**超过**下限才进这一档，等于上限的留在这一档 ——
+   6 算 5~6，6.1 才算 6~7（用户 2026-10-03 定的）。两头例外：
+   「<5」就是严格小于 5；5 本身没有「超过」谁，归 5~6。
+   即 <5 | [5,6] | (6,7] | (7,8] | (8,9] | (9,10]。 */
 const FQC_HARD_BINS=[
-  {k:"<5",  lo:-Infinity, hi:5},
-  {k:"5~6", lo:5, hi:6}, {k:"6~7", lo:6, hi:7}, {k:"7~8", lo:7, hi:8},
-  {k:"8~9", lo:8, hi:9}, {k:"9~10",lo:9, hi:10}
+  {k:"<5",  hi:5}, {k:"5~6", hi:6}, {k:"6~7", hi:7},
+  {k:"7~8", hi:8}, {k:"8~9", hi:9}, {k:"9~10",hi:10}
 ];
 /* 返回档位下标；没填 → null；填了但不是数、或者大于 10 / 小于 0 → -1
    （不硬塞进哪一档，单独报个数，免得笔误把分布带歪）。逗号当小数点收，
@@ -5602,8 +5603,8 @@ function fqcHardBin(raw){
   if(!t) return null;
   const v=Number(t);
   if(!isFinite(v) || v<0 || v>10) return -1;
-  if(v===10) return FQC_HARD_BINS.length-1;
-  return FQC_HARD_BINS.findIndex(b=>v>=b.lo && v<b.hi);
+  if(v<5) return 0;
+  return FQC_HARD_BINS.findIndex((b,i)=>i>0 && v<=b.hi);
 }
 async function fqcDashAgg(range,item,mattress){
   const r=labRangeOf(range, dashAnchor("#fd-date"));
