@@ -253,7 +253,7 @@ npx wrangler secret put QC_COOKIE_SECRET    # 会话签名，随机长字符串
 **两个 store。** `reports` 存完整记录（含照片 Blob），`meta` 存轻量索引。
 列表、筛选、同步判断全走 `meta`，只有真要打开一条时才读 `reports`。
 
-> **改了 `metaOf()` 里任何一处推导，就把 `META_VER` 加 1**（当前 `4`）。
+> **改了 `metaOf()` 里任何一处推导，就把 `META_VER` 加 1**（当前 `5`）。
 > 开机对不上会整表重算索引。不加的话，新字段在老设备的索引行上永远是
 > `undefined` —— 出过"同一条记录电脑上显示不合格、手机上显示合格"。
 

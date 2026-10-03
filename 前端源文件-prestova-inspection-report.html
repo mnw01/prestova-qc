@@ -519,7 +519,6 @@ input,textarea,button,select{font:inherit;color:inherit}
    the same width as the other value column — otherwise it soaks up the slack
    and the table looks lopsided */
 #info{grid-template-columns:34mm 57mm 44mm minmax(0,1fr)}
-.blank{background:transparent}
 
 /* size sub-grid */
 .nest{padding:0;align-items:stretch}
@@ -771,7 +770,6 @@ body.dropping::after{
   .head h1{font-size:13pt}
   .head h2{font-size:10.5pt}
   #info{grid-template-columns:30mm minmax(0,1fr)}
-  #info .blank{display:none}
   #info .nest,#info .lbl.size,#info .lbl.gw,#info .val.gw{grid-column:auto}
   #info .lbl.size,#info .nest{grid-column:1/-1}
   #info .lbl.size{min-height:7mm}
@@ -2950,12 +2948,16 @@ table.frec-table tbody tr.draft .lockdot,
     <div class="lbl"><span class="en">Inspection date/</span><span class="zh">检查日期</span></div>
     <div class="val"><input type="date" data-f="inspDate"><span class="dpr" data-dp="inspDate"></span></div>
 
-    <div class="blank" style="grid-column:1/3"></div>
+    <!-- 左列原来第三行是一格空白（右列多一个装柜日期）。2026-10-03 去掉空白、
+         左列整体上移一格，空出来的位置在「包装」下面放「软硬度」—— 左右各 8 行，
+         正好对齐。右列不动。软硬度喂数据分析的「软硬度分布」，见 fqcDashAgg。 -->
+    <div class="lbl"><span class="en">Description/</span><span class="zh">品名</span></div>
+    <div class="val"><input data-f="desc" data-pm="model" autocomplete="off"></div>
     <div class="lbl"><span class="en">Loading Date/</span><span class="zh">装柜日期</span></div>
     <div class="val"><input type="date" data-f="loadDate"><span class="dpr" data-dp="loadDate"></span></div>
 
-    <div class="lbl"><span class="en">Description/</span><span class="zh">品名</span></div>
-    <div class="val"><input data-f="desc" data-pm="model" autocomplete="off"></div>
+    <div class="lbl"><span class="en">Order Qty/</span><span class="zh">数量</span></div>
+    <div class="val"><input data-f="orderQty" placeholder="PCS"></div>
     <div class="lbl"><span class="en">Mattress Type/</span><span class="zh">床垫类型</span></div>
     <div class="val"><select data-f="mattress">
       <option value=""></option>
@@ -2963,13 +2965,13 @@ table.frec-table tbody tr.draft .lockdot,
       <option value="海绵床垫">Foam Mattress / 海绵床垫</option>
     </select></div>
 
-    <div class="lbl"><span class="en">Order Qty/</span><span class="zh">数量</span></div>
-    <div class="val"><input data-f="orderQty" placeholder="PCS"></div>
+    <div class="lbl"><span class="en">Pack/</span><span class="zh">包装</span></div>
+    <div class="val"><input data-f="pack" placeholder="PCS"></div>
     <div class="lbl"><span class="en">Inspection Qty/</span><span class="zh">检查数量</span></div>
     <div class="val"><input data-f="inspQty" placeholder="PCS"></div>
 
-    <div class="lbl"><span class="en">Pack/</span><span class="zh">包装</span></div>
-    <div class="val"><input data-f="pack" placeholder="PCS"></div>
+    <div class="lbl"><span class="en">Firmness/</span><span class="zh">软硬度</span></div>
+    <div class="val"><input data-f="hard" inputmode="decimal"></div>
     <div class="lbl"><span class="en">Inspection Result/</span><span class="zh">检查结果</span></div>
     <div class="res">
       <label class="tick"><input type="radio" name="verdict" value="accept" data-c="verdict"><span class="box"></span><span class="t2"><span>Accepted/</span><span>接受</span></span></label>
@@ -3131,6 +3133,12 @@ table.frec-table tbody tr.draft .lockdot,
 <section class="frec-card">
   <h2>按床垫类型</h2>
   <div class="qc-bars" id="fd-mattresses"></div>
+</section>
+
+<section class="frec-card">
+  <h2>软硬度分布</h2>
+  <div class="qc-bars" id="fd-hard"></div>
+  <p class="fd-note" id="fd-hardnote"></p>
 </section>
 
 <section class="frec-card">
@@ -4412,6 +4420,7 @@ function metaOf(r){
     m.verdict=(r.checks||{}).verdict||"accept";
     m.desc=(f.desc||"").trim();
     m.mattress=(f.mattress||"").trim();
+    m.hard=(f.hard||"").trim();    /* 软硬度：数据分析的「软硬度分布」要它 */
   }
   /* #irec (来料检验记录表) needs the same list-without-opening-every-report
      shape as #frec — date/inspector/verdict live on the meta row */
@@ -4482,7 +4491,7 @@ const dbDelete = id => tx([STORE,META],"readwrite", t=>{
    **以后改 metaOf 里任何一处推导，就把 META_VER 加 1。** 开机对不上就整表
    重算一遍，不用再写一次性回填。重算只写索引、不碰记录本身，也不动
    updatedAt/syncedAt，所以不会引起任何同步。 */
-const META_VER = 4;   /* 4: 制程检验的 meta 加了 shift（班次）／3: meta 加了 locked（提交锁定） */
+const META_VER = 5;   /* 5: 成品的 meta 加了 hard（软硬度）／4: 制程检验的 meta 加了 shift（班次）／3: meta 加了 locked（提交锁定） */
 const META_VER_KEY = "qc-meta-ver";
 
 /* 只重写索引行，不重写记录 —— 记录里带着照片 Blob，1400 条全 put 一遍又慢
@@ -5553,6 +5562,24 @@ $("#frec-table").addEventListener("click",async e=>{
    不用像来料检验那样补默认值。
    2026-08-15 试过改成起止日期两个输入框，用户要求退回下拉。 */
 function fqcDashDefaultRange(){}
+/* 软硬度分布的档位：左闭右开，最后一档 9~10 两头都含（10 分算进去）。
+   用户 2026-10-03 定的六档。 */
+const FQC_HARD_BINS=[
+  {k:"<5",  lo:-Infinity, hi:5},
+  {k:"5~6", lo:5, hi:6}, {k:"6~7", lo:6, hi:7}, {k:"7~8", lo:7, hi:8},
+  {k:"8~9", lo:8, hi:9}, {k:"9~10",lo:9, hi:10}
+];
+/* 返回档位下标；没填 → null；填了但不是数、或者大于 10 / 小于 0 → -1
+   （不硬塞进哪一档，单独报个数，免得笔误把分布带歪）。逗号当小数点收，
+   印尼那边键盘习惯写 6,5。 */
+function fqcHardBin(raw){
+  const t=String(raw==null?"":raw).trim().replace(",",".");
+  if(!t) return null;
+  const v=Number(t);
+  if(!isFinite(v) || v<0 || v>10) return -1;
+  if(v===10) return FQC_HARD_BINS.length-1;
+  return FQC_HARD_BINS.findIndex(b=>v>=b.lo && v<b.hi);
+}
 async function fqcDashAgg(range,item,mattress){
   const r=labRangeOf(range, dashAnchor("#fd-date"));
   const cutoff=r.from?r.from.getTime():0;
@@ -5568,6 +5595,7 @@ async function fqcDashAgg(range,item,mattress){
      两张表都跟着上面的筛选走（是在筛完的样本里排名，不是全量），否则
      "筛了海绵床垫，下面的表还把弹簧的排进来"会让人以为筛选坏了。 */
   const out={ n:0, badN:0, months:new Map(), byMattress:new Map(), byDesc:new Map(),
+              hard:FQC_HARD_BINS.map(b=>({k:b.k,n:0,bad:0})), hardNone:0, hardOut:0,
               from:null, to:null };
   const bump=(map,key,bad)=>{
     let e=map.get(key); if(!e) map.set(key,e={k:key,n:0,bad:0});
@@ -5589,6 +5617,10 @@ async function fqcDashAgg(range,item,mattress){
     mo.n++; if(bad) mo.bad++;
     bump(out.byMattress,(m.mattress||"").trim()||"（未填）",bad);
     bump(out.byDesc,(m.desc||"").trim()||"（未填）",bad);
+    const hb=fqcHardBin(m.hard);
+    if(hb===null) out.hardNone++;
+    else if(hb<0) out.hardOut++;
+    else { out.hard[hb].n++; if(bad) out.hard[hb].bad++; }
   }
   out.months=[...out.months.values()].sort((a,b)=>a.ym<b.ym?-1:1);
   /* 床垫类型就两三个值，全给；品名可能上百个，只给不良最多的前 15 —— 跟制程
@@ -5639,6 +5671,28 @@ async function fqcDashRender(){
         '<i class="no" style="flex:1"></i></span>'+
       '<span class="num">'+okN+' / '+j+'　'+(j?pct(okN,j)+"%":"—")+'</span></div>';
   }).join("")||'<div class="frec-empty">没有数据。</div>';
+
+  /* 软硬度分布：柱子总长 = 这一档的份数占最多那一档的比例，绿红是这一档里
+     合格 / 不合格的构成 —— 跟上面两张的读法一样。右边数字是份数和占比
+     （占的是**填了软硬度**的那些，没填的不算进分母，单独在下面报）。
+     六档全列，0 份的也留着，分布图缺档会看错形状。 */
+  const hardN=a.hard.reduce((s,x)=>s+x.n,0);
+  const maxH=Math.max(1,...a.hard.map(x=>x.n));
+  $("#fd-hard").innerHTML = !hardN
+    ? '<div class="frec-empty">'+esc(tr("没有数据。"))+'</div>'
+    : a.hard.map(x=>{
+        const j=x.n, okN=j-x.bad, w=j/maxH*100;
+        return '<div class="qc-bar"><span class="lab">'+esc(x.k)+'</span>'+
+          '<span class="track" style="width:'+w.toFixed(1)+'%">'+
+            (j?'<i class="ok" style="width:'+pct(okN,j)+'%"></i><i class="no" style="flex:1"></i>':'')+
+          '</span>'+
+          '<span class="num">'+j+' '+esc(tr("份"))+'　'+pct(j,hardN)+'%</span></div>';
+      }).join("");
+  const hn=[];
+  if(a.hardNone) hn.push(a.hardNone+" "+tr("份未填软硬度"));
+  if(a.hardOut)  hn.push(a.hardOut+" "+tr("份填的不是 0~10 的数，未计入"));
+  $("#fd-hardnote").textContent=hn.join("　·　");
+  $("#fd-hardnote").hidden=!hn.length;
 
   /* 品名可能上百个，条形图铺不下，仍旧用表 */
   $("#fd-descs").innerHTML = !a.byDesc.length
@@ -11853,6 +11907,9 @@ const I18N_ID={
   "按型号": "Per Model",
   "按工序": "Per Section",
   "按床垫类型": "Per Jenis Kasur",
+  "软硬度分布": "Sebaran Tingkat Kekerasan",
+  "份未填软硬度": "laporan tanpa tingkat kekerasan",
+  "份填的不是 0~10 的数，未计入": "laporan bukan angka 0~10, tidak dihitung",
   "按支计 · 绿=合格 红=不合格": "Per sampel · hijau = OK, merah = NG",
   "按检查项每一行算，同一批可能同时几项都超": "Dihitung per baris item; satu batch bisa NG di beberapa item sekaligus",
   "按类别": "Per Kategori",
