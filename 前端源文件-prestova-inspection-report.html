@@ -5317,8 +5317,14 @@ function paintLockUI(rec, rootSel, btnSel, barSel){
   if(w){ w.classList.toggle("locked", on || ro); w.classList.toggle("viewonly", ro); }
   const b=$(btnSel);
   if(b){
-    /* 提交/解锁按钮对观察者没有意义，直接藏掉 */
-    b.hidden = ro;
+    /* 显示不显示**不归这里管**，这里只认观察者（一律藏）。归两处：
+         · 各板块切屏函数：录入页显示，记录表 / 数据分析藏；
+         · wireRowMark：在记录表上点了一行，才把它亮出来。
+       原来这里写的是 b.hidden = ro —— 每次画记录都把按钮**放出来**，不管当前在
+       哪一屏。于是进板块（先切到记录表、再载入最近那条）按钮就挂在记录表上了；
+       实验室恰好在载入之后又切了一次屏，才是「进来不显示、点一行才显示」。
+       观察者也是被它放出来的另一头：切屏函数把录入页的按钮打开，这里又不再管。 */
+    if(ro) b.hidden = true;
     b.textContent = !on ? tr("提交并锁定") : adm ? tr("解除锁定") : tr("已锁定");
     b.disabled = on && !adm;
     /* 不给未锁那版加 .key —— 旁边「打印」已经是主按钮，两个蓝的会打架；
@@ -5379,7 +5385,7 @@ function lockGate(rootSel, isLocked){
    用的还是渲染时那个 .cur：表格重画时它落在"当前载入的那条"上，
    手点会把它临时挪走（下次重画又回到当前记录，这是有意的，不另存状态）。
    实验室一批三行，按 data-row 把同一批的都标上。 */
-function wireRowMark(sel, loadRec){
+function wireRowMark(sel, loadRec, lockSel){
   const tbl=$(sel); if(!tbl) return;
   let want=null, busy=false;
   tbl.addEventListener("click",async e=>{
@@ -5398,7 +5404,14 @@ function wireRowMark(sel, loadRec){
     want=id;
     if(busy) return;
     busy=true;
-    try{ let done=null; while(want!==done){ const t=want; await loadRec(t); done=t; } }
+    try{
+      let done=null; while(want!==done){ const t=want; await loadRec(t); done=t; }
+      /* 点了一行，「提交并锁定 / 解除锁定」才亮出来，管的就是这一行 —— 进记录表时
+         高亮落在「当前载入的那条」上，那是自动选的，不是人挑的，不给按钮，免得
+         没看清是哪条就点了提交。载入期间人已经切走（closest("[hidden]")）就不亮。 */
+      const lb=lockSel && $(lockSel);
+      if(lb && !isViewer() && !tbl.closest("[hidden]")) lb.hidden=false;
+    }
     catch(err){ /* 载入失败就保持原样，高亮已经挪了，用户再点一次即可 */ }
     finally{ busy=false; }
   });
@@ -5417,12 +5430,12 @@ function wireRowMark(sel, loadRec){
    成品和装柜的记录带照片，载入时会从 R2 拉图。点行只是在挑、不是要看图，一行行
    点过去会连着拉一串，所以第二个参数传 true 跳过（真要看图点「查看」，或者切到
    录入页时 fqcShow/oqcShow 会补拉）。另外三个板块没有照片，不用这个参数。 */
-wireRowMark("#frec-table",  id=>load(id, true));
-wireRowMark("#irec-table",  id=>iqcLoad(id));
-wireRowMark("#iprec-table", id=>ipqcLoad(id));
-wireRowMark("#orec-table",  id=>oqcLoad(id, true));
-wireRowMark("#lrec-table",  id=>labLoad(id));
-wireRowMark("#ftrec-table", id=>ftLoad(id, true));
+wireRowMark("#frec-table",  id=>load(id, true),     "#lockbtn");
+wireRowMark("#irec-table",  id=>iqcLoad(id),        "#ilockbtn");
+wireRowMark("#iprec-table", id=>ipqcLoad(id),       "#plockbtn");
+wireRowMark("#orec-table",  id=>oqcLoad(id, true),  "#olockbtn");
+wireRowMark("#lrec-table",  id=>labLoad(id),        "#llockbtn");
+wireRowMark("#ftrec-table", id=>ftLoad(id, true),   "#ftlockbtn");
 
 /* 鼠标划过时整批一起亮。只有实验室要走 JS：**它一批三行**，纯 CSS 的
    `tr:hover` 只会亮鼠标底下那一条，三行里亮中间一条看着像错位。
@@ -5452,7 +5465,7 @@ function fqcShow(view){
   $("#fdashbtn").classList.toggle("cur", view==="dash");
   /* 提交是针对"当前打开的那份"，记录表/数据分析这两屏跟屏幕内容对不上。
      打印按钮不用管 —— 它已经挪进 .wrap 里，跟着 .wrap 一起显示/隐藏。 */
-  $("#lockbtn").hidden = view!=="form";
+  $("#lockbtn").hidden = view!=="form" || isViewer();
   backLevel("#back", view==="rec");
   statFor("#stat",  view==="form");
   if(view==="rec"){ rangeToday("#frec-date"); frecRender(); }
@@ -6168,7 +6181,7 @@ function iqcShow(view){
      不 await，晚一拍填好列表对已经渲染出来的表格没有影响。 */
   backLevel("#iback", view==="rec");
   statFor("#istat", view==="entry");
-  $("#ilockbtn").hidden = view!=="entry";      /* 提交的是"当前这批"，别的屏上没有 */
+  $("#ilockbtn").hidden = view!=="entry" || isViewer();   /* 提交的是"当前这批"，别的屏上没有 */
   if(view==="rec"){ rangeToday("#irec-date"); iqcFillCatFilter(); irecRender(); }
   if(view==="dash"){ iqcDashDefaultRange(); iqcFillCatFilter(); idashRender(); }
 }
@@ -7348,7 +7361,7 @@ function ipqcShow(view){
      的信号。 */
   backLevel("#pback", view==="rec");
   statFor("#pstat", view==="entry");
-  $("#plockbtn").hidden = view!=="entry";
+  $("#plockbtn").hidden = view!=="entry" || isViewer();
   if(view==="rec"){ iprecDefaultRange(); iprecRender(); }
   if(view==="dash"){ ipqcDashDefaultRange(); ipdashRender(); }
 }
@@ -8130,7 +8143,7 @@ function oqcShow(view){
      用的也是 view==="rec"。 */
   backLevel("#oback", view==="rec");
   statFor("#ostat", view==="entry");
-  $("#olockbtn").hidden = view!=="entry";
+  $("#olockbtn").hidden = view!=="entry" || isViewer();
   if(view==="rec"){ rangeToday("#orec-date"); orecRender(); }
   if(view==="dash") oqdashRender();
   /* 跟成品 fqcShow 同一个理由：记录表点一行跳过了照片，从这里切回录入页要补拉 */
@@ -9049,6 +9062,9 @@ function ftSave(){
     try{
       await dbPut(FT);
       ftMarkSaved(); scheduleSync();
+      /* 跟来料 / 制程 / 装柜一样：写进库之后再重画记录表（只在它开着时）。
+         在记录表上点「提交并锁定」，圆点和压暗要跟着变，见 #ftlockbtn。 */
+      if(!$("#ftrec").hidden) await ftrecRender();
     }catch(e){ toast(tr("保存失败")); }
   },400);
 }
@@ -9373,7 +9389,7 @@ function ftShow(view){
   $("#ftdashbtn").classList.toggle("cur", view==="dash");
   backLevel("#ftback", view==="rec");
   statFor("#ftstat", view==="entry");
-  $("#ftlockbtn").hidden = view!=="entry";
+  $("#ftlockbtn").hidden = view!=="entry" || isViewer();
   if(view==="rec"){ ftrecDefaultRange(); ftrecRender(); }
   if(view==="dash"){ ftDashDefaultRange(); ftdashRender(); }
   /* 记录表点行是 skipPhotos 进来的，真开录入屏时在这儿补拉（同装柜 oqcShow） */
@@ -9633,7 +9649,8 @@ $("#ftlockbtn").addEventListener("click",async()=>{
   if(!lockAsk(FT, "#ftstat")) return;
   ftSave();
   ftPaintLock();
-  if(!$("#ftrec").hidden) await ftrecRender();   /* 锁状态圆点和 .draft 跟着变 */
+  /* 记录表的圆点和压暗由 ftSave 写库之后重画。原来在这里直接 ftrecRender()，
+     可 ftSave 有 400ms 防抖、还没写进库，读到的是旧索引 —— 表上的状态不变。 */
 });
 
 /* head fields */
@@ -9875,8 +9892,10 @@ function resetToBlank(){
 function renderCards(rows){
   const host=$("#modcards"); host.innerHTML="";
   /* QC 只同步进过的板块，没进过的本地压根没数据。这时候显示「0 份记录」
-     是在撒谎（看着像数据丢了），显示「—」才对：还没看过，点进去就有。 */
-  const only = isAdmin() ? null : usedMods();
+     是在撒谎（看着像数据丢了），显示「—」才对：还没看过，点进去就有。
+     观察者跟管理员一样拉全量（见 indexUrl），本地每个板块都有数，照实显示。
+     原来这里只认管理员，观察者没进过的板块全是「—」。 */
+  const only = (isAdmin() || isViewer()) ? null : usedMods();
   MODULES.forEach(m=>{
     const n=ofModule(rows,m.id).length;
     const unseen = only && !only.includes(m.id);
@@ -11405,6 +11424,14 @@ $("#llockbtn").addEventListener("click",async()=>{
   if(!lockAsk(LR, "#lstat")) return;
   labSave();
   paintLockUI(LR, "#labv", "#llockbtn", "#llockbar");
+  /* 在记录表上点的：表上的圆点 / 压暗 / 「查看」实心空心要当场变。
+     这张表画的是 LAB_CACHE（打开记录表时整批读出来的完整记录），跟 LR 是两份
+     对象，labSave 写库也不会回填它 —— 所以原来点了提交，表上什么都不动，
+     得退出去再进来才看得到。把缓存里那一条换成 LR 再重画，不用等写库。 */
+  if(LAB_VIEW==="sheet" && LAB_CACHE){
+    const i=LAB_CACHE.findIndex(r=>r.id===LR.id);
+    if(i>=0){ LAB_CACHE[i]=LR; labRenderRec(); }
+  }
 });
 
 /* ── today's batches ──────────────────────────────────────────────── */
@@ -12484,7 +12511,7 @@ function labShow(view){
   /* 实验室的"记录表"是 sheet 这一屏（海绵物性测试表），不叫 rec */
   backLevel("#lback", view==="sheet");
   statFor("#lstat", view==="entry");
-  $("#llockbtn").hidden = view!=="entry";
+  $("#llockbtn").hidden = view!=="entry" || isViewer();
   window.scrollTo(0,0);
 }
 /* clicking the button you are already on goes back to the entry screen */
@@ -12580,10 +12607,13 @@ function labRecRecords(full){
   recs.sort((a,b)=>{
     const ta=labBatchDate(a), tb=labBatchDate(b);
     if(ta&&tb&&ta-tb) return tb-ta;
-    /* 同一天里没提交的排前面。末级仍然是批号 —— 那是有意义的流水序，
-       比"最后碰过谁"更适合做实验室这张表的稳定排序。 */
+    /* 同一天里没提交的排前面，再按最后修改倒序 —— 跟另外五张表的 recSort
+       同一套。原来末级是批号倒序，同一天里刚改过的那批不在最上面（用户
+       2026-10-03 报的），跟别的板块对不上。批号留作最末一级，只管 updatedAt
+       正好相同（批量导入同一毫秒写入）时的顺序。 */
     if((a.locked?1:0)!==(b.locked?1:0)) return (a.locked?1:0)-(b.locked?1:0);
-    return labBatchNo(b.lab).localeCompare(labBatchNo(a.lab));
+    return ((b.updatedAt||0)-(a.updatedAt||0)) ||
+           labBatchNo(b.lab).localeCompare(labBatchNo(a.lab));
   });
   /* 实验室原来就只截「全部」，那是对的 —— 现在共用的 rangeCap 也这么做了，
      顺手接回去，别再手写一个 200（RANGE_CAP 改了这里会漏）。full 是导出用的，不截。 */
