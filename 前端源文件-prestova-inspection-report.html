@@ -242,12 +242,14 @@ input,textarea,button,select{font:inherit;color:inherit}
 .hhcard .hh-grid [data-ym]{cursor:pointer}
 .hhcard .hh-grid i.on{outline:1.5px solid var(--accent);outline-offset:0}
 .hhcard .hh-grid .m.on{color:var(--accent);font-weight:600}
-/* 色阶走 --no（不合格红），四档按当天不合格份数 / 半年里最多的那天。
+/* 色阶走 --no（不合格红），五档按当天不合格份数 / 窗口里最多的那天（peak）。
+   原来四档，用户 2026-10-04 要求加一档；相邻两档间隔 20%，再密小方格里就分不清了。
    没问题的日子统一是 --sunk 底色 —— 查了多少份不体现，只体现出没出问题。 */
-.hhcard i.l1{background:color-mix(in srgb,var(--no) 30%,var(--card))}
-.hhcard i.l2{background:color-mix(in srgb,var(--no) 55%,var(--card))}
-.hhcard i.l3{background:color-mix(in srgb,var(--no) 80%,var(--card))}
-.hhcard i.l4{background:var(--no)}
+.hhcard i.l1{background:color-mix(in srgb,var(--no) 22%,var(--card))}
+.hhcard i.l2{background:color-mix(in srgb,var(--no) 42%,var(--card))}
+.hhcard i.l3{background:color-mix(in srgb,var(--no) 62%,var(--card))}
+.hhcard i.l4{background:color-mix(in srgb,var(--no) 82%,var(--card))}
+.hhcard i.l5{background:var(--no)}
 .hhcard .hh-grid i.fut{visibility:hidden}
 .hhcard .hh-mods{display:flex;flex-direction:column;gap:7px;margin-top:4px}
 .hhcard .hh-mod{display:grid;grid-template-columns:88px minmax(0,1fr) 64px;gap:8px;align-items:center;font-size:12px}
@@ -10183,7 +10185,7 @@ async function renderHeat(rows){
   day.forEach(e=>{ if(e.n>peak) peak=e.n; });
 
   const ID=LANG==="id";
-  const lvl=n=> !n ? "" : "l"+Math.min(4,Math.ceil(n/peak*4));
+  const lvl=n=> !n ? "" : "l"+Math.min(5,Math.ceil(n/peak*5));
   const monName=mo=> ID ? ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][mo] : (mo+1)+"月";
   const ngUnit=n=> ID ? n+" tidak lolos" : n+" 份不合格";
   const wk = ID ? ["Sen","","Rab","","Jum","",""] : ["周一","","周三","","周五","",""];
@@ -10246,7 +10248,7 @@ async function renderHeat(rows){
     mods+
     '<div class="hh-foot">'+
       '<div class="hh-leg"><span class="t">'+esc(tr("少"))+'</span>'+
-        '<i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><span class="t">'+esc(tr("多"))+'</span></div>'+
+        '<i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span class="t">'+esc(tr("多"))+'</span></div>'+
     '</div>';
 }
 let HEAT_RESIZE_T=0, HEAT_LAST_W=0;
