@@ -8,14 +8,14 @@
 - R2:     `prestova-photos` （APAC，必须从 Cloudflare 后台建才能指定区域，
           命令行的 --location 是 best-effort，实测四次都被放到 ENAM。
           桶的区域建完不可改。）
-- 秘钥:   QC_PASSCODE / QC_ADMIN_PASSCODE / QC_COOKIE_SECRET
+- 秘钥:   QC_PASSCODE / QC_ADMIN_PASSCODE / QC_VIEWER_PASSCODE / QC_COOKIE_SECRET
           （用 wrangler secret 管理，不在代码里，也读不回来 —— 丢了只能重设）
 
 ## 常用命令
     npm install
     npm run migrate:list                             # 有无未应用的迁移
     npm run migrate                                  # 应用迁移到线上
-    npm test                                         # 后端单元测试（84 项）
+    npm test                                         # 后端单元测试（134 项）
     npx wrangler secret put QC_PASSCODE --name qc    # 改访问口令
     npx wrangler tail                                # 实时日志
     npx wrangler deploy                              # 手动部署（平时不用，走 CI）
@@ -46,7 +46,7 @@
 
 - `git diff --exit-code index.html` —— 仓库里那份 index.html 是构建产物。改了
   源文件却忘了重新构建就 push 的话，CI 构建出来的和提交的不一致，这里当场红。
-- `npm test` —— 84 项服务端测试（认证、路由、last-write-wins）。构建本身只检查
+- `npm test` —— 134 项服务端测试（认证、角色、路由、last-write-wins、锁定）。构建本身只检查
   前端的板块隔离，完全不碰 worker.js；没有这一步，改坏鉴权也会照常上线。
 
 `node -v` 只在非生产分支跑，把 CI 的 Node 版本记进日志——测试用 node:sqlite，
