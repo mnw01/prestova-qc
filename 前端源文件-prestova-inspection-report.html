@@ -10226,12 +10226,13 @@ async function renderHeat(rows){
 
   /* 右边：选中那个月的板块分布 —— 不合格份数 / 该板块那个月已提交份数。
      条长按不合格份数，最多的那个板块归一。六个板块固定顺序全列 ——
-     0 份不合格也是要看到的信息。底下一行小字说明是哪个月、数字是什么。 */
+     0 份不合格也是要看到的信息。底下一行小字只说是哪个月 —— 原来后面还跟着
+     「· 不合格 / 已提交」解释数字，用户 2026-10-04 要求删掉。 */
   const aSel=mAll.get(sel)||new Map(), gSel=mNg.get(sel)||new Map();
   const selMo=(+sel.split("-")[1])-1;
-  const cap = sel===curYm ? tr("当月分布 · 不合格 / 已提交")
-            : ID ? "Sebaran "+monName(selMo)+" · tidak lolos / terkirim"
-                 : monName(selMo)+"分布 · 不合格 / 已提交";
+  const cap = sel===curYm ? tr("当月分布")
+            : ID ? "Sebaran "+monName(selMo)
+                 : monName(selMo)+"分布";
   const maxM=Math.max(1,...MODULES.map(m=>gSel.get(m.id)||0));
   const mods='<div class="hh-mods">'+MODULES.map(m=>{
     const ng=gSel.get(m.id)||0, all=aSel.get(m.id)||0;
@@ -12241,7 +12242,7 @@ const I18N_ID={
   "最后一格里有照片，连照片一起删掉？": "Kotak terakhir ada fotonya. Hapus sekalian fotonya?",
   "最近的报告": "Laporan Terakhir",
   "不合格日历": "Kalender Tidak Lolos",
-  "当月分布 · 不合格 / 已提交": "Sebaran bulan ini · tidak lolos / terkirim",
+  "当月分布": "Sebaran bulan ini",
   "少": "Sedikit",
   "多": "Banyak",
   "月度不良率": "Persen NG per Bulan",
