@@ -262,8 +262,9 @@ input,textarea,button,select{font:inherit;color:inherit}
 .hhcard .hh-grid .m{font-size:10.5px;color:var(--ink-3);white-space:nowrap;overflow:visible;line-height:1.2;padding-bottom:1px}
 .hhcard .hh-grid .w{font-size:10px;color:var(--ink-3);line-height:1}
 .hhcard .hh-grid i{display:block;aspect-ratio:1;border-radius:3px;background:var(--sunk)}
-/* 点哪一天（或月份标签）就选中那个月：右边分布换成那个月，这个月的格子加蓝框、
-   月份标签变蓝。默认显示当月分布，但不加框，点了才加。 */
+/* 点月份标签选整月：右边分布换成那个月，整月的格子加蓝框。点某一格只选那一天：
+   右边换成当天的分布，只框那一格。两种情况那个月的标签都变蓝。
+   默认显示当月分布，但不加框，点了才加。 */
 .hhcard .hh-grid [data-ym]{cursor:pointer}
 .hhcard .hh-grid i.on{outline:1.5px solid var(--accent);outline-offset:0}
 .hhcard .hh-grid .m.on{color:var(--accent);font-weight:600}
@@ -10125,7 +10126,8 @@ function heatWeeks(host){
   const gridW=(host.clientWidth||600) - 36 - (narrow?0:296) - 20;
   return Math.max(HEAT_MIN_WEEKS, Math.min(HEAT_MAX_WEEKS, Math.floor(gridW/HEAT_PITCH)));
 }
-/* 选中的月份 "YYYY-M"（月从 1 起）；null = 当月。
+/* 选中的月份 "YYYY-M"（月从 1 起）或某一天 "YYYY-M-D"；null = 当月。
+   点月份标签选整月，点格子选那一天（用户 2026-10-04 要的：原来点格子也是选整月）。
    只在停留在首页时保持（60 秒的自动刷新不会冲掉它）；进板块再回来、或者刷新
    页面，都回到当月 —— showHome() 里清掉（评审要的）。 */
 let HEAT_SEL=null;
@@ -10178,8 +10180,13 @@ async function renderHeat(rows){
   const start=new Date(today); start.setDate(today.getDate()-((today.getDay()+6)%7)-(HEAT_WEEKS-1)*7);
   const curYm=ymOf(today);
   /* 选中的月份要在窗口里还看得到才算数；拖窄窗口把它挤出去了就退回当月 */
-  const sel = HEAT_SEL && HEAT_SEL.split("-").length===2 &&
-              new Date(+HEAT_SEL.split("-")[0], +HEAT_SEL.split("-")[1], 0) >= start ? HEAT_SEL : curYm;
+  const selP = HEAT_SEL ? HEAT_SEL.split("-").map(Number) : [];
+  const selOk =
+    selP.length===2 ? new Date(selP[0], selP[1], 0) >= start :
+    selP.length===3 ? (()=>{ const d=new Date(selP[0], selP[1]-1, selP[2]); return d>=start && d<=today; })() :
+    false;
+  const sel = selOk ? HEAT_SEL : curYm;
+  const selDay = sel.split("-").length===3;
   /* 框和蓝色标签只在**点过**之后才出现；默认（当月）右边照样显示当月分布，
      但格子不加框 —— 评审要的。 */
   const mark = HEAT_SEL && sel===HEAT_SEL ? sel : "";
@@ -10195,14 +10202,16 @@ async function renderHeat(rows){
   if(seq!==HEAT_SEQ || !$("#hheat")) return;
 
   const day=new Map();                 /* 日 -> {n, by:{type:n}} */
-  const mAll=new Map(), mNg=new Map(); /* 月 -> Map(type -> 份数)：右边分布用 */
+  /* 月 / 日 -> Map(type -> 份数)：右边分布用。月和日的键形状不同
+     （"2026-10" / "2026-10-3"），放在同一张表里不会撞。 */
+  const mAll=new Map(), mNg=new Map();
   const bump=(map,ym,t)=>{ const x=map.get(ym)||new Map(); x.set(t,(x.get(t)||0)+1); map.set(ym,x); };
   inWin.forEach(({m,d})=>{
-    const t=m.type||"fqc", ym=ymOf(d);
-    bump(mAll,ym,t);
+    const t=m.type||"fqc", ym=ymOf(d), dk=key(d);
+    bump(mAll,ym,t); bump(mAll,dk,t);
     const ng = t==="lab" ? labNg.has(m.id) : metaIsNg(m);
     if(!ng) return;
-    bump(mNg,ym,t);
+    bump(mNg,ym,t); bump(mNg,dk,t);
     const k=key(d), e=day.get(k)||{n:0,by:{}};
     e.n++; e.by[t]=(e.by[t]||0)+1; day.set(k,e);
   });
@@ -10235,18 +10244,19 @@ async function renderHeat(rows){
     const mon=new Date(start); mon.setDate(start.getDate()+c*7);
     const label=colLab[c]?colLab[c].t:"", labelYm=colLab[c]?colLab[c].ym:"";
     html+= label
-      ? '<span class="m'+(labelYm===mark?' on':'')+'" data-ym="'+labelYm+'" style="grid-row:1;grid-column:'+(c+2)+'">'+label+'</span>'
+      ? '<span class="m'+(labelYm===mark||(selDay&&mark.startsWith(labelYm+"-"))?' on':'')+'" data-ym="'+labelYm+'" style="grid-row:1;grid-column:'+(c+2)+'">'+label+'</span>'
       : '<span class="m" style="grid-row:1;grid-column:'+(c+2)+'"></span>';
     for(let r=0;r<7;r++){
       const d=new Date(mon); d.setDate(mon.getDate()+r);
       const pos='grid-row:'+(r+2)+';grid-column:'+(c+2);
       if(d>today){ html+='<i class="fut" style="'+pos+'"></i>'; continue; }
-      const e=day.get(key(d)), ym=ymOf(d);
+      const e=day.get(key(d)), ym=ymOf(d), dk=key(d);
       /* 悬停写清楚是哪几个板块出的问题 —— 「3 份不合格」不如「成品 2、装柜 1」能直接去查 */
       const tip = d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear()+
         (e ? ' · '+ngUnit(e.n)+'（'+Object.keys(e.by).map(t=>modName(t)+' '+e.by[t]).join('、')+'）' : '');
-      const cls=[e?lvl(e.n):'', ym===mark?'on':''].filter(Boolean).join(' ');
-      html+='<i'+(cls?' class="'+cls+'"':'')+' data-ym="'+ym+'" style="'+pos+'" title="'+esc(tip)+'"></i>';
+      /* 选的是整月就框整月，选的是一天就只框那一格 */
+      const cls=[e?lvl(e.n):'', (selDay?dk:ym)===mark?'on':''].filter(Boolean).join(' ');
+      html+='<i'+(cls?' class="'+cls+'"':'')+' data-ym="'+dk+'" style="'+pos+'" title="'+esc(tip)+'"></i>';
     }
   }
   for(let r=0;r<7;r++) html+='<span class="w" style="grid-row:'+(r+2)+';grid-column:1">'+wk[r]+'</span>';
@@ -10256,8 +10266,11 @@ async function renderHeat(rows){
      0 份不合格也是要看到的信息。底下一行小字只说是哪个月 —— 原来后面还跟着
      「· 不合格 / 已提交」解释数字，用户 2026-10-04 要求删掉。 */
   const aSel=mAll.get(sel)||new Map(), gSel=mNg.get(sel)||new Map();
-  const selMo=(+sel.split("-")[1])-1;
-  const cap = sel===curYm ? tr("当月分布")
+  const selMo=(+sel.split("-")[1])-1, selD=+sel.split("-")[2];
+  const cap = selDay ? (sel===key(today) ? (ID ? "Sebaran hari ini" : "今日分布")
+                        : ID ? "Sebaran "+selD+" "+monName(selMo)
+                             : monName(selMo)+selD+"日分布")
+            : sel===curYm ? tr("当月分布")
             : ID ? "Sebaran "+monName(selMo)
                  : monName(selMo)+"分布";
   const maxM=Math.max(1,...MODULES.map(m=>gSel.get(m.id)||0));
@@ -10291,7 +10304,8 @@ function heatWidthChanged(){
    自带去抖和「宽度没变就不画」，两路同时触发也只画一次。 */
 if(typeof ResizeObserver==="function" && $("#hheat")) new ResizeObserver(heatWidthChanged).observe($("#hheat"));
 window.addEventListener("resize",heatWidthChanged);
-/* 点哪一天（或月份标签）就选中那个月，右边分布换成那个月。挂在卡片上做委托 ——
+/* 点月份标签选整月，点格子选那一天，右边分布跟着换。格子的 data-ym 存的是
+   "YYYY-M-D"，标签的是 "YYYY-M"，renderHeat 按段数分辨。挂在卡片上做委托 ——
    卡片内容每次都整块重画，挂在每个格子上的话每画一次就得重挂一次。 */
 if($("#hheat")) $("#hheat").addEventListener("click",e=>{
   const b=e.target.closest(".hh-grid [data-ym]"); if(!b || !HEAT_LAST_ROWS) return;
