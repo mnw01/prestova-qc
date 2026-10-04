@@ -250,6 +250,44 @@ input,textarea,button,select{font:inherit;color:inherit}
 
 .recent{margin-top:30px}
 .recent h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:9px}
+/* ── 不合格日历的卡片（布局见样式表最后「首页改版」那段） ────────────── */
+.hhcard{
+  flex:1 1 auto;display:flex;flex-direction:column;gap:10px;
+  background:var(--card);border:1px solid var(--card-line);border-radius:var(--r-card);
+  box-shadow:var(--sh-1);padding:14px 16px 13px;
+}
+/* 一张网格装完：第 1 行是月份，第 1 列是星期，其余每格一天、每列一周（周一在上）。
+   格子用 1fr + aspect-ratio 跟着栏宽缩放，所以桌面两栏、手机单栏用同一套。 */
+.hhcard .hh-grid{display:grid;grid-template-columns:20px repeat(var(--wk),minmax(0,1fr));gap:3px;align-items:center}
+.hhcard .hh-grid .m{font-size:10.5px;color:var(--ink-3);white-space:nowrap;overflow:visible;line-height:1.2;padding-bottom:1px}
+.hhcard .hh-grid .w{font-size:10px;color:var(--ink-3);line-height:1}
+.hhcard .hh-grid i{display:block;aspect-ratio:1;border-radius:3px;background:var(--sunk)}
+/* 点哪一天（或月份标签）就选中那个月：右边分布换成那个月，这个月的格子加蓝框、
+   月份标签变蓝。默认显示当月分布，但不加框，点了才加。 */
+.hhcard .hh-grid [data-ym]{cursor:pointer}
+.hhcard .hh-grid i.on{outline:1.5px solid var(--accent);outline-offset:0}
+.hhcard .hh-grid .m.on{color:var(--accent);font-weight:600}
+/* 色阶走 --no（不合格红），四档按当天不合格份数 / 半年里最多的那天。
+   没问题的日子统一是 --sunk 底色 —— 查了多少份不体现，只体现出没出问题。 */
+.hhcard i.l1{background:color-mix(in srgb,var(--no) 30%,var(--card))}
+.hhcard i.l2{background:color-mix(in srgb,var(--no) 55%,var(--card))}
+.hhcard i.l3{background:color-mix(in srgb,var(--no) 80%,var(--card))}
+.hhcard i.l4{background:var(--no)}
+.hhcard .hh-grid i.fut{visibility:hidden}
+.hhcard .hh-mods{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+.hhcard .hh-mod{display:grid;grid-template-columns:88px minmax(0,1fr) 64px;gap:8px;align-items:center;font-size:12px}
+.hhcard .hh-mod .nm{display:inline-flex;align-items:center;gap:5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hhcard .hh-mod .nm svg{width:13px;height:13px;flex:0 0 auto;color:var(--ink-3)}
+.hhcard .hh-mod .tk{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}
+.hhcard .hh-mod .tk i{display:block;height:100%;border-radius:4px;background:color-mix(in srgb,var(--no) 75%,var(--card))}
+.hhcard .hh-mod .n{text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.hhcard .hh-cap{margin:2px 0 0;font-size:11px;color:var(--ink-3);text-align:right}
+.hhcard .hh-foot{margin-top:auto;display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;
+  padding-top:10px;border-top:1px solid var(--card-line)}
+.hhcard .hh-leg{display:flex;align-items:center;gap:3px;font-size:10.5px;color:var(--ink-3)}
+.hhcard .hh-leg i{display:block;width:10px;height:10px;border-radius:2px}
+.hhcard .hh-leg .t{margin:0 3px}
+@media (max-width:760px){ .hhcard .hh-grid{gap:2px} }
 @media (prefers-color-scheme:dark){.recent h2{color:#8b949f}}
 .rrow{
   display:flex;align-items:center;gap:10px;width:100%;text-align:left;
@@ -826,8 +864,13 @@ body.dropping::after{
   .bar{padding:6px 8px;gap:6px}
 }
 
-/* 记录表里标出"这条判定是人改的"，跟实验室的 .lrecmark 一个意思 */
-.recmark{font-size:10.5px;color:var(--ink-3);display:block;margin-top:3px}
+/* 记录表里标出"这条判定是人改的"，跟实验室的 .lrecmark 一个意思。
+   跟判定徽章**排在同一行**（原来是 display:block 另起一行）：另起一行会让人工改判
+   过的那条记录从 41px 变成 52px，一张表里就有高有矮（评审发现的）。判定那一格最窄
+   也有 170 来 px，徽章 + 这几个字放得下。实验室的 .lrecmark 在跨三行的格子里，
+   不影响行高，没动。 */
+.recmark{font-size:10.5px;color:var(--ink-3);display:inline-block;margin-left:6px;
+  vertical-align:middle;white-space:nowrap}
 
 /* ── 共用：记录表的固定表头 ────────────────────────────────────────
    表头不动、只有内容滚。做法是让记录表的 wrapper 自己纵向滚（给一个
@@ -1774,7 +1817,10 @@ table.frec-table tbody tr.draft .lockdot,
    同时有「从计划表导入的货物明细表」「10 项固定检查」「三组可增张的照片」，
    形状跟哪个现有板块都不一样。深色 token 照例在 #oqc 上重新声明一份
    （--ink 全局不反色是为了打印页，屏幕要自己补）。 */
-#oqc .oqwrap{max-width:1280px;margin:0 auto;padding:18px 14px 60px;display:flex;flex-direction:column;gap:14px}
+/* 宽度跟另外五个板块统一成 1180。原来是 1280，说是留给货物明细表 ——
+   实测那张表 min-width 940px，1180 时卡片里还有 1110px 可用，余量 170px，
+   跟数据多少无关，用不着单独放宽。 */
+#oqc .oqwrap{max-width:1180px;margin:0 auto;padding:18px 14px 60px;display:flex;flex-direction:column;gap:14px}
 #oqc .oqcard{position:relative;background:var(--paper);border:1px solid var(--hairline);
   border-radius:6px;padding:14px 16px}
 #oqc .oqcard > h2{font-size:13px;letter-spacing:.02em;color:var(--ink-2);font-weight:700;margin-bottom:10px;
@@ -1970,9 +2016,6 @@ table.frec-table tbody tr.draft .lockdot,
    统一管（.fd-kpi,#iqc .iqan-kpi,… 那几条，#oqc .oqan-kpi 已加进去）。
    在这里另写一套就是第一版的错：用了 --accent-soft（蓝的，评审否掉过），
    字号 padding 圆角也跟另外五个板块对不上。 */
-/* 分析屏的容器：宽度对齐另外四个板块的分析屏（1180），
-   .oqwrap 本身是 1280 —— 那个宽是留给录入页那张货物明细表的。 */
-#oqc .oqdwrap{max-width:1180px}
 #oqc .oqan-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:4px}
 #oqc .oqan-kpi .n{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
 #oqc .oqan-kpi .t{font-size:11.5px;color:var(--ink-3);margin-top:2px;letter-spacing:.02em}
@@ -2891,6 +2934,49 @@ table.frec-table tbody tr.draft .lockdot,
   #iqc .iqan-item .track,#ipqc .ipan-item .track,#oqc .oqan-item .track,#cfr1633 .ftan-item .track,#lab .litem .track{grid-area:2 / 1 / 3 / -1}
   #iqc .iqan-item .num,#ipqc .ipan-item .num,#oqc .oqan-item .num,#cfr1633 .ftan-item .num,#lab .litem .num{grid-area:1 / 2}
 }
+/* ── 不合格日历：卡片内部布局 ──────────────────────────────────────
+   整行宽度下热力图在左、板块分布在右（中间一道竖线），图例跟在热力图下面。
+   手机上分布条挪到热力图下面。热力图显示多少周由 heatWeeks() 按卡片宽度算，
+   右边这栏的宽度（250 + 间距 24 + 内衬 22）跟那里的 296 是同一个数，改一处要改两处。
+   试过一版「首页改版」（顶部细条 + 两栏 / 一列铺满 1240 宽），评审觉得太宽、
+   不如原来好看，已撤回 —— 首页其余部分维持改版前的样子。 */
+@media screen{
+  #home .hhcard{
+    display:grid;grid-template-columns:minmax(0,1fr) 250px;
+    grid-template-areas:"g m" "f m";column-gap:24px;row-gap:8px;align-items:start;
+    padding:16px 18px 14px;
+  }
+  #home .hhcard .hh-grid{grid-area:g}
+  #home .hhcard .hh-foot{grid-area:f;margin:0;padding:0;border:0;justify-content:flex-end}
+  #home .hhcard .hh-mods{grid-area:m;align-self:stretch;justify-content:center;margin:0;
+    padding-left:22px;border-left:1px solid var(--card-line);gap:9px}
+  #home .hhcard .hh-mod{grid-template-columns:76px minmax(0,1fr) 46px}
+  @media (max-width:760px){
+    #home .hhcard{grid-template-columns:minmax(0,1fr);grid-template-areas:"g" "f" "m"}
+    #home .hhcard .hh-mods{padding:12px 0 0;border-left:0;border-top:1px solid var(--card-line)}
+  }
+}
+/* ── 页面宽度：两档 ────────────────────────────────────────────────
+   评审定的：**记录表一律 1380，录入 / 数据分析一律 1180，首页 1080**，成品录入除外
+   （那是 A4 纸，210mm，屏幕上就是打印出来的样子，不能动）。
+   为什么记录表要宽一档：实验室记录表实测最小内容宽 1057px，1180 时只剩
+   1108px 可用，真实数据的品名 / 批号一长就横向滚动 —— 它早就单独放到 1380
+   了（见 #lab #lsheetv .lwrap 那条）。其余几张记录表跟着拉齐，切板块时
+   记录表的宽度不再一会儿宽一会儿窄。
+   录入 / 数据分析各板块本来就是 1180（装柜录入原来 1280，已收回）。
+   首页试过 1180，评审觉得太宽，定在 1080（原来是 960）。
+   .frec-card 这个类成品记录表、成品数据分析、防火记录表三处共用，所以按
+   外层屏的 id 区分，只放宽记录表那两处。 */
+@media screen{
+  #frec .frec-card,#ftrec .frec-card,
+  #irec .irec-card,#iprec .iprec-card,#orec .orec-card{max-width:1380px}
+  #home{max-width:1080px}
+  /* 板块卡片每张一样高，**按矮的那种**（评审要的）：说明只占一行，放不下的
+     截成「…」，完整内容在悬停提示（title）里。列数照旧按 auto-fit 自动排。
+     起因：首页放宽到 1080 后一排放 4 张，装柜 / 防火的说明折成两行，那两张就高了。
+     试过 grid-auto-rows:1fr 让所有卡片跟最高的对齐，评审要的是反过来。 */
+  #home .mcard .desc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
 </style>
 
 <section id="home" hidden>
@@ -2908,6 +2994,12 @@ table.frec-table tbody tr.draft .lockdot,
     </div>
   </header>
   <div class="hgrid" id="modcards"></div>
+  <!-- 不合格日历放在最近的报告上面，两块都整行。都挂 .recent：小标题同一条规则，
+       上下间距也是 .recent 自带的 margin-top。 -->
+  <section class="recent hheat">
+    <h2>不合格日历</h2>
+    <div class="hhcard" id="hheat"></div>
+  </section>
   <section class="recent">
     <h2>最近的报告</h2>
     <div id="recentlist"></div>
@@ -3561,7 +3653,7 @@ table.frec-table tbody tr.draft .lockdot,
 <div id="oqdash" hidden>
   <!-- 容器套在 hidden 的 div **里面**：#oqdash 自己不能写 display:flex，
        那会压掉 [hidden] 的 display:none。实验室 #ldash > .lwrap 就是这么摆的。 -->
-  <div class="oqwrap oqdwrap">
+  <div class="oqwrap">
     <section class="oqcard">
     <h2 class="dtitle">数据分析
       <button type="button" class="plx" id="oqd-close" title="关闭">✕</button>
@@ -9985,7 +10077,8 @@ function renderCards(rows){
     b.innerHTML='<span class="mtx">'+
       '<span class="zh">'+esc(m.zh)+'</span>'+
       '<span class="en">'+esc(m.en)+'</span>'+
-      '<span class="desc">'+esc(m.desc)+'</span>'+
+      /* 说明只占一行，放不下的显示「…」，完整内容放在悬停提示里 */
+      '<span class="desc" title="'+esc(m.desc)+'">'+esc(m.desc)+'</span>'+
       '<span class="foot"><span class="cnt">'+
         (!m.ready ? tr("尚未配置") : unseen ? "—" : n+" "+tr("份记录"))+'</span>'+
       '<span class="go">'+(m.ready?tr("进入 →"):tr("待添加"))+'</span></span></span>'+
@@ -9997,6 +10090,210 @@ function renderCards(rows){
     host.appendChild(b);
   });
 }
+/* ── 首页：不合格日历 ──────────────────────────────────────────────
+   只回答一件事：**哪天出了问题**。不体现「哪天忙」—— 评审明确不要。
+   所以格子只按当天的**不合格报告份数**上色，没问题的日子（不管查了多少份）
+   一律是底色。
+
+   口径：
+   · 按**检验日期**落格，不按 updatedAt —— 改一下旧报告不该让它在今天那格亮起来。
+     各板块字段名不同（成品 inspDate / 实验室·防火 testDate / 其余 date），都是
+     DD/MM/YYYY；没填日期的退回 updatedAt。
+   · 只算**已提交锁定**的 —— 没锁的还在改，判定随时会变。
+   · 什么叫不合格，全部沿用各板块自己的判定（含人工改判）：
+       成品 / 来料 / 装柜  meta.verdict === "reject"
+       防火               meta.ftVerdict === "不合格"
+       制程               meta.bad > 0（发现了不良件）
+       实验室             labVerdict(记录) === "不合格"
+   · 实验室**不走索引**：它的判定要用标准表（LAB_STD），而标准表开机时是空的、
+     进实验室板块才加载。把判定塞进 metaOf 的话，开机重建索引那一刻会全部判成
+     「未判定」，不合格就漏了。所以这里只取窗口内、已锁的实验室记录，先确保
+     标准表加载，再用 labVerdict 现判；结果按 id+updatedAt 缓存，60 秒一次的
+     刷新不会每次都重读。
+   · QC 只同步自己点进去过的板块（见 usedMods），所以 QC 手机上看到的是本机有的
+     那部分；管理员 / 观察者拉全量，看到的是全厂。 */
+/* 显示多少周：按卡片宽度算，让每格的间距稳定在 ~17px（格子 ~14px）。
+   日历是整行的，电脑上宽到能放满一年（52 周），越窄周数越少，最少一个季度。
+   写死周数的话，整行宽度下格子会被撑到 30 多 px，手机上又挤成 5px。 */
+const HEAT_PITCH=17, HEAT_MIN_WEEKS=13, HEAT_MAX_WEEKS=52;
+function heatWeeks(host){
+  const narrow=matchMedia("(max-width:760px)").matches;
+  /* 卡片左右内边距 36；宽屏时右边还有板块分布那一栏（250 + 间距 24 + 内衬 22）；
+     网格自己还有 20px 的星期列 */
+  const gridW=(host.clientWidth||600) - 36 - (narrow?0:296) - 20;
+  return Math.max(HEAT_MIN_WEEKS, Math.min(HEAT_MAX_WEEKS, Math.floor(gridW/HEAT_PITCH)));
+}
+/* 选中的月份 "YYYY-M"（月从 1 起）；null = 当月。
+   只在停留在首页时保持（60 秒的自动刷新不会冲掉它）；进板块再回来、或者刷新
+   页面，都回到当月 —— showHome() 里清掉（评审要的）。 */
+let HEAT_SEL=null;
+let HEAT_LAST_ROWS=null;
+const LAB_NG_CACHE=new Map();   /* id -> {u:updatedAt, bad:boolean} */
+let HEAT_SEQ=0;
+function reportDayOf(m){
+  const s = m.type==="fqc" ? m.inspDate
+          : (m.type==="lab" || m.type==="cfr1633") ? m.testDate
+          : m.date;
+  const d = parseDMY(s) || (m.updatedAt ? new Date(m.updatedAt) : null);
+  return d && !isNaN(d) ? d : null;
+}
+/* 除实验室以外，索引行自己就能判 */
+function metaIsNg(m){
+  if(m.type==="ipqc")    return (+m.bad||0)>0;
+  if(m.type==="cfr1633") return m.ftVerdict==="不合格";
+  return m.verdict==="reject";
+}
+async function labNgOf(metas){
+  const miss=metas.filter(m=>{ const c=LAB_NG_CACHE.get(m.id); return !c || c.u!==m.updatedAt; });
+  const out=new Set(metas.filter(m=>(LAB_NG_CACHE.get(m.id)||{}).bad).map(m=>m.id));
+  if(!miss.length) return out;
+  /* ⚠ **不要调 loadLabStd()**。本机没有标准表时它会把内置种子写进去、时间戳是
+     「现在」、再排一次同步 —— 同步是后写的赢，等于拿出厂默认值覆盖服务器上
+     真正的标准表。进实验室板块时调它没事（那时同步早跑过了），首页却是开机
+     第一屏，标准表多半还没拉下来。所以这里只读：有就用，没有就只认人工改判，
+     而且**不进缓存**，等同步把标准表带下来，下一轮刷新再判。 */
+  if(!LAB_STD.length){
+    try{ const s=await dbGet(LAB_STD_ID); if(s && Array.isArray(s.std) && s.std.length) LAB_STD=s.std; }catch(e){}
+  }
+  const haveStd=LAB_STD.length>0;
+  await withPool(miss, 8, async m=>{
+    let bad=false;
+    try{ const r=await dbGet(m.id); bad = !!(r && r.lab && labVerdict(r)==="不合格"); }catch(e){}
+    if(bad) out.add(m.id);
+    if(haveStd) LAB_NG_CACHE.set(m.id,{u:m.updatedAt,bad});
+  });
+  return out;
+}
+async function renderHeat(rows){
+  const host=$("#hheat"); if(!host) return;
+  HEAT_LAST_ROWS=rows; HEAT_LAST_W=host.clientWidth;
+  const HEAT_WEEKS=heatWeeks(host);
+  const seq=++HEAT_SEQ;   /* 60 秒轮询、进首页、点月份可能叠着调，只认最后一次 */
+  const key=d=>d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+  const ymOf=d=>d.getFullYear()+"-"+(d.getMonth()+1);
+  const now=new Date(), today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  /* 最后一列是本周，周一在上；往回数 HEAT_WEEKS 列（按宽度算出来的） */
+  const start=new Date(today); start.setDate(today.getDate()-((today.getDay()+6)%7)-(HEAT_WEEKS-1)*7);
+  const curYm=ymOf(today);
+  /* 选中的月份要在窗口里还看得到才算数；拖窄窗口把它挤出去了就退回当月 */
+  const sel = HEAT_SEL && HEAT_SEL.split("-").length===2 &&
+              new Date(+HEAT_SEL.split("-")[0], +HEAT_SEL.split("-")[1], 0) >= start ? HEAT_SEL : curYm;
+  /* 框和蓝色标签只在**点过**之后才出现；默认（当月）右边照样显示当月分布，
+     但格子不加框 —— 评审要的。 */
+  const mark = HEAT_SEL && sel===HEAT_SEL ? sel : "";
+
+  /* 窗口内、已锁的报告，各带上落格日期 */
+  const inWin=[];
+  rows.forEach(m=>{
+    if(CFG_TYPES.indexOf(m.type)>=0 || !m.locked) return;
+    const d=reportDayOf(m); if(!d || d<start || d>today) return;
+    inWin.push({m,d});
+  });
+  const labNg=await labNgOf(inWin.filter(x=>x.m.type==="lab").map(x=>x.m));
+  if(seq!==HEAT_SEQ || !$("#hheat")) return;
+
+  const day=new Map();                 /* 日 -> {n, by:{type:n}} */
+  const mAll=new Map(), mNg=new Map(); /* 月 -> Map(type -> 份数)：右边分布用 */
+  const bump=(map,ym,t)=>{ const x=map.get(ym)||new Map(); x.set(t,(x.get(t)||0)+1); map.set(ym,x); };
+  inWin.forEach(({m,d})=>{
+    const t=m.type||"fqc", ym=ymOf(d);
+    bump(mAll,ym,t);
+    const ng = t==="lab" ? labNg.has(m.id) : metaIsNg(m);
+    if(!ng) return;
+    bump(mNg,ym,t);
+    const k=key(d), e=day.get(k)||{n:0,by:{}};
+    e.n++; e.by[t]=(e.by[t]||0)+1; day.set(k,e);
+  });
+  let peak=0;
+  day.forEach(e=>{ if(e.n>peak) peak=e.n; });
+
+  const ID=LANG==="id";
+  const lvl=n=> !n ? "" : "l"+Math.min(4,Math.ceil(n/peak*4));
+  const monName=mo=> ID ? ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][mo] : (mo+1)+"月";
+  const ngUnit=n=> ID ? n+" tidak lolos" : n+" 份不合格";
+  const wk = ID ? ["Sen","","Rab","","Jum","",""] : ["周一","","周三","","周五","",""];
+  const modName=t=>{ const m=moduleById(t); return m ? tr(m.zh) : t; };
+
+  /* 月份标签：标在「这一列里出现了 1 号」的那列，最左一列另外标上它所在的月份
+     （不然开头那段没有名字）。两个标签不足 3 列就会叠字 —— 这时**丢最左那个**，
+     留真正月初那个。原来是反过来，丢后一个：最左列标了「12月」，1 号又只隔一两列，
+     「1月」就被吃掉了，12 月后面直接跳到 2 月（评审发现的）。 */
+  const colLab=new Array(HEAT_WEEKS).fill(null);
+  for(let c=0;c<HEAT_WEEKS;c++){
+    const mon=new Date(start); mon.setDate(start.getDate()+c*7);
+    for(let r=0;r<7;r++){ const d=new Date(mon); d.setDate(mon.getDate()+r);
+      if(d.getDate()===1){ colLab[c]={t:monName(d.getMonth()), ym:ymOf(d)}; break; } }
+  }
+  if(!colLab[0]){
+    const next=colLab.findIndex(x=>x);
+    if(next<0 || next>=3) colLab[0]={t:monName(start.getMonth()), ym:ymOf(start)};
+  }
+  let html="";
+  for(let c=0;c<HEAT_WEEKS;c++){
+    const mon=new Date(start); mon.setDate(start.getDate()+c*7);
+    const label=colLab[c]?colLab[c].t:"", labelYm=colLab[c]?colLab[c].ym:"";
+    html+= label
+      ? '<span class="m'+(labelYm===mark?' on':'')+'" data-ym="'+labelYm+'" style="grid-row:1;grid-column:'+(c+2)+'">'+label+'</span>'
+      : '<span class="m" style="grid-row:1;grid-column:'+(c+2)+'"></span>';
+    for(let r=0;r<7;r++){
+      const d=new Date(mon); d.setDate(mon.getDate()+r);
+      const pos='grid-row:'+(r+2)+';grid-column:'+(c+2);
+      if(d>today){ html+='<i class="fut" style="'+pos+'"></i>'; continue; }
+      const e=day.get(key(d)), ym=ymOf(d);
+      /* 悬停写清楚是哪几个板块出的问题 —— 「3 份不合格」不如「成品 2、装柜 1」能直接去查 */
+      const tip = d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear()+
+        (e ? ' · '+ngUnit(e.n)+'（'+Object.keys(e.by).map(t=>modName(t)+' '+e.by[t]).join('、')+'）' : '');
+      const cls=[e?lvl(e.n):'', ym===mark?'on':''].filter(Boolean).join(' ');
+      html+='<i'+(cls?' class="'+cls+'"':'')+' data-ym="'+ym+'" style="'+pos+'" title="'+esc(tip)+'"></i>';
+    }
+  }
+  for(let r=0;r<7;r++) html+='<span class="w" style="grid-row:'+(r+2)+';grid-column:1">'+wk[r]+'</span>';
+
+  /* 右边：选中那个月的板块分布 —— 不合格份数 / 该板块那个月已提交份数。
+     条长按不合格份数，最多的那个板块归一。六个板块固定顺序全列 ——
+     0 份不合格也是要看到的信息。底下一行小字说明是哪个月、数字是什么。 */
+  const aSel=mAll.get(sel)||new Map(), gSel=mNg.get(sel)||new Map();
+  const selMo=(+sel.split("-")[1])-1;
+  const cap = sel===curYm ? tr("当月分布 · 不合格 / 已提交")
+            : ID ? "Sebaran "+monName(selMo)+" · tidak lolos / terkirim"
+                 : monName(selMo)+"分布 · 不合格 / 已提交";
+  const maxM=Math.max(1,...MODULES.map(m=>gSel.get(m.id)||0));
+  const mods='<div class="hh-mods">'+MODULES.map(m=>{
+    const ng=gSel.get(m.id)||0, all=aSel.get(m.id)||0;
+    return '<div class="hh-mod"><span class="nm">'+micon(m.id)+esc(tr(m.zh))+'</span>'+
+      '<span class="tk"><i style="width:'+(ng/maxM*100).toFixed(1)+'%"></i></span>'+
+      '<span class="n">'+ng+' / '+all+'</span></div>';
+  }).join("")+'<p class="hh-cap">'+esc(cap)+'</p></div>';
+
+  host.innerHTML=
+    '<div class="hh-grid" style="--wk:'+HEAT_WEEKS+'">'+html+'</div>'+
+    mods+
+    '<div class="hh-foot">'+
+      '<div class="hh-leg"><span class="t">'+esc(tr("少"))+'</span>'+
+        '<i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><span class="t">'+esc(tr("多"))+'</span></div>'+
+    '</div>';
+}
+let HEAT_RESIZE_T=0, HEAT_LAST_W=0;
+function heatWidthChanged(){
+  clearTimeout(HEAT_RESIZE_T);
+  HEAT_RESIZE_T=setTimeout(()=>{
+    const host=$("#hheat");
+    if(!host || $("#home").hidden || !HEAT_LAST_ROWS) return;
+    const w=host.clientWidth; if(!w || w===HEAT_LAST_W) return;
+    HEAT_LAST_W=w; renderHeat(HEAT_LAST_ROWS);
+  },150);
+}
+/* 两路都听：卡片尺寸（滚动条出现 / 消失这类窗口没变的情况）+ 窗口 resize（横竖屏、
+   拖窗口；跨过 760 断点时右边那一栏会挪到下面，可用宽度会跳）。heatWidthChanged
+   自带去抖和「宽度没变就不画」，两路同时触发也只画一次。 */
+if(typeof ResizeObserver==="function" && $("#hheat")) new ResizeObserver(heatWidthChanged).observe($("#hheat"));
+window.addEventListener("resize",heatWidthChanged);
+/* 点哪一天（或月份标签）就选中那个月，右边分布换成那个月。挂在卡片上做委托 ——
+   卡片内容每次都整块重画，挂在每个格子上的话每画一次就得重挂一次。 */
+if($("#hheat")) $("#hheat").addEventListener("click",e=>{
+  const b=e.target.closest(".hh-grid [data-ym]"); if(!b || !HEAT_LAST_ROWS) return;
+  HEAT_SEL=b.dataset.ym; renderHeat(HEAT_LAST_ROWS);
+});
 function renderRecent(rows){
   const host=$("#recentlist"); host.innerHTML="";
   /* 配置记录不是报告，别混进来。用 CFG_TYPES 而不是把类型名再抄一遍 ——
@@ -10153,13 +10450,14 @@ async function showHome(){
   let rows=[];
   try{ rows=await metaAll(); }
   catch(e){ toast(tr("无法使用本地存储（隐私模式？）—— 记录不会被保存")); }
-  renderCards(rows); renderRecent(rows);
+  HEAT_SEL=null;   /* 每次进首页都从当月看起，见 HEAT_SEL 那条注释 */
+  renderCards(rows); renderRecent(rows); renderHeat(rows);
   noticePaintIcon();
   await noticeLoad(); noticePaintBadge();
   /* pick up what other devices wrote, then redraw with the fresh counts */
   syncNow().then(async()=>{
     if($("#home").hidden) return;
-    try{ const fresh=await metaAll(); renderCards(fresh); renderRecent(fresh); }catch(e){}
+    try{ const fresh=await metaAll(); renderCards(fresh); renderRecent(fresh); renderHeat(fresh); }catch(e){}
     /* 公告不用在这儿重画：runSync 结尾必定走 refreshHomeIfVisible()，那边统一
        管着（每 60 秒的轮询也走那条，这里只覆盖「刚进首页」这一次）。 */
   });
@@ -11017,7 +11315,7 @@ async function runSync(){
    another device, and the periodic pass has no other way to surface them. */
 async function refreshHomeIfVisible(){
   if(!$("#home") || $("#home").hidden) return;
-  try{ const rows=await metaAll(); renderCards(rows); renderRecent(rows); }catch(e){}
+  try{ const rows=await metaAll(); renderCards(rows); renderRecent(rows); renderHeat(rows); }catch(e){}
   /* 公告也吃这一轮同步的结果。原来只有 showHome() 里做了这件事，而那只在
      「进首页」时跑一次 —— 人停在首页不动的话，别人刚发的公告数据同步下来了、
      角标却一直不亮，要切走再回来才看得见。而 60 秒轮询的**全部意义**就是
@@ -11967,6 +12265,10 @@ const I18N_ID={
   "是否有脏污，异物？": "Apakah ada kotoran atau benda asing?",
   "最后一格里有照片，连照片一起删掉？": "Kotak terakhir ada fotonya. Hapus sekalian fotonya?",
   "最近的报告": "Laporan Terakhir",
+  "不合格日历": "Kalender Tidak Lolos",
+  "当月分布 · 不合格 / 已提交": "Sebaran bulan ini · tidak lolos / terkirim",
+  "少": "Sedikit",
+  "多": "Banyak",
   "月度不良率": "Persen NG per Bulan",
   "月度合格率": "Persen OK per Bulan",
   "有条件通过": "Lulus Bersyarat",
@@ -13526,7 +13828,7 @@ applyRole();
     $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true; $("#mod").hidden=false;
     frecShow(true);
   }else{
-    renderCards([]); renderRecent([]);
+    renderCards([]); renderRecent([]); renderHeat([]);
     $("#mod").hidden=true; $("#lab").hidden=true; $("#iqc").hidden=true;
     $("#oqc").hidden=true; $("#ipqc").hidden=true; $("#cfr1633").hidden=true; $("#home").hidden=false;
   }
