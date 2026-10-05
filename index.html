@@ -1397,6 +1397,15 @@ table.frec-table tbody tr.draft .lockdot,
 .qc-bar .no{background:#c9483c}
 .qc-bar .num{color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .qc-bar .num b{color:var(--ink);font-weight:600}
+/* 成品「软硬度分布」：照抄防火「燃烧时间分布」（#cfr1633 .ftan-item）——
+   灰底细条、蓝色填充、条长 = 这一档占填了软硬度的份数的比例。软硬度没有
+   合格/不合格的语义，原来套月度条的绿红两段，读起来像在说合格率（用户
+   2026-10-05 要求改成跟燃烧时间一样）。蓝用 --accent，同那段注释的理由。 */
+#fdash .fd-dist{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+#fdash .fd-dist-item{display:grid;grid-template-columns:minmax(90px,140px) 1fr 150px;gap:10px;align-items:center;font-size:12.5px}
+#fdash .fd-dist-item .track{height:13px;background:var(--rule-2);border-radius:3px;overflow:hidden}
+#fdash .fd-dist-item .fill{display:block;height:100%;background:var(--accent)}
+#fdash .fd-dist-item .num{text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
 @media(prefers-color-scheme:dark){
   .fd-kpi.bad .n{color:#e88b81}
   .fd-kpi.good .n{color:#5fbf8d}
@@ -2932,10 +2941,10 @@ table.frec-table tbody tr.draft .lockdot,
    整段只在 ≤560px 生效：桌面一个像素不动，打印件也不涉及（看板不打印）。 */
 @media (max-width:560px){
   .qc-bar{grid-template-columns:auto 1fr auto}
-  #iqc .iqan-item,#ipqc .ipan-item,#oqc .oqan-item,#cfr1633 .ftan-item,#lab .litem{grid-template-columns:1fr auto;gap:5px 10px}
-  #iqc .iqan-item > span:first-child,#ipqc .ipan-item > span:first-child,#oqc .oqan-item > span:first-child,#cfr1633 .ftan-item > span:first-child,#lab .litem > span:first-child{grid-area:1 / 1}
-  #iqc .iqan-item .track,#ipqc .ipan-item .track,#oqc .oqan-item .track,#cfr1633 .ftan-item .track,#lab .litem .track{grid-area:2 / 1 / 3 / -1}
-  #iqc .iqan-item .num,#ipqc .ipan-item .num,#oqc .oqan-item .num,#cfr1633 .ftan-item .num,#lab .litem .num{grid-area:1 / 2}
+  #iqc .iqan-item,#ipqc .ipan-item,#oqc .oqan-item,#cfr1633 .ftan-item,#lab .litem,#fdash .fd-dist-item{grid-template-columns:1fr auto;gap:5px 10px}
+  #iqc .iqan-item > span:first-child,#ipqc .ipan-item > span:first-child,#oqc .oqan-item > span:first-child,#cfr1633 .ftan-item > span:first-child,#lab .litem > span:first-child,#fdash .fd-dist-item > span:first-child{grid-area:1 / 1}
+  #iqc .iqan-item .track,#ipqc .ipan-item .track,#oqc .oqan-item .track,#cfr1633 .ftan-item .track,#lab .litem .track,#fdash .fd-dist-item .track{grid-area:2 / 1 / 3 / -1}
+  #iqc .iqan-item .num,#ipqc .ipan-item .num,#oqc .oqan-item .num,#cfr1633 .ftan-item .num,#lab .litem .num,#fdash .fd-dist-item .num{grid-area:1 / 2}
 }
 /* ── 不合格日历：卡片内部布局 ──────────────────────────────────────
    整行宽度下热力图在左、板块分布在右（中间一道竖线），图例跟在热力图下面。
@@ -3257,7 +3266,7 @@ table.frec-table tbody tr.draft .lockdot,
 
 <section class="frec-card">
   <h2>软硬度分布</h2>
-  <div class="qc-bars" id="fd-hard"></div>
+  <div class="fd-dist" id="fd-hard"></div>
   <p class="fd-note" id="fd-hardnote"></p>
 </section>
 
@@ -5793,22 +5802,17 @@ async function fqcDashRender(){
       '<span class="num">'+okN+' / '+j+'　'+(j?pct(okN,j)+"%":"—")+'</span></div>';
   }).join("")||'<div class="frec-empty">没有数据。</div>';
 
-  /* 软硬度分布：柱子总长 = 这一档的份数占最多那一档的比例，绿红是这一档里
-     合格 / 不合格的构成 —— 跟上面两张的读法一样。右边数字是份数和占比
-     （占的是**填了软硬度**的那些，没填的不算进分母，单独在下面报）。
-     六档全列，0 份的也留着，分布图缺档会看错形状。 */
+  /* 软硬度分布：跟防火「燃烧时间分布」一个画法 —— 灰底细条、蓝色填充，
+     条长 = 这一档占**填了软硬度**的份数的比例（没填的不进分母，单独在下面报）。
+     右边是份数和占比。六档全列，0 份的也留着，分布图缺档会看错形状。 */
   const hardN=a.hard.reduce((s,x)=>s+x.n,0);
-  const maxH=Math.max(1,...a.hard.map(x=>x.n));
   $("#fd-hard").innerHTML = !hardN
     ? '<div class="frec-empty">'+esc(tr("没有数据。"))+'</div>'
-    : a.hard.map(x=>{
-        const j=x.n, okN=j-x.bad, w=j/maxH*100;
-        return '<div class="qc-bar"><span class="lab">'+esc(x.k)+'</span>'+
-          '<span class="track" style="width:'+w.toFixed(1)+'%">'+
-            (j?'<i class="ok" style="width:'+pct(okN,j)+'%"></i><i class="no" style="flex:1"></i>':'')+
-          '</span>'+
-          '<span class="num">'+j+' '+esc(tr("份"))+'　'+pct(j,hardN)+'%</span></div>';
-      }).join("");
+    : a.hard.map(x=>
+        '<div class="fd-dist-item"><span>'+esc(x.k)+'</span>'+
+          '<span class="track"><span class="fill" style="width:'+Math.round(x.n/hardN*100)+'%"></span></span>'+
+          '<span class="num">'+x.n+' '+esc(tr("份"))+'　'+pct(x.n,hardN)+'%</span></div>'
+      ).join("");
   const hn=[];
   if(a.hardNone) hn.push(a.hardNone+" "+tr("份未填软硬度"));
   if(a.hardOut)  hn.push(a.hardOut+" "+tr("份填的不是 0~10 的数，未计入"));
