@@ -5779,14 +5779,14 @@ async function fqcDashRender(){
 
   /* 软硬度分布：跟防火「燃烧时间分布」一个画法 —— 灰底细条、蓝色填充，
      条长 = 这一档占**填了软硬度**的份数的比例（没填的不进分母，单独在下面报）。
-     右边是份数和占比。六档全列，0 份的也留着，分布图缺档会看错形状。 */
+     右边是份数和占比，数字后面不带「份」字（跟燃烧时间一样，用户 2026-10-05 要求）。六档全列，0 份的也留着，分布图缺档会看错形状。 */
   const hardN=a.hard.reduce((s,x)=>s+x.n,0);
   $("#fd-hard").innerHTML = !hardN
     ? '<div class="frec-empty">'+esc(tr("没有数据。"))+'</div>'
     : a.hard.map(x=>
         '<div class="fd-dist-item"><span>'+esc(x.k)+'</span>'+
           '<span class="track"><span class="fill" style="width:'+Math.round(x.n/hardN*100)+'%"></span></span>'+
-          '<span class="num">'+x.n+' '+esc(tr("份"))+'　'+pct(x.n,hardN)+'%</span></div>'
+          '<span class="num">'+x.n+'　'+pct(x.n,hardN)+'%</span></div>'
       ).join("");
   const hn=[];
   if(a.hardNone) hn.push(a.hardNone+" "+tr("份未填软硬度"));
