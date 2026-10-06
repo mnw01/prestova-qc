@@ -5976,10 +5976,16 @@ const IQC_ITEMS=[
   {k:"lb", zh:"幅宽", un:"LEBAR"},
   {k:"ln", zh:"长度", un:"PANJANG"},
   {k:"nw", zh:"净重", un:"KG"},
+  /* 湿度、气味 2026-10-06 加的（用户要求）。湿度是量出来的数（含水率 %），
+     跟上面几项排在一起；气味跟外观一样是定性项，排在外观后面。
+     老记录里没有这两项，iqcPaintItems / iqcLoad 读的时候会补成空白未勾选，
+     不影响原来的判定和统计。 */
+  {k:"mo", zh:"湿度", un:"KELEMBAPAN %"},
   /* 外观是定性项，不像上面几项是量出来的数。「标准」「实际」两栏本来就是
      文本框（尺寸要填 28.2*28.4*147.2 这种复合值，所以没用数字键盘），
      填「无破损 / OK」这类描述直接就能用，结构不用改。 */
-  {k:"ap", zh:"外观", un:"PENAMPILAN"}
+  {k:"ap", zh:"外观", un:"PENAMPILAN"},
+  {k:"od", zh:"气味", un:"BAU"}
 ];
 /* 一个检查项底下可以有好几排实测——布料一批是一包一包来的，检验员抽查 3 包
    5 包，每包一个实际值、各判各的。旧的来料 Excel 本来就是这么记的，只是表格
@@ -6046,7 +6052,7 @@ function iqcSave(){
 }
 function iqcMarkSaved(){
   const d=new Date(IR.updatedAt), p=n=>String(n).padStart(2,"0");
-  /* 七个检查项不是每批都要全做（布料看幅宽、海绵看克重），所以这里数的是
+  /* 检查项不是每批都要全做（布料看幅宽、海绵看克重），所以这里数的是
      **勾了几项**，不是"还差几项"——写成"还差 5 项"会逼着人去凑不该做的检查。
      一项都没勾说明这批还没开始，标红。 */
   const on=IQC_ITEMS.filter(it=>((IR.iqc.items||{})[it.k]||{}).on).length;
@@ -12118,6 +12124,8 @@ const I18N_ID={
   "压缩后的回弹尺寸？": "Ukuran setelah mengembang dari kompresi?",
   "厚度": "Ketebalan",
   "外观": "Penampilan",
+  "气味": "Bau",
+  "湿度": "Kelembapan",
   "厚度减少 %": "Penurunan Ketebalan %",
   "厚度减少%": "Penurunan Ketebalan %",
   "厚度减少 %（≤6）": "Penurunan Ketebalan % (≤6)",
