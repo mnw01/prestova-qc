@@ -11112,6 +11112,7 @@ async function pullAll(){
 
 /** Photos are fetched only when a report is actually opened. */
 async function hydratePhotos(id){
+  photoOpenedMark(id);   /* 本地照片清理按「多久没打开」判，见 cleanupOldPhotos */
   if(!SYNC.enabled) return;
   const rec = await dbGet(id); if(!rec) return;
   /* serverPhotos 只在「这条记录被同步拉下来」的那一刻写。那一次没写成的话
@@ -11193,6 +11194,101 @@ async function patchRec(id, fn){
   fn(cur);
   await persistQuiet(cur);
   return cur;
+}
+
+/* ── 本地照片定期清理 ──────────────────────────────────────────────────
+   本机拍的照片传上去之后，本地那份 blob 原来**永远不删**。2026-10 量过线上：
+   装柜检验员一个月拍 ~1.3 GB、成品 ~1 GB，一个多月下来每部手机已经攒了
+   1～1.5 GB，还在涨。存储吃紧时浏览器可能把整个站点的本地数据一次清掉，
+   连没同步的报告一起 —— 那才是真丢数据。
+
+   每 7 天跑一次，只删同时满足下面几条的照片（任何一条不满足就跳过，宁可少删）：
+     · 成品 / 装柜 / 防火 —— 只有这三个板块有照片，而且打开时都走 hydratePhotos，
+       删了能补回来；
+     · 已提交锁定 —— 还在填的草稿不动，人隔几天回来接着填不用重下；
+     · 已同步完：updatedAt === syncedAt，并且没有任何待推的照片动作（photoOps）；
+     · 这一张确认在服务器上：serverPhotos 里有，或者 photoAt 里记过版本
+       （上传成功 / 下载回来都会记）；
+     · 7 天内没在这台设备上打开过（photoOpenedMark 记的时间，只存本机）；
+     · 不是现在正开着的那条。
+   报告文字、索引一律不动 —— 记录表、数据分析、首页日历全靠它们。
+
+   删完把 photosChecked 置回 false：下次打开时 hydratePhotos 会先问服务端要一遍
+   照片清单，本地没有的照着清单下回来 —— 跟打开别的设备拍的报告同一条路。
+   断网时打开这种报告，文字照常，照片等有网再打开。
+
+   所有角色（QC / 管理员 / 观察者）都一样，按设备算。单机副本（NO_BACKEND）
+   没有服务器可以补，**永远不清**。 */
+const PHOTO_KEEP_MS   = 7*24*60*60*1000;
+const PHOTO_CLEAN_KEY = "qc-photo-clean-at";
+const PHOTO_OPEN_KEY  = "qc-photo-opened";    /* {id: 最后打开时间} */
+const PHOTO_TYPES     = ["fqc","oqc","cfr1633"];
+function photoOpenedAll(){
+  try{ return JSON.parse(localStorage.getItem(PHOTO_OPEN_KEY)||"{}")||{}; }catch(e){ return {}; }
+}
+function photoOpenedMark(id){
+  if(!id) return;
+  const m=photoOpenedAll(), cut=Date.now()-4*PHOTO_KEEP_MS;
+  m[id]=Date.now();
+  /* 只留最近四周的，表不会越记越大 */
+  Object.keys(m).forEach(k=>{ if(m[k]<cut) delete m[k]; });
+  try{ localStorage.setItem(PHOTO_OPEN_KEY, JSON.stringify(m)); }catch(e){}
+}
+/* 这一张能不能删：在服务器上、本机没挂着动作 */
+function photoOnServer(rec, slot){
+  return !(rec.photoOps||{})[slot] &&
+         (!!(rec.serverPhotos||{})[slot] || slot in (rec.photoAt||{}));
+}
+function photoCleanable(rec, now, opened){
+  if(!rec || PHOTO_TYPES.indexOf(rec.type||"fqc")<0) return false;
+  if(!rec.locked) return false;
+  if((rec.updatedAt||0)!==(rec.syncedAt||0) || !(rec.syncedAt>0)) return false;
+  if(Object.keys(rec.photoOps||{}).length) return false;
+  if(now-(opened[rec.id]||0) < PHOTO_KEEP_MS) return false;
+  if([R,OR,FT].some(x=>x && x.id===rec.id)) return false;
+  return Object.keys(rec.photos||{}).some(s=>rec.photos[s] && photoOnServer(rec, s));
+}
+async function cleanupOldPhotos(force){
+  if(NO_BACKEND || !SYNC.enabled) return null;
+  const now=Date.now();
+  let last=0; try{ last=+localStorage.getItem(PHOTO_CLEAN_KEY)||0; }catch(e){ return null; }
+  /* 第一次（刚上这个功能）只记个起点，不删：这之前没人记过「最后打开时间」，
+     马上跑的话昨天刚看过的报告也会被当成很久没开。等 7 天，打开记录攒起来再说。 */
+  if(!last && !force){ try{ localStorage.setItem(PHOTO_CLEAN_KEY, String(now)); }catch(e){} return null; }
+  if(!force && now-last < PHOTO_KEEP_MS) return null;
+  try{ localStorage.setItem(PHOTO_CLEAN_KEY, String(now)); }catch(e){}
+
+  const opened=photoOpenedAll();
+  /* 先只用游标挑出 id（blob 只是句柄，不会读进内存），再逐条读-判-写 */
+  const ids=[];
+  try{
+    await tx(STORE,"readonly", t=>{
+      t.objectStore(STORE).openCursor().onsuccess=e=>{
+        const c=e.target.result; if(!c) return;
+        if(photoCleanable(c.value, now, opened)) ids.push(c.key);
+        c.continue();
+      };
+    });
+  }catch(e){ return null; }
+
+  let photos=0, bytes=0, reports=0;
+  for(const id of ids){
+    let cur; try{ cur=await dbGet(id); }catch(e){ continue; }
+    /* 挑完到现在这段时间里可能被改过 / 打开过，再判一次 */
+    if(!photoCleanable(cur, Date.now(), photoOpenedAll())) continue;
+    let n=0;
+    Object.keys(cur.photos||{}).forEach(s=>{
+      if(!cur.photos[s] || !photoOnServer(cur, s)) return;
+      bytes += cur.photos[s].size||0;
+      delete cur.photos[s];
+      if(cur.photoAt) delete cur.photoAt[s];
+      n++;
+    });
+    if(!n) continue;
+    cur.photosChecked=false;
+    try{ await persistQuiet(cur); photos+=n; reports++; }catch(e){}
+  }
+  return { reports, photos, bytes };
 }
 
 let syncTimer=null;
@@ -13884,6 +13980,8 @@ applyRole();
     await refreshList();
     await refreshHomeIfVisible();
   }
+  /* 本地照片每 7 天清一次，不提示 —— 对人来说什么都没变，打开时照片会自己回来 */
+  try{ await cleanupOldPhotos(); }catch(e){}
 })();
 })();
 </script>

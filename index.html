@@ -8470,6 +8470,7 @@ async function pullAll(){
 }
 
 async function hydratePhotos(id){
+  photoOpenedMark(id); 
   if(!SYNC.enabled) return;
   const rec = await dbGet(id); if(!rec) return;
   if(!rec.photosChecked){
@@ -8520,6 +8521,72 @@ async function patchRec(id, fn){
   fn(cur);
   await persistQuiet(cur);
   return cur;
+}
+
+const PHOTO_KEEP_MS   = 7*24*60*60*1000;
+const PHOTO_CLEAN_KEY = "qc-photo-clean-at";
+const PHOTO_OPEN_KEY  = "qc-photo-opened"; 
+const PHOTO_TYPES     = ["fqc","oqc","cfr1633"];
+function photoOpenedAll(){
+  try{ return JSON.parse(localStorage.getItem(PHOTO_OPEN_KEY)||"{}")||{}; }catch(e){ return {}; }
+}
+function photoOpenedMark(id){
+  if(!id) return;
+  const m=photoOpenedAll(), cut=Date.now()-4*PHOTO_KEEP_MS;
+  m[id]=Date.now();
+  Object.keys(m).forEach(k=>{ if(m[k]<cut) delete m[k]; });
+  try{ localStorage.setItem(PHOTO_OPEN_KEY, JSON.stringify(m)); }catch(e){}
+}
+function photoOnServer(rec, slot){
+  return !(rec.photoOps||{})[slot] &&
+         (!!(rec.serverPhotos||{})[slot] || slot in (rec.photoAt||{}));
+}
+function photoCleanable(rec, now, opened){
+  if(!rec || PHOTO_TYPES.indexOf(rec.type||"fqc")<0) return false;
+  if(!rec.locked) return false;
+  if((rec.updatedAt||0)!==(rec.syncedAt||0) || !(rec.syncedAt>0)) return false;
+  if(Object.keys(rec.photoOps||{}).length) return false;
+  if(now-(opened[rec.id]||0) < PHOTO_KEEP_MS) return false;
+  if([R,OR,FT].some(x=>x && x.id===rec.id)) return false;
+  return Object.keys(rec.photos||{}).some(s=>rec.photos[s] && photoOnServer(rec, s));
+}
+async function cleanupOldPhotos(force){
+  if(NO_BACKEND || !SYNC.enabled) return null;
+  const now=Date.now();
+  let last=0; try{ last=+localStorage.getItem(PHOTO_CLEAN_KEY)||0; }catch(e){ return null; }
+  if(!last && !force){ try{ localStorage.setItem(PHOTO_CLEAN_KEY, String(now)); }catch(e){} return null; }
+  if(!force && now-last < PHOTO_KEEP_MS) return null;
+  try{ localStorage.setItem(PHOTO_CLEAN_KEY, String(now)); }catch(e){}
+
+  const opened=photoOpenedAll();
+  const ids=[];
+  try{
+    await tx(STORE,"readonly", t=>{
+      t.objectStore(STORE).openCursor().onsuccess=e=>{
+        const c=e.target.result; if(!c) return;
+        if(photoCleanable(c.value, now, opened)) ids.push(c.key);
+        c.continue();
+      };
+    });
+  }catch(e){ return null; }
+
+  let photos=0, bytes=0, reports=0;
+  for(const id of ids){
+    let cur; try{ cur=await dbGet(id); }catch(e){ continue; }
+    if(!photoCleanable(cur, Date.now(), photoOpenedAll())) continue;
+    let n=0;
+    Object.keys(cur.photos||{}).forEach(s=>{
+      if(!cur.photos[s] || !photoOnServer(cur, s)) return;
+      bytes += cur.photos[s].size||0;
+      delete cur.photos[s];
+      if(cur.photoAt) delete cur.photoAt[s];
+      n++;
+    });
+    if(!n) continue;
+    cur.photosChecked=false;
+    try{ await persistQuiet(cur); photos+=n; reports++; }catch(e){}
+  }
+  return { reports, photos, bytes };
 }
 
 let syncTimer=null;
@@ -10722,6 +10789,7 @@ applyRole();
     await refreshList();
     await refreshHomeIfVisible();
   }
+  try{ await cleanupOldPhotos(); }catch(e){}
 })();
 })();
 </script>
