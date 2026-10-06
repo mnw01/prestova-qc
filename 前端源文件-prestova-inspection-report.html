@@ -2931,8 +2931,10 @@ table.frec-table tbody tr.draft .lockdot,
   #home .hhcard{
     display:grid;grid-template-columns:minmax(0,1fr) 250px;
     grid-template-areas:"g m" "f m";column-gap:24px;row-gap:8px;align-items:start;
-    padding:16px 18px 14px;
+    padding:16px 18px 14px;transition:transform .12s,box-shadow .12s;
   }
+  /* hover 跟板块卡片、最近报告的行逐字一致：抬起 2px + 同一组投影 */
+  #home .hhcard:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(15,23,41,.07),0 14px 30px -16px rgba(15,23,41,.4)}
   #home .hhcard .hh-grid{grid-area:g}
   #home .hhcard .hh-foot{grid-area:f;margin:0;padding:0;border:0;justify-content:flex-end}
   #home .hhcard .hh-mods{grid-area:m;align-self:stretch;justify-content:center;margin:0;
