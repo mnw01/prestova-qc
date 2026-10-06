@@ -164,7 +164,7 @@ button:disabled{opacity:.6;cursor:default}
 </style></head><body>
 <form class="card" id="f">
   <h1>PT. Prestova Home Living Indonesia</h1>
-  <p class="sub">Quality Inspection System</p>
+  <p class="sub">Quality Management System</p>
   <label for="r">Role</label>
   <select id="r" name="r">
     <option value="qc">QC Inspector</option>
