@@ -10561,12 +10561,8 @@ const NO_BACKEND = location.protocol==="file:" || location.protocol==="blob:";
    serviceWorker() 上面）。单机副本 / artifact 里没有 /sw.js，注册失败就算了，
    什么都不影响。SHELL_CACHE 跟 worker.js 里的名字必须一样，退出登录要删它。 */
 const SHELL_CACHE="qc-shell";
-/* 2026-10-06：上线后线上刷新 ERR_FAILED，先停用 —— 不注册，已经装上的注销掉、
-   存的页面删掉（worker 那边 /sw.js 也换成了自我注销版，双保险） */
 if(!NO_BACKEND && window.isSecureContext && "serviceWorker" in navigator){
-  navigator.serviceWorker.getRegistrations()
-    .then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
-  try{ if(window.caches) caches.delete(SHELL_CACHE).catch(()=>{}); }catch(e){}
+  navigator.serviceWorker.register("/sw.js").catch(()=>{});
 }
 
 /* ── 按板块同步：QC 只拉自己点进去过的板块 ─────────────────────────

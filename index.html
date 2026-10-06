@@ -8205,9 +8205,7 @@ const NO_BACKEND = location.protocol==="file:" || location.protocol==="blob:";
 
 const SHELL_CACHE="qc-shell";
 if(!NO_BACKEND && window.isSecureContext && "serviceWorker" in navigator){
-  navigator.serviceWorker.getRegistrations()
-    .then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
-  try{ if(window.caches) caches.delete(SHELL_CACHE).catch(()=>{}); }catch(e){}
+  navigator.serviceWorker.register("/sw.js").catch(()=>{});
 }
 
 const MODS_KEY="qc-mods";

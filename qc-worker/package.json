@@ -7,7 +7,7 @@
   },
   "type": "module",
   "scripts": {
-    "test": "node test.mjs",
+    "test": "node test.mjs && npx --yes wrangler@4 deploy --dry-run --outdir .bundle && node test.mjs .bundle/worker.js",
     "migrate": "npx --yes wrangler@4 d1 migrations apply prestova-qc --remote",
     "migrate:list": "npx --yes wrangler@4 d1 migrations list prestova-qc --remote",
     "migrate:new": "npx --yes wrangler@4 d1 migrations create prestova-qc"

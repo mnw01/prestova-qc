@@ -25,6 +25,8 @@ qc-worker/r2backup/
 # qc-worker/public/index.html 是它的逐字节副本，build-standalone.js 每次一起写出来
 # （CI 上也是构建时现生成），不重复存。
 qc-worker/public/
+# npm test 用 wrangler --dry-run 打包出来再测一遍的那份
+qc-worker/.bundle/
 
 # ── 工具链 ────────────────────────────────────────────────────────────
 node_modules/

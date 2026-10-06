@@ -444,60 +444,56 @@ async function apiDeletePhoto(env, id, slot) {
    · 网络 8 秒没回就先用存着的那份（国内晚高峰 workers.dev 能卡很久），网络
      回来的新版照样存下，下次打开就是新的。
 
-   写成真函数再 toString 发出去，而不是字符串：这样语法错误在部署前就会炸，
-   test.mjs 也能直接测。 */
-const SHELL_CACHE = "qc-shell";
-function serviceWorker() {
-  const CACHE = "__SHELL_CACHE__", PAGE = "/", WAIT_MS = 8000;
-  self.addEventListener("install", () => self.skipWaiting());
-  self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
-  self.addEventListener("fetch", (e) => {
-    const req = e.request;
-    if (req.mode !== "navigate" || req.method !== "GET") return;
-    const u = new URL(req.url);
-    if (u.origin !== self.location.origin || (u.pathname !== "/" && u.pathname !== "/index.html")) return;
+   · 存 / 删缓存出任何错都吞掉，照样把网络上的页面交出去 —— 缓存是锦上添花，
+     绝不能因为它让页面打不开。
 
-    const net = fetch(req).then(async (res) => {
+   **必须写成字符串，不能写成函数再 toString()**（2026-10-06 踩过）：wrangler 打包
+   时开了 keepNames，会把函数里的箭头函数包成 __name(() => …, "cached")，而 __name
+   只在 worker 的打包产物里有定义。toString 出来发到浏览器，一调用就
+   ReferenceError，每次打开页面都 ERR_FAILED。本地 test.mjs 直接 import 源码、
+   不经过打包，所以测不出来。字符串打包器不会碰。test.mjs 在 vm 里跑的就是这个
+   字符串，语法错误照样会红。 */
+const SHELL_CACHE = "qc-shell";
+const SW_JS = `"use strict";
+const CACHE = "${SHELL_CACHE}", PAGE = "/", WAIT_MS = 8000;
+self.addEventListener("install", function () { self.skipWaiting(); });
+self.addEventListener("activate", function (e) { e.waitUntil(self.clients.claim()); });
+self.addEventListener("fetch", function (e) {
+  const req = e.request;
+  if (req.mode !== "navigate" || req.method !== "GET") return;
+  const u = new URL(req.url);
+  if (u.origin !== self.location.origin || (u.pathname !== "/" && u.pathname !== "/index.html")) return;
+
+  const net = fetch(req).then(async function (res) {
+    try {
       if (res.ok && res.headers.get("x-qc-app") === "1") {
         await (await caches.open(CACHE)).put(PAGE, res.clone());
       } else if (res.ok) {
         await caches.delete(CACHE);
       }
-      return res;
-    });
-    e.waitUntil(net.catch(() => {}));
-    e.respondWith((async () => {
-      const cached = () => caches.match(PAGE, { cacheName: CACHE });
-      let timer;
-      const slow = new Promise((ok) => { timer = setTimeout(ok, WAIT_MS); })
-        .then(cached).then((hit) => hit || net);
-      try {
-        return await Promise.race([net, slow]);
-      } catch (err) {
-        const hit = await cached();
-        if (hit) return hit;
-        throw err;
-      } finally {
-        clearTimeout(timer);
-      }
-    })());
+    } catch (err) {}
+    return res;
   });
-}
-/* 2026-10-06 上线后线上刷新直接 ERR_FAILED（本地测试服务上没复现）。在查清楚
-   之前先发「自我注销」版：不监听 fetch、删掉缓存、注销自己、让已打开的页面
-   重新加载一次。已经装上旧脚本的设备，下次打开页面时浏览器会检查 /sw.js
-   有没有更新，拿到这一版就自己卸掉了。 */
-const SW_KILL = true;
-function serviceWorkerKill() {
-  self.addEventListener("install", () => self.skipWaiting());
-  self.addEventListener("activate", (e) => e.waitUntil((async () => {
-    await caches.delete("__SHELL_CACHE__");
-    await self.registration.unregister();
-    for (const c of await self.clients.matchAll({ type: "window" })) c.navigate(c.url);
-  })()));
-}
-const SW_JS = "(" + (SW_KILL ? serviceWorkerKill : serviceWorker).toString()
-  .replace("__SHELL_CACHE__", SHELL_CACHE) + ")();\n";
+  e.waitUntil(net.catch(function () {}));
+  e.respondWith((async function () {
+    const cached = async function () {
+      try { return await caches.match(PAGE, { cacheName: CACHE }); } catch (err) { return undefined; }
+    };
+    let timer;
+    const slow = new Promise(function (ok) { timer = setTimeout(ok, WAIT_MS); })
+      .then(cached).then(function (hit) { return hit || net; });
+    try {
+      return await Promise.race([net, slow]);
+    } catch (err) {
+      const hit = await cached();
+      if (hit) return hit;
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  })());
+});
+`;
 
 /* ── router ──────────────────────────────────────────────────────────── */
 

@@ -2,9 +2,17 @@
  * Exercises the real worker.js against real SQLite (node:sqlite) and an
  * in-memory R2 stand-in. workerd can't start on this machine, so this is how
  * routing / auth / last-write-wins get verified before deploying.
+ *
+ * 用法：node test.mjs [打包后的 worker.js]
+ * 不给路径测源码；给路径测 wrangler 打包出来的那份（npm test 两份都测）。
+ * 2026-10-06 源码全过、打包后却坏了：wrangler 给函数加 __name()，/sw.js 是
+ * toString 出来的，到浏览器里 __name 未定义，线上每次打开都 ERR_FAILED。
  */
 import { DatabaseSync } from "node:sqlite";
-import worker from "./src/worker.js";
+import { pathToFileURL } from "node:url";
+const { default: worker } = await import(
+  process.argv[2] ? pathToFileURL(process.argv[2]).href : "./src/worker.js");
+console.log("测试对象:", process.argv[2] || "src/worker.js（源码）");
 import { schemaSQL } from "./load-schema.mjs";
 
 const db = new DatabaseSync(":memory:");
