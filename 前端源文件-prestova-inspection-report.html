@@ -10103,7 +10103,9 @@ function renderCards(rows){
    · 什么叫不合格，全部沿用各板块自己的判定（含人工改判）：
        成品 / 来料 / 装柜  meta.verdict === "reject"
        防火               meta.ftVerdict === "不合格"
-       制程               meta.bad > 0（发现了不良件）
+       制程               不良率 bad / qty > 5%，跟记录表变红同一条线（用户 2026-10-06
+                          定的；原来是 bad > 0，一件不良就算，日历会红一大片）。
+                          没填检查数量的不算 —— 算不出不良率。
        实验室             labVerdict(记录) === "不合格"
    · 实验室**不走索引**：它的判定要用标准表（LAB_STD），而标准表开机时是空的、
      进实验室板块才加载。把判定塞进 metaOf 的话，开机重建索引那一刻会全部判成
@@ -10139,8 +10141,14 @@ function reportDayOf(m){
   return d && !isNaN(d) ? d : null;
 }
 /* 除实验室以外，索引行自己就能判 */
+const IPQC_NG_PCT=5;
 function metaIsNg(m){
-  if(m.type==="ipqc")    return (+m.bad||0)>0;
+  if(m.type==="ipqc"){
+    const b=+m.bad||0, q=parseFloat(String(m.qty||"").replace(",","."))||0;
+    /* 跟制程记录表「不良率」那一格变红用同一个数：先四舍五入到 0.1%（pct 的口径）
+       再比 > 5，显示 5.0% 的不算、5.1% 的算，两边不会在边界上对不上 */
+    return q>0 && Math.round(b/q*1000)/10 > IPQC_NG_PCT;
+  }
   if(m.type==="cfr1633") return m.ftVerdict==="不合格";
   return m.verdict==="reject";
 }
