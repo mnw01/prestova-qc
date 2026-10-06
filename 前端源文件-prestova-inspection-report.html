@@ -6217,9 +6217,15 @@ function iqcPickLabel(m){
   return a+(b?" · "+b:"");
 }
 async function iqcRenderPick(){
-  const host=$("#iplbody"); host.innerHTML="";
+  const host=$("#iplbody");
   let rows=[];
   try{ rows=(await metaAll()).filter(m=>m.type==="iqc"); }catch(e){}
+  /* 清空要放在 await **之后**：原来先 innerHTML="" 再去读索引，列表一空容器
+     高度归零，浏览器把滚动位置夹回顶部，等列表画回来已经在最上面了 —— 拉到
+     下面点开某一天，就「跳回最上面」（用户 2026-10-06 报的，来料批次选择器）。
+     读完再同步地清空 + 重建，中间不让浏览器排版，滚动位置就留得住
+     （成品 / 实验室的选择器本来就是同步重画，没有这个问题）。 */
+  host.innerHTML="";
   rows.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   $("#iplcount").textContent=rows.length;
   if(!rows.length){ host.innerHTML='<div class="iqempty">还没有记录。</div>'; return; }
@@ -7651,9 +7657,11 @@ function ipqcDayKey(m){
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
 }
 async function ipqcRenderPick(){
-  const host=$("#pplbody"); host.innerHTML="";
+  const host=$("#pplbody");
   let rows=[];
   try{ rows=(await metaAll()).filter(m=>m.type==="ipqc"); }catch(e){}
+  /* 清空放在 await 之后，否则点开某一天会跳回顶部 —— 见 iqcRenderPick */
+  host.innerHTML="";
   rows.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   $("#pplcount").textContent=rows.length;
   if(!rows.length){ host.innerHTML='<div class="ipempty">还没有记录。</div>'; return; }
@@ -8543,9 +8551,11 @@ function oqcDayKey(m){
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
 }
 async function oqcRenderPick(){
-  const host=$("#oplbody"); host.innerHTML="";
+  const host=$("#oplbody");
   let rows=[];
   try{ rows=(await metaAll()).filter(m=>m.type==="oqc"); }catch(e){}
+  /* 清空放在 await 之后，否则点开某一天会跳回顶部 —— 见 iqcRenderPick */
+  host.innerHTML="";
   rows.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   $("#oplcount").textContent=rows.length;
   if(!rows.length){ host.innerHTML='<div class="oqempty">还没有记录。</div>'; return; }
@@ -10004,9 +10014,11 @@ function ftDayKey(m){
   return dd.getFullYear()+"-"+p(dd.getMonth()+1)+"-"+p(dd.getDate());
 }
 async function ftRenderPick(){
-  const host=$("#ftplbody"); host.innerHTML="";
+  const host=$("#ftplbody");
   let rows=[];
   try{ rows=(await metaAll()).filter(m=>m.type==="cfr1633"); }catch(e){}
+  /* 清空放在 await 之后，否则点开某一天会跳回顶部 —— 见 iqcRenderPick */
+  host.innerHTML="";
   rows.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   $("#ftplcount").textContent=rows.length;
   if(!rows.length){ host.innerHTML='<div class="frec-empty">还没有记录。</div>'; return; }
