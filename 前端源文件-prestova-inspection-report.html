@@ -10353,6 +10353,8 @@ function paintLangSw(){
 $("#logout").addEventListener("click",async()=>{
   if(!confirm(tr("退出登录？换个口令进来可以切换身份。"))) return;
   try{ await fetch("/api/logout",{method:"POST",credentials:"same-origin"}); }catch(e){}
+  /* 存着的页面一起删，不然断网时不用口令就能打开 */
+  try{ if(window.caches) await caches.delete(SHELL_CACHE); }catch(e){}
   location.reload();
 });
 
@@ -10554,6 +10556,14 @@ const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
    徽标直接隐藏、整个会话不再尝试、连提示都没有。命中窗口正是 !SYNC.probed，也就是
    车间平板早上打开、网还没稳的那一次。 */
 const NO_BACKEND = location.protocol==="file:" || location.protocol==="blob:";
+
+/* 离线打开：注册 worker.js 发的那个缓存脚本（策略和理由写在 worker.js 的
+   serviceWorker() 上面）。单机副本 / artifact 里没有 /sw.js，注册失败就算了，
+   什么都不影响。SHELL_CACHE 跟 worker.js 里的名字必须一样，退出登录要删它。 */
+const SHELL_CACHE="qc-shell";
+if(!NO_BACKEND && window.isSecureContext && "serviceWorker" in navigator){
+  navigator.serviceWorker.register("/sw.js").catch(()=>{});
+}
 
 /* ── 按板块同步：QC 只拉自己点进去过的板块 ─────────────────────────
    现场手机原来每 60 秒下载全库（1,547 行 / 122 KB）去用其中十几行。

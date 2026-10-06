@@ -23,6 +23,16 @@ if (isolation.length) {
 }
 console.log("板块隔离:", "OK");
 
+// 产物里不带注释（源文件里照留）：手机下载少 40%。只删注释不压缩代码，
+// 下面的语法检查跑的就是去完注释的那份。详见 strip-comments.js。
+try {
+  body = require("./strip-comments").stripComments(body);
+} catch (e) {
+  console.error("\n去注释失败，已中断构建：\n\n  " + e.message + "\n");
+  process.exit(1);
+}
+console.log("去注释:", "OK");
+
 // The artifact host supplies <head>; a standalone page must build its own.
 const titleMatch = body.match(/<title>([\s\S]*?)<\/title>/);
 const title = titleMatch ? titleMatch[1] : "在线检查报告";

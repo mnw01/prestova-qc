@@ -131,12 +131,13 @@ npx wrangler secret put QC_COOKIE_SECRET     # 会话签名，随机长字符串
 
 ```
 前端源文件-prestova-inspection-report.html   ← 唯一的前端源文件，改这个
-index.html                                   ← 构建产物，跟着提交
-build-standalone.js                          ← 构建：四道检查 + 套 <head> 外壳
+index.html                                   ← 构建产物（不带注释），跟着提交
+build-standalone.js                          ← 构建：四道检查 + 去注释 + 套 <head> 外壳
 check-isolation.js                           ← 板块 CSS 隔离检查（被构建调用）
+strip-comments.js                            ← 产物去注释（被构建调用；源文件注释照留）
 test-client.mjs                              ← 客户端同步层测试
 qc-worker/
-  src/worker.js       后端：认证、/api/index、/api/report、/api/photo
+  src/worker.js       后端：认证、/api/index、/api/report、/api/photo、/sw.js（离线打开）
   migrations/         D1 表结构，唯一真相源
   load-schema.mjs     拼接 migrations/，给测试库和本地后端建表
   test.mjs            服务端测试（真实 worker + 内存 SQLite）

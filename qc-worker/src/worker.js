@@ -430,6 +430,61 @@ async function apiDeletePhoto(env, id, slot) {
   return json({ status: "deleted", updatedAt: now });
 }
 
+/* ── 离线打开：Service Worker ───────────────────────────────────────────
+   数据早就离线存在 IndexedDB 里了，但页面本身没缓存 —— 手机没网时**重新打开**
+   页面就是浏览器的断网页，只有一直开着没关的那个标签还能用。
+
+   策略是**网络优先**：有网每次照样拿最新的页面（顺手存一份），只有网络失败才拿
+   存着的那份。所以发版之后不会出现「手机一直停在旧版」—— 那是缓存优先的毛病。
+
+   · 只管打开页面（navigate 到 /），/api/* 和照片一律不碰，照常走网络。
+   · 只缓存真正的应用页（带 x-qc-app 头的那个），不缓存口令页。
+   · 网络回来的是口令页 = 会话过期或已退出 → 把存着的那份删掉，否则断网时
+     不用口令就能打开。前端点「退出」时也会自己删一次。
+   · 网络 8 秒没回就先用存着的那份（国内晚高峰 workers.dev 能卡很久），网络
+     回来的新版照样存下，下次打开就是新的。
+
+   写成真函数再 toString 发出去，而不是字符串：这样语法错误在部署前就会炸，
+   test.mjs 也能直接测。 */
+const SHELL_CACHE = "qc-shell";
+function serviceWorker() {
+  const CACHE = "__SHELL_CACHE__", PAGE = "/", WAIT_MS = 8000;
+  self.addEventListener("install", () => self.skipWaiting());
+  self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
+  self.addEventListener("fetch", (e) => {
+    const req = e.request;
+    if (req.mode !== "navigate" || req.method !== "GET") return;
+    const u = new URL(req.url);
+    if (u.origin !== self.location.origin || (u.pathname !== "/" && u.pathname !== "/index.html")) return;
+
+    const net = fetch(req).then(async (res) => {
+      if (res.ok && res.headers.get("x-qc-app") === "1") {
+        await (await caches.open(CACHE)).put(PAGE, res.clone());
+      } else if (res.ok) {
+        await caches.delete(CACHE);
+      }
+      return res;
+    });
+    e.waitUntil(net.catch(() => {}));
+    e.respondWith((async () => {
+      const cached = () => caches.match(PAGE, { cacheName: CACHE });
+      let timer;
+      const slow = new Promise((ok) => { timer = setTimeout(ok, WAIT_MS); })
+        .then(cached).then((hit) => hit || net);
+      try {
+        return await Promise.race([net, slow]);
+      } catch (err) {
+        const hit = await cached();
+        if (hit) return hit;
+        throw err;
+      } finally {
+        clearTimeout(timer);
+      }
+    })());
+  });
+}
+const SW_JS = "(" + serviceWorker.toString().replace("__SHELL_CACHE__", SHELL_CACHE) + ")();\n";
+
 /* ── router ──────────────────────────────────────────────────────────── */
 
 export default {
@@ -441,6 +496,14 @@ export default {
     if (!env.QC_PASSCODE || !env.QC_COOKIE_SECRET) {
       return json({ error: "server_not_configured",
                     hint: "set QC_PASSCODE and QC_COOKIE_SECRET as Worker secrets" }, 500);
+    }
+
+    /* 缓存脚本不需要会话：里面没有任何数据，而浏览器后台检查它有没有更新时，
+       会话可能已经过期了 —— 那时候拿到口令页，更新就失败了。 */
+    if (p === "/sw.js") {
+      return new Response(SW_JS, {
+        headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" },
+      });
     }
 
     // login / logout are the only routes reachable without a session
@@ -566,6 +629,7 @@ export default {
     if ((asset.headers.get("content-type") || "").includes("text/html")) {
       const h = new Headers(asset.headers);
       h.set("cache-control", "no-cache");   // may cache, must revalidate (cheap 304)
+      h.set("x-qc-app", "1");               // 缓存脚本只存带这个头的（口令页没有）
       /* 每次发页面都把角色副本 cookie 重写一遍：前端只读这个决定显示哪些按钮，
          刷一次就不会出现"session 还在、角色 cookie 被清掉"导致按钮乱掉。 */
       h.append("set-cookie", setRoleCookie(role, secure));

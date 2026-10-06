@@ -546,6 +546,65 @@ console.log("\n— 角色：QC / 管理员 —");
   ok("没配管理员口令时 QC_PASSCODE 仍给 admin", (await r3.json()).role === "admin");
 }
 
+console.log("\n— 离线打开：/sw.js 和缓存脚本的行为 —");
+{
+  const sw = await hit("/sw.js");
+  const src = await sw.text();
+  ok("/sw.js 不要会话也能拿到", sw.status === 200 && /javascript/.test(sw.headers.get("content-type")));
+  ok("/sw.js 是 no-cache（发版后浏览器能发现新脚本）", sw.headers.get("cache-control") === "no-cache");
+  ok("应用页带 x-qc-app 头", (await hit("/", auth())).headers.get("x-qc-app") === "1");
+  ok("口令页不带 x-qc-app 头", !(await hit("/")).headers.get("x-qc-app"));
+
+  /* 在 vm 里跑真的脚本：桩出 self / caches / fetch，模拟有网、断网、会话过期 */
+  const { default: vm } = await import("node:vm");
+  const mkSW = () => {
+    const store = new Map(), handlers = {};
+    const st = { net: null, deleted: 0 };
+    const caches = {
+      async open() { return { put: async (k, r) => { store.set(k, await r.text()); } }; },
+      async match(k) { return store.has(k) ? new Response(store.get(k)) : undefined; },
+      async delete() { st.deleted++; return store.delete("/"); },
+    };
+    const self = {
+      location: { origin: "https://qc.example.com" },
+      addEventListener: (t, fn) => { handlers[t] = fn; },
+      skipWaiting() {}, clients: { claim: async () => {} },
+    };
+    vm.runInNewContext(src, { self, caches, fetch: async () => st.net(), URL, Response, Promise, setTimeout, clearTimeout });
+    const nav = async (url, mode = "navigate") => {
+      let res = null, waits = [];
+      handlers.fetch({
+        request: { url, mode, method: "GET" },
+        respondWith: (p) => { res = p; },
+        waitUntil: (p) => waits.push(p),
+      });
+      if (!res) return "没接管";
+      try { const r = await res; await Promise.all(waits); return await r.text(); }
+      catch (e) { return "抛错"; }
+    };
+    return { st, store, nav };
+  };
+  const app = () => new Response("APP", { headers: { "x-qc-app": "1" } });
+  const gate = () => new Response("GATE");
+  const offline = () => { throw new TypeError("Failed to fetch"); };
+
+  const t = mkSW();
+  t.st.net = offline;
+  ok("从没存过 + 断网 → 照常失败（浏览器断网页）", (await t.nav("https://qc.example.com/")) === "抛错");
+  t.st.net = app;
+  ok("有网 → 拿网络上的最新页", (await t.nav("https://qc.example.com/?v=3#/fqc")) === "APP");
+  ok("  并且存了一份", t.store.get("/") === "APP");
+  t.st.net = offline;
+  ok("断网 → 打开存着的那份", (await t.nav("https://qc.example.com/")) === "APP");
+  ok("/api/* 不接管", (await t.nav("https://qc.example.com/api/index", "cors")) === "没接管");
+  ok("照片不接管", (await t.nav("https://qc.example.com/api/photo/a/b.jpg", "no-cors")) === "没接管");
+  t.st.net = gate;
+  ok("会话过期（网络回口令页）→ 显示口令页", (await t.nav("https://qc.example.com/")) === "GATE");
+  ok("  并且删掉存着的那份", !t.store.has("/") && t.st.deleted === 1);
+  t.st.net = offline;
+  ok("  之后断网不能绕过口令打开", (await t.nav("https://qc.example.com/")) === "抛错");
+}
+
 console.log("\n— missing server config —");
 {
   const r = await worker.fetch(new Request("https://qc.example.com/"), { ...env, QC_PASSCODE: "" });
