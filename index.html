@@ -994,6 +994,9 @@ table.frec-table tbody tr.draft .lockdot,
 #iqc .iqfield input,#iqc .iqfield select{font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--rule-2);
   border-radius:4px;background:var(--paper);color:var(--ink);width:100%;min-width:0}
 #iqc .iqfield input:focus,#iqc .iqfield select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+#iqc .iqfield input.iqfixed,
+:root[data-theme="dark"] #iqc .iqfield input.iqfixed{background:var(--sunk);color:var(--ink-2);cursor:default}
+#iqc .iqfield input.iqfixed:focus{outline:none}
 #iqc .iqhint{font-size:11.5px;color:var(--ink-3);font-weight:400}
 #iqc .iqempty{padding:14px 12px;font-size:12.5px;color:var(--ink-3);text-align:center}
 
@@ -4468,6 +4471,11 @@ const IQC_ITEMS=[
   {k:"od", zh:"气味", un:"BAU"}
 ];
 function iqcBlankRow(){ return {qty:"",std:"",actual:"",result:"accept",remark:"",action:""}; }
+const IQC_FIXED_STD={ od:"≤2级" };
+function iqcFixStd(k, d){
+  const s=IQC_FIXED_STD[k];
+  if(s && d && d.on) d.rows.forEach(r=>{ r.std=s; });
+}
 function iqcBlankItem(){ return {on:false,rows:[iqcBlankRow()]}; }
 function iqcNormItem(d){
   if(!d) return iqcBlankItem();
@@ -4538,13 +4546,15 @@ function iqcBuildItems(){
   });
 }
 function iqcRowHtml(k,i,d,many){
-  const f=(name,label,extra)=>
+  const f=(name,label,extra,val)=>
     '<label class="iqfield"><span>'+label+'</span><input data-iqf="'+name+'" data-k="'+k+'" data-i="'+i+'"'+
-    (extra||'')+' value="'+esc(d[name]||"")+'"></label>';
+    (extra||'')+' value="'+esc(val!=null?val:(d[name]||""))+'"></label>';
+  const fixed=IQC_FIXED_STD[k];
   return '<div class="iqm" data-k="'+k+'" data-i="'+i+'">'+
     '<div class="iqmf">'+
       f("qty","数量",' inputmode="decimal"')+
-      f("std","标准")+
+      (fixed ? f("std","标准",' class="iqfixed" readonly tabindex="-1" title="标准固定，不可修改"',fixed)
+             : f("std","标准"))+
       f("actual","实际")+
       '<label class="iqfield"><span>结论</span><select class="iqres'+(d.result==="reject"?" reject":"")+
         '" data-iqf="result" data-k="'+k+'" data-i="'+i+'">'+
@@ -4572,6 +4582,7 @@ function iqcPaintItems(){
   IQC_ITEMS.forEach(it=>{
     const row=$('.iqirow[data-k="'+it.k+'"]'); if(!row) return;
     const d=IR.iqc.items[it.k]=iqcNormItem(IR.iqc.items[it.k]);
+    iqcFixStd(it.k, d);
     row.classList.toggle("on",!!d.on);
     $('[data-on="'+it.k+'"]',row).checked=!!d.on;
     const many=d.rows.length>1;
@@ -4738,6 +4749,7 @@ $("#iqitems").addEventListener("change",e=>{
   const t=e.target;
   if(t.matches("[data-on]")){
     IR.iqc.items[t.dataset.on].on=t.checked;
+    iqcFixStd(t.dataset.on, IR.iqc.items[t.dataset.on]);
     t.closest(".iqirow").classList.toggle("on",t.checked);
     iqcPaintVerdict(); iqcSave();
   }else if(t.matches("select.iqres")){

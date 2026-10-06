@@ -1417,6 +1417,10 @@ table.frec-table tbody tr.draft .lockdot,
 #iqc .iqfield input,#iqc .iqfield select{font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--rule-2);
   border-radius:4px;background:var(--paper);color:var(--ink);width:100%;min-width:0}
 #iqc .iqfield input:focus,#iqc .iqfield select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+/* 标准写死的格（IQC_FIXED_STD）：只读，压成凹底灰字，一眼看出不用填 */
+#iqc .iqfield input.iqfixed,
+:root[data-theme="dark"] #iqc .iqfield input.iqfixed{background:var(--sunk);color:var(--ink-2);cursor:default}
+#iqc .iqfield input.iqfixed:focus{outline:none}
 #iqc .iqhint{font-size:11.5px;color:var(--ink-3);font-weight:400}
 /* 批次选择器的空态。外壳（.plbox/.plday/.plrow…）走 check-isolation 的 SHARED
    白名单，跟成品检验/实验室共用，只有这一条空态文字是本板块自己的 */
@@ -5970,6 +5974,15 @@ const IQC_ITEMS=[
    「批次×检查项」组合里 76.6% 都记了不止一个测量值，最常见是 4 排，纸箱尺寸
    经常 10~12 排。所以这里做成一排一包、可以增删。 */
 function iqcBlankRow(){ return {qty:"",std:"",actual:"",result:"accept",remark:"",action:""}; }
+/* 标准写死、不让改的检查项（用户 2026-10-06 定：气味 ≤2 级）。
+   输入框只读、永远显示这个值；**勾上这一项时**才写进记录（记录表 / 导出要读
+   std）—— 没勾的不写，否则每条来料记录都带着一个非空 std，isBlankReport 会把
+   从没动过的空白批次当成"填过东西"，cleanupBlanks 就再也清不掉它们。 */
+const IQC_FIXED_STD={ od:"≤2级" };
+function iqcFixStd(k, d){
+  const s=IQC_FIXED_STD[k];
+  if(s && d && d.on) d.rows.forEach(r=>{ r.std=s; });
+}
 function iqcBlankItem(){ return {on:false,rows:[iqcBlankRow()]}; }
 /* 2026-08-10 之前一个检查项只有一排（六个字段直接摊在 item 上）。老记录读出来
    先归一化成 rows[]，这样后面所有代码只认一种形状。 */
@@ -6066,13 +6079,15 @@ function iqcBuildItems(){
    复现过：在来料检验的「数量」里打 999，fqc 记录里凭空多出 qty:"999"。
    check-isolation.js 现在会拦这类全局委托属性，别再用回 data-f。 */
 function iqcRowHtml(k,i,d,many){
-  const f=(name,label,extra)=>
+  const f=(name,label,extra,val)=>
     '<label class="iqfield"><span>'+label+'</span><input data-iqf="'+name+'" data-k="'+k+'" data-i="'+i+'"'+
-    (extra||'')+' value="'+esc(d[name]||"")+'"></label>';
+    (extra||'')+' value="'+esc(val!=null?val:(d[name]||""))+'"></label>';
+  const fixed=IQC_FIXED_STD[k];
   return '<div class="iqm" data-k="'+k+'" data-i="'+i+'">'+
     '<div class="iqmf">'+
       f("qty","数量",' inputmode="decimal"')+
-      f("std","标准")+
+      (fixed ? f("std","标准",' class="iqfixed" readonly tabindex="-1" title="标准固定，不可修改"',fixed)
+             : f("std","标准"))+
       f("actual","实际")+
       '<label class="iqfield"><span>结论</span><select class="iqres'+(d.result==="reject"?" reject":"")+
         '" data-iqf="result" data-k="'+k+'" data-i="'+i+'">'+
@@ -6100,6 +6115,7 @@ function iqcPaintItems(){
   IQC_ITEMS.forEach(it=>{
     const row=$('.iqirow[data-k="'+it.k+'"]'); if(!row) return;
     const d=IR.iqc.items[it.k]=iqcNormItem(IR.iqc.items[it.k]);
+    iqcFixStd(it.k, d);
     row.classList.toggle("on",!!d.on);
     $('[data-on="'+it.k+'"]',row).checked=!!d.on;
     const many=d.rows.length>1;
@@ -6297,6 +6313,7 @@ $("#iqitems").addEventListener("change",e=>{
   const t=e.target;
   if(t.matches("[data-on]")){
     IR.iqc.items[t.dataset.on].on=t.checked;
+    iqcFixStd(t.dataset.on, IR.iqc.items[t.dataset.on]);
     t.closest(".iqirow").classList.toggle("on",t.checked);
     iqcPaintVerdict(); iqcSave();
   }else if(t.matches("select.iqres")){
