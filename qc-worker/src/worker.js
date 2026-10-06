@@ -483,7 +483,21 @@ function serviceWorker() {
     })());
   });
 }
-const SW_JS = "(" + serviceWorker.toString().replace("__SHELL_CACHE__", SHELL_CACHE) + ")();\n";
+/* 2026-10-06 上线后线上刷新直接 ERR_FAILED（本地测试服务上没复现）。在查清楚
+   之前先发「自我注销」版：不监听 fetch、删掉缓存、注销自己、让已打开的页面
+   重新加载一次。已经装上旧脚本的设备，下次打开页面时浏览器会检查 /sw.js
+   有没有更新，拿到这一版就自己卸掉了。 */
+const SW_KILL = true;
+function serviceWorkerKill() {
+  self.addEventListener("install", () => self.skipWaiting());
+  self.addEventListener("activate", (e) => e.waitUntil((async () => {
+    await caches.delete("__SHELL_CACHE__");
+    await self.registration.unregister();
+    for (const c of await self.clients.matchAll({ type: "window" })) c.navigate(c.url);
+  })()));
+}
+const SW_JS = "(" + (SW_KILL ? serviceWorkerKill : serviceWorker).toString()
+  .replace("__SHELL_CACHE__", SHELL_CACHE) + ")();\n";
 
 /* ── router ──────────────────────────────────────────────────────────── */
 
