@@ -8261,6 +8261,31 @@ async function labNgOf(metas){
   if(added) labNgPersist();
   return out;
 }
+let SIDE_NG_SEQ=0;
+async function sideNgRefresh(rows){
+  const seq=++SIDE_NG_SEQ;
+  if(!rows){ try{ rows=await metaAll(); }catch(e){ return; } }
+  const key=d=>d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+  const now=new Date(), today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const byDay=new Map();
+  rows.forEach(m=>{
+    if(CFG_TYPES.indexOf(m.type)>=0 || !m.locked) return;
+    const d=reportDayOf(m); if(!d || d>=today) return;
+    const k=key(d); if(!byDay.has(k)) byDay.set(k,[]); byDay.get(k).push(m);
+  });
+  let day=null;
+  for(let b=1;b<=7;b++){ const d=new Date(today); d.setDate(today.getDate()-b); if(byDay.has(key(d))){ day=d; break; } }
+  if(!day){ day=new Date(today); day.setDate(today.getDate()-1); }
+  const list=byDay.get(key(day))||[];
+  const labNg=await labNgOf(list.filter(m=>m.type==="lab"));
+  if(seq!==SIDE_NG_SEQ) return;
+  const by={}; let n=0;
+  list.forEach(m=>{
+    const t=m.type||"fqc";
+    if(t==="lab" ? labNg.has(m.id) : metaIsNg(m)){ by[t]=(by[t]||0)+1; n++; }
+  });
+  sideSetNg(n, key(day), by);
+}
 async function renderHeat(rows){
   const host=$("#hheat"); if(!host) return;
   HEAT_LAST_ROWS=rows; HEAT_LAST_W=host.clientWidth;
@@ -8301,11 +8326,7 @@ async function renderHeat(rows){
     const k=key(d), e=day.get(k)||{n:0,by:{}};
     e.n++; e.by[t]=(e.by[t]||0)+1; day.set(k,e);
   });
-  let ngDay=null;
-  for(let b=1;b<=7;b++){ const d=new Date(today); d.setDate(today.getDate()-b); if(d<start) break; if(mAll.has(key(d))){ ngDay=d; break; } }
-  if(!ngDay){ ngDay=new Date(today); ngDay.setDate(today.getDate()-1); }
-  const ngBy=mNg.get(key(ngDay))||new Map();
-  sideSetNg([...ngBy.values()].reduce((a,b)=>a+b,0), key(ngDay), Object.fromEntries(ngBy));
+  sideNgRefresh(rows); 
   let peak=0;
   day.forEach(e=>{ if(e.n>peak) peak=e.n; });
 
@@ -9359,6 +9380,7 @@ async function runSync(){
   reportClockSkew(); 
   await refreshPending();
   if($("#pickbtn") && !$("#mod").hidden) relabel();
+  if($("#home") && $("#home").hidden) sideNgRefresh().catch(()=>{});
   await refreshHomeIfVisible();
 }
 
@@ -11513,6 +11535,7 @@ applyRole();
   const fixed=await migrateLabIds(metaRows);
   if(fixed) toast(fixed+" "+tr("条历史记录已修复编号，现在可以同步了"));
   await migrateOqcPodi(metaRows);
+  sideNgRefresh().catch(()=>{}); 
   route();
   refreshPending();
   await syncNow(); 

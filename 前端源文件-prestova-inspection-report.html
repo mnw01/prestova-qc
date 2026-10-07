@@ -10643,6 +10643,38 @@ async function labNgOf(metas){
   if(added) labNgPersist();
   return out;
 }
+/* 侧边栏的不合格角标（「不合格日历」+ 各板块）= 前一天的不合格份数（用户 2026-10-07：
+   每天一看就知道昨天有几份要处理；原来是本月累计，越到月底越大、看不出新增）。
+   前一天一份已提交报告都没有（周日、放假）就再往前找，最多 7 天 —— 不然周一
+   看到的永远是周日的 0，周六的不合格就漏过去了。口径跟日历一样：已提交、按检验日期。
+   **单独成一个函数**：原来是日历（renderHeat）顺带算的，刷新时停在记录表 / 数据分析，
+   首页那段根本不跑，角标要点一下首页才出来（用户报的）。现在开机算一次、每次同步完
+   算一次、首页画日历时也走这里。只看那一天，实验室记录也只读那天的几条，很轻。 */
+let SIDE_NG_SEQ=0;
+async function sideNgRefresh(rows){
+  const seq=++SIDE_NG_SEQ;
+  if(!rows){ try{ rows=await metaAll(); }catch(e){ return; } }
+  const key=d=>d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+  const now=new Date(), today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const byDay=new Map();
+  rows.forEach(m=>{
+    if(CFG_TYPES.indexOf(m.type)>=0 || !m.locked) return;
+    const d=reportDayOf(m); if(!d || d>=today) return;
+    const k=key(d); if(!byDay.has(k)) byDay.set(k,[]); byDay.get(k).push(m);
+  });
+  let day=null;
+  for(let b=1;b<=7;b++){ const d=new Date(today); d.setDate(today.getDate()-b); if(byDay.has(key(d))){ day=d; break; } }
+  if(!day){ day=new Date(today); day.setDate(today.getDate()-1); }
+  const list=byDay.get(key(day))||[];
+  const labNg=await labNgOf(list.filter(m=>m.type==="lab"));
+  if(seq!==SIDE_NG_SEQ) return;
+  const by={}; let n=0;
+  list.forEach(m=>{
+    const t=m.type||"fqc";
+    if(t==="lab" ? labNg.has(m.id) : metaIsNg(m)){ by[t]=(by[t]||0)+1; n++; }
+  });
+  sideSetNg(n, key(day), by);
+}
 async function renderHeat(rows){
   const host=$("#hheat"); if(!host) return;
   HEAT_LAST_ROWS=rows; HEAT_LAST_W=host.clientWidth;
@@ -10690,16 +10722,7 @@ async function renderHeat(rows){
     const k=key(d), e=day.get(k)||{n:0,by:{}};
     e.n++; e.by[t]=(e.by[t]||0)+1; day.set(k,e);
   });
-  /* 侧边栏「不合格日历」上的数字 = 前一天的不合格份数（用户 2026-10-07 要的：
-     每天一看就知道昨天有几份要处理；原来是本月累计，越到月底越大、看不出新增）。
-     前一天一份已提交报告都没有（周日、放假）就再往前找，最多 7 天 —— 不然周一
-     看到的永远是周日的 0，周六的不合格就漏过去了。 */
-  let ngDay=null;
-  for(let b=1;b<=7;b++){ const d=new Date(today); d.setDate(today.getDate()-b); if(d<start) break; if(mAll.has(key(d))){ ngDay=d; break; } }
-  if(!ngDay){ ngDay=new Date(today); ngDay.setDate(today.getDate()-1); }
-  /* 各板块后面也挂那一天各自的不合格份数（用户 2026-10-07 要的），合计就是日历那个数 */
-  const ngBy=mNg.get(key(ngDay))||new Map();
-  sideSetNg([...ngBy.values()].reduce((a,b)=>a+b,0), key(ngDay), Object.fromEntries(ngBy));
+  sideNgRefresh(rows);   /* 侧边栏角标，见 sideNgRefresh */
   let peak=0;
   day.forEach(e=>{ if(e.n>peak) peak=e.n; });
 
@@ -12308,6 +12331,8 @@ async function runSync(){
   reportClockSkew();   /* 设备时钟不准的话，在这儿当场告诉拿着它的人 */
   await refreshPending();
   if($("#pickbtn") && !$("#mod").hidden) relabel();
+  /* 不在首页时侧边栏角标也得跟着同步更新（在首页的话 renderHeat 会再算一遍，序号挡掉旧的） */
+  if($("#home") && $("#home").hidden) sideNgRefresh().catch(()=>{});
   await refreshHomeIfVisible();
 }
 
@@ -14898,6 +14923,7 @@ applyRole();
   const fixed=await migrateLabIds(metaRows);
   if(fixed) toast(fixed+" "+tr("条历史记录已修复编号，现在可以同步了"));
   await migrateOqcPodi(metaRows);
+  sideNgRefresh().catch(()=>{});   /* 侧边栏不合格角标：不管停在哪一屏都要有 */
   route();
   refreshPending();
   await syncNow();    /* also probes whether a backend exists at all */
