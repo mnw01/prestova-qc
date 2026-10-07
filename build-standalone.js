@@ -38,6 +38,15 @@ const titleMatch = body.match(/<title>([\s\S]*?)<\/title>/);
 const title = titleMatch ? titleMatch[1] : "在线检查报告";
 body = body.replace(/<title>[\s\S]*?<\/title>\s*/, "");
 
+// 界面字体 Inter（跟 Cloudflare 控制台同一款），只打包拉丁字符子集（48 KB），
+// 中文字落回系统字体。内联成 data URI 而不是外链：Google Fonts 在国内被墙，外链
+// 会卡住首屏；单独一个文件又要 worker 另开路由、离线缓存也要多管一个。
+// 许可证 OFL-1.1，允许嵌入，原文在 assets/fonts/LICENSE-Inter-OFL.txt。
+const INTER = fs.readFileSync(path.join(__dirname, "assets", "fonts", "inter-latin-wght-normal.woff2")).toString("base64");
+const fontFace = `@font-face{font-family:"Inter Variable";font-style:normal;font-weight:100 900;font-display:swap;
+src:url(data:font/woff2;base64,${INTER}) format("woff2-variations");
+unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}`;
+
 const html = `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -51,8 +60,14 @@ const html = `<!doctype html>
 <meta name="apple-mobile-web-app-title" content="检查报告">
 <meta name="robots" content="noindex,nofollow">
 <title>${title}</title>
+<script>
+/* 浅色 / 深色：默认浅色，侧边栏左下角那颗按钮切换并记在 localStorage。放在 <head>
+   里、第一帧之前就打上 data-theme，不会先闪一下另一种颜色。 */
+try{document.documentElement.setAttribute("data-theme",localStorage.getItem("qc-theme")==="dark"?"dark":"light")}catch(e){document.documentElement.setAttribute("data-theme","light")}
+</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%2317458c'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M9 8h14M9 14h14M9 20h9'/%3E%3C/g%3E%3C/svg%3E">
 <style>
+${fontFace}
 /* minimal reset — the artifact host normally provides this */
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}

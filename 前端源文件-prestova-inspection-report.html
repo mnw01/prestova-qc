@@ -36,7 +36,8 @@
    打印时 screen 不匹配，只有文件最上面那个不带媒体查询的 :root 生效，
    于是打印件仍然是白纸黑字。挪出 screen 就等于把深色印到纸上。 */
 @media screen and (prefers-color-scheme:dark){
-  :root{
+  /* 页面明确选了浅色（data-theme="light"，现在是默认）就不跟系统变深 */
+  :root:not([data-theme="light"]){
     --ink:#e8ecf3;--ink-2:#b3bdcd;--ink-3:#8593a8;
     --paper:#1e2229;--ground:#14171b;--chrome:#1c2027;--deck:#0d1014;--grid:rgba(180,200,235,.065);
     --rule:#363a41;--rule-2:#333c48;--hairline:#2e3239;
@@ -55,11 +56,16 @@
     --shadow:0 1px 2px rgba(0,0,0,.5),0 16px 40px -16px rgba(0,0,0,.7);
   }
 }
+/* 只在屏幕上生效 —— 跟上面深色那段一样。现在页面默认就打着 data-theme="light"，
+   不限定的话这段在打印时也生效，而且 :root[attr] 比打印样式的 :root 优先级高，
+   会把打印件的纯黑字盖成 #16191d（2026-10-07 上线前逐元素比对打印样式时抓到的）。 */
+@media screen{
 :root[data-theme="light"]{
   --ink:#16191d;--ink-2:#4a525c;--ink-3:#79828d;
   --paper:#ffffff;--ground:#e2e6ec;--chrome:#f3f5f8;--deck:#e8ecf3;--grid:rgba(15,23,41,.055);
   --accent:#17458c;--accent-soft:rgba(23,69,140,.055);
   --shadow:0 1px 2px rgba(20,26,36,.06),0 12px 34px -14px rgba(20,26,36,.28);
+}
 }
 
 /* ── 屏幕 UI 的配色（跟"纸"的配色分开） ───────────────────────────────
@@ -94,7 +100,7 @@
    那段注释警告过、用户报过两次的坑。
    同理 --accent 系列只加在这个模块列表上，不动 :root：报告表单里那些
    background:var(--accent-soft) 的输入格是打印件的一部分。 */
-#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar{
+#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar,#sidenav{
   --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
   --hairline:#e6eaf1; --rule-2:#cdd5e0;
   --ok:#0f7a52; --no:#b0342a; --okbg:#e6f5ee; --nobg:#fdecea;
@@ -109,7 +115,7 @@
   color:var(--ink);
 }
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]) :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar){
+  :root:not([data-theme="light"]) :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar,#sidenav){
     --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
     --hairline:#232a34; --rule-2:#333c48;
     --ok:#4fbb8a; --no:#e08c82; --okbg:#12291f; --nobg:#2b1a18;
@@ -121,7 +127,7 @@
     --sh-1:0 1px 2px rgba(0,0,0,.5);
   }
 }
-:root[data-theme="dark"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar){
+:root[data-theme="dark"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar,#sidenav){
   --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
   --hairline:#232a34; --rule-2:#333c48;
   --ok:#4fbb8a; --no:#e08c82; --okbg:#12291f; --nobg:#2b1a18;
@@ -132,7 +138,7 @@
   --deck:#0d1014; --bar-bg:#14181f; --seg-bg:#0f131a; --seg-on:#2a2e35; --sunk:#252930;
   --sh-1:0 1px 2px rgba(0,0,0,.5);
 }
-:root[data-theme="light"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar){
+:root[data-theme="light"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar,#sidenav){
   --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
   --hairline:#e6eaf1; --rule-2:#cdd5e0;
   --ok:#0f7a52; --no:#b0342a; --okbg:#e6f5ee; --nobg:#fdecea;
@@ -146,15 +152,15 @@
 /* 实验室多两组自己的（超差底色、警告色），只补这几个，不重抄整套 */
 #lab{ --overbg:#fdf3f2; --warn:#c98a12; --warntx:#8a5d05; --warnbg:#fdf8ee; }
 @media (prefers-color-scheme:dark){
-  #lab{ --overbg:#2a1a19; --warn:#c98a12; --warntx:#e0b96a; --warnbg:#2a2418; }
+  :where(:root:not([data-theme="light"])) #lab{ --overbg:#2a1a19; --warn:#c98a12; --warntx:#e0b96a; --warnbg:#2a2418; }
 }
-:root[data-theme="dark"] #lab{ --overbg:#2a1a19; --warn:#c98a12; --warntx:#e0b96a; --warnbg:#2a2418; }
-:root[data-theme="light"] #lab{ --overbg:#fdf3f2; --warn:#c98a12; --warntx:#8a5d05; --warnbg:#fdf8ee; }
+:where(:root[data-theme="dark"]) #lab{ --overbg:#2a1a19; --warn:#c98a12; --warntx:#e0b96a; --warnbg:#2a2418; }
+
 /* 建议弹层的分隔线和悬停底比板块里的浅一档（它浮在内容上面，线要更收敛） */
 #pmpop{ --hairline:#e2e5ea; --accent-soft:#eef2f9; }
-@media (prefers-color-scheme:dark){ #pmpop{ --hairline:#2d333c; --accent-soft:#1d2733; } }
-:root[data-theme="dark"] #pmpop{ --hairline:#2d333c; --accent-soft:#1d2733; }
-:root[data-theme="light"] #pmpop{ --hairline:#e2e5ea; --accent-soft:#eef2f9; }
+@media (prefers-color-scheme:dark){ :where(:root:not([data-theme="light"])) #pmpop{ --hairline:#2d333c; --accent-soft:#1d2733; } }
+:where(:root[data-theme="dark"]) #pmpop{ --hairline:#2d333c; --accent-soft:#1d2733; }
+
 
 *{box-sizing:border-box}
 body{
@@ -197,10 +203,10 @@ input,textarea,button,select{font:inherit;color:inherit}
 /* 公司名称不随语言切换变化：两行（PT 名 + 中文名）始终都显示 */
 .hsub{margin-top:7px;font-size:11.5px;letter-spacing:.16em;color:var(--ink-3);text-transform:uppercase}
 .hsub .cn{letter-spacing:.06em}
-@media (prefers-color-scheme:dark){.hhead h1{color:#e7eaef}.hsub{color:#8b949f}}
-:root[data-theme="dark"] .hhead h1{color:#e7eaef}
-:root[data-theme="dark"] .hsub{color:#8b949f}
-:root[data-theme="light"] .hhead h1{color:var(--ink)}
+@media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .hhead h1{color:#e7eaef}:where(:root:not([data-theme="light"])) .hsub{color:#8b949f}}
+:where(:root[data-theme="dark"]) .hhead h1{color:#e7eaef}
+:where(:root[data-theme="dark"]) .hsub{color:#8b949f}
+
 
 .hgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:26px}
 .mcard{
@@ -266,7 +272,7 @@ input,textarea,button,select{font:inherit;color:inherit}
 .hhcard .hh-leg i{display:block;width:10px;height:10px;border-radius:2px}
 .hhcard .hh-leg .t{margin:0 3px}
 @media (max-width:760px){ .hhcard .hh-grid{gap:2px} }
-@media (prefers-color-scheme:dark){.recent h2{color:#8b949f}}
+@media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .recent h2{color:#8b949f}}
 .rrow{
   display:flex;align-items:center;gap:10px;width:100%;text-align:left;
   background:var(--paper);border:1px solid var(--hairline);border-radius:5px;
@@ -280,11 +286,11 @@ input,textarea,button,select{font:inherit;color:inherit}
 .rrow .dt{flex:0 0 auto;font-size:11.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
 .rempty{font-size:13px;color:var(--ink-3);padding:10px 2px}
 @media (prefers-color-scheme:dark){
-  .mcard,.rrow{background:#1c2027;border-color:#2d333c;color:#e7eaef}
-  .mcard .desc{color:#aab3bd}
+  :where(:root:not([data-theme="light"])) .mcard,:where(:root:not([data-theme="light"])) .rrow{background:#1c2027;border-color:#2d333c;color:#e7eaef}
+  :where(:root:not([data-theme="light"])) .mcard .desc{color:#aab3bd}
 }
-:root[data-theme="dark"] .mcard,:root[data-theme="dark"] .rrow{background:#1c2027;border-color:#2d333c;color:#e7eaef}
-:root[data-theme="dark"] .mcard .desc{color:#aab3bd}
+:where(:root[data-theme="dark"]) .mcard,:where(:root[data-theme="dark"]) .rrow{background:#1c2027;border-color:#2d333c;color:#e7eaef}
+:where(:root[data-theme="dark"]) .mcard .desc{color:#aab3bd}
 
 /* ── toolbar ──────────────────────────────────────────────────────── */
 /* Two groups rather than one row with a stretchy spacer in the middle: when the
@@ -311,9 +317,9 @@ input,textarea,button,select{font:inherit;color:inherit}
   font-family:var(--serif);font-weight:700;font-size:15px;letter-spacing:.01em;
   color:var(--ink);margin-right:2px;white-space:nowrap;
 }
-@media (prefers-color-scheme:dark){.bar,.bar .brand{color:#e7eaef}}
-:root[data-theme="dark"] .bar,:root[data-theme="dark"] .bar .brand{color:#e7eaef}
-:root[data-theme="light"] .bar,:root[data-theme="light"] .bar .brand{color:var(--ink)}
+@media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .bar,:where(:root:not([data-theme="light"])) .bar .brand{color:#e7eaef}}
+:where(:root[data-theme="dark"]) .bar,:where(:root[data-theme="dark"]) .bar .brand{color:#e7eaef}
+
 .bar .sp{flex:1 1 auto}
 .bar select,.bar button,.prtfoot > button{
   border:1px solid color-mix(in srgb,currentColor 26%,transparent);
@@ -358,7 +364,7 @@ input,textarea,button,select{font:inherit;color:inherit}
    day. Colouring it apart is what keeps muscle memory off it. */
 .bar button.danger{color:var(--fail);border-color:color-mix(in srgb,var(--fail) 34%,transparent)}
 .bar button.danger:hover{background:var(--fail);border-color:var(--fail);color:#fff}
-@media (prefers-color-scheme:dark){.bar button.danger{color:#e88b81;border-color:#7a3a34}}
+@media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .bar button.danger{color:#e88b81;border-color:#7a3a34}}
 /* ── report picker: a native <select> can group with <optgroup> but cannot
    collapse, and a day's worth of containers makes the list unusable ─────── */
 #pickbtn,#lpickbtn,#ipickbtn{max-width:min(46vw,320px);display:inline-flex;align-items:center;gap:6px}
@@ -472,11 +478,11 @@ input,textarea,button,select{font:inherit;color:inherit}
 .pltime{flex:0 0 auto;font-size:11.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
 .plempty{padding:16px 10px;font-size:13px;color:var(--ink-3);text-align:center}
 @media (prefers-color-scheme:dark){
-  .plbox{background:#1c2027;color:#e7eaef}
-  .plday{color:#e7eaef} .plrow{color:#e7eaef}
+  :where(:root:not([data-theme="light"])) .plbox{background:#1c2027;color:#e7eaef}
+  :where(:root:not([data-theme="light"])) .plday{color:#e7eaef} :where(:root:not([data-theme="light"])) .plrow{color:#e7eaef}
 }
-:root[data-theme="dark"] .plbox{background:#1c2027;color:#e7eaef}
-:root[data-theme="dark"] .plday,:root[data-theme="dark"] .plrow{color:#e7eaef}
+:where(:root[data-theme="dark"]) .plbox{background:#1c2027;color:#e7eaef}
+:where(:root[data-theme="dark"]) .plday,:where(:root[data-theme="dark"]) .plrow{color:#e7eaef}
 
 .bar .sync{
   font-size:11.5px;white-space:nowrap;border:1px solid transparent;border-radius:3px;
@@ -493,17 +499,20 @@ input,textarea,button,select{font:inherit;color:inherit}
 .bar .sync.bad{color:var(--fail);border-color:color-mix(in srgb,var(--fail) 40%,transparent);font-weight:600}
 .bar .sync.off{color:var(--flag);border-color:color-mix(in srgb,var(--flag) 38%,transparent)}
 @media (prefers-color-scheme:dark){
-  .bar .sync.ok{color:#5fbf8d} .bar .sync.busy{color:#8fb6f0}
-  .bar .sync.bad{color:#e88b81} .bar .sync.off{color:#d9b45e}
+  :where(:root:not([data-theme="light"])) .bar .sync.ok{color:#5fbf8d} :where(:root:not([data-theme="light"])) .bar .sync.busy{color:#8fb6f0}
+  :where(:root:not([data-theme="light"])) .bar .sync.bad{color:#e88b81} :where(:root:not([data-theme="light"])) .bar .sync.off{color:#d9b45e}
 }
+/* 手动切到深色（系统是浅色）时也要这几个色 —— 原来只写了跟系统走的那份 */
+:where(:root[data-theme="dark"]) .bar .sync.ok{color:#5fbf8d} :where(:root[data-theme="dark"]) .bar .sync.busy{color:#8fb6f0}
+:where(:root[data-theme="dark"]) .bar .sync.bad{color:#e88b81} :where(:root[data-theme="dark"]) .bar .sync.off{color:#d9b45e}
 .bar .stat{font-size:13px;color:var(--ink-3);white-space:nowrap;font-variant-numeric:tabular-nums}
 /* 下拉弹窗必须显式配色。不写的话 Chrome 用系统默认的浅底画弹窗，字色却从
    <select> 继承过去 —— 深色下就是 #e8ecf3 压白底，选项基本看不见。
    弹窗不参与打印；打印时 --paper/--ink 本来就是白纸黑字，这条照样成立。 */
 .sheet select,.sheet option{background-color:var(--paper);color:var(--ink)}
-@media (prefers-color-scheme:dark){.bar .stat{color:#8b949f}}
+@media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .bar .stat{color:#8b949f}}
 .bar .miss{color:var(--fail)}   /* 只染色不加粗：同一行里「还差…」600、「· 已存」400，粗细切一刀很扎眼 */
-@media (prefers-color-scheme:dark){.bar .miss{color:#e88b81}}
+@media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .bar .miss{color:#e88b81}}
 
 /* ── sheet ────────────────────────────────────────────────────────── */
 .wrap{padding:18px 14px 64px;display:flex;flex-direction:column;align-items:center;gap:18px}
@@ -799,9 +808,9 @@ body.dropping::after{
   transition:opacity .18s,transform .18s;z-index:80;max-width:min(90vw,420px);text-align:center;
 }
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
-@media (prefers-color-scheme:dark){#toast{background:#f4f5f7;color:#16191d}}
-:root[data-theme="dark"] #toast{background:#f4f5f7;color:#16191d}
-:root[data-theme="light"] #toast{background:var(--ink);color:#fff}
+@media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) #toast{background:#f4f5f7;color:#16191d}}
+:where(:root[data-theme="dark"]) #toast{background:#f4f5f7;color:#16191d}
+
 
 /* ── screen-only responsive reflow (never applies to print) ───────── */
 @media screen and (max-width:900px){
@@ -880,9 +889,9 @@ body.dropping::after{
 .recbtn{font:inherit;font-size:12.5px;line-height:1.25;padding:6px 10px;border-radius:4px;
   border:1px solid var(--rule-2);background:var(--paper);color:var(--ink-2);cursor:pointer}
 .recbtn:hover{border-color:var(--accent);color:var(--accent)}
-@media(prefers-color-scheme:dark){ .recbtn{background:#151a20;border-color:#39414c} }
-:root[data-theme="dark"] .recbtn{background:#151a20;border-color:#39414c}
-:root[data-theme="light"] .recbtn{background:var(--paper);border-color:var(--rule-2)}
+@media(prefers-color-scheme:dark){ :where(:root:not([data-theme="light"])) .recbtn{background:#151a20;border-color:#39414c} }
+:where(:root[data-theme="dark"]) .recbtn{background:#151a20;border-color:#39414c}
+
 
 /* ── 共用：型号 / 类型建议下拉 ─────────────────────────────────────
    三个板块共用一个弹层实例，挂在 body 上、position:fixed，所以不会被
@@ -1013,12 +1022,11 @@ body.dropping::after{
 .frec-field input,.frec-field select{font:inherit;font-size:13px;padding:5px 8px;
   border:1px solid var(--rule-2);border-radius:4px;background:var(--paper);color:var(--ink);width:100%}
 @media(prefers-color-scheme:dark){
-  .frec-field input,.frec-field select{background:#151a20;border-color:#39414c}
+  :where(:root:not([data-theme="light"])) .frec-field input,:where(:root:not([data-theme="light"])) .frec-field select{background:#151a20;border-color:#39414c}
 }
-:root[data-theme="dark"] .frec-field input,:root[data-theme="dark"] .frec-field select,
-:root[data-theme="dark"] .frec-field select{background:#151a20;border-color:#39414c}
-:root[data-theme="light"] .frec-field input,:root[data-theme="light"] .frec-field select,
-:root[data-theme="light"] .frec-field select{background:var(--paper);border-color:var(--rule-2)}
+:where(:root[data-theme="dark"]) .frec-field input,:where(:root[data-theme="dark"]) .frec-field select,
+:where(:root[data-theme="dark"]) .frec-field select{background:#151a20;border-color:#39414c}
+
 /* 外框画在滚动容器上，不是画在 <table> 上 —— 表格有 min-width，横向滚动时
    画在表上的框会跟着滚出视野。 */
 .frec-wrap{overflow:auto;max-height:var(--recmaxh);min-height:300px;border:1px solid var(--hairline)}
@@ -1065,13 +1073,13 @@ table.frec-table td.warn{color:var(--no);font-weight:600}
 .frec-badge.ok{background:var(--okbg,#e7f5ec);color:var(--pass)}
 .frec-badge.no{background:var(--nobg,#fdecea);color:var(--fail)}
 @media(prefers-color-scheme:dark){
-  .frec-badge.ok{background:#1b2c23;color:#5fbf8d}
-  .frec-badge.no{background:#2e1d1b;color:#e88b81}
+  :where(:root:not([data-theme="light"])) .frec-badge.ok{background:#1b2c23;color:#5fbf8d}
+  :where(:root:not([data-theme="light"])) .frec-badge.no{background:#2e1d1b;color:#e88b81}
 }
-:root[data-theme="dark"] .frec-badge.ok{background:#1b2c23;color:#5fbf8d}
-:root[data-theme="dark"] .frec-badge.no{background:#2e1d1b;color:#e88b81}
-:root[data-theme="light"] .frec-badge.ok{background:#e7f5ec;color:var(--pass)}
-:root[data-theme="light"] .frec-badge.no{background:#fdecea;color:var(--fail)}
+:where(:root[data-theme="dark"]) .frec-badge.ok{background:#1b2c23;color:#5fbf8d}
+:where(:root[data-theme="dark"]) .frec-badge.no{background:#2e1d1b;color:#e88b81}
+
+
 /* 未提交（草稿）压暗，已提交的正常显示。五个板块同一个样子。
    **别再往下调**：曾经用 .45，浅色模式下实测对比度只有 2.90:1，连大字的
    3:1 底线都不到（正文要求 4.5:1），车间光线下手机上基本看不清。
@@ -1382,13 +1390,13 @@ table.frec-table tbody tr.draft .lockdot,
 #fdash .fd-dist-item .fill{display:block;height:100%;background:var(--accent)}
 #fdash .fd-dist-item .num{text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
 @media(prefers-color-scheme:dark){
-  .fd-kpi.bad .n{color:#e88b81}
-  .fd-kpi.good .n{color:#5fbf8d}
+  :where(:root:not([data-theme="light"])) .fd-kpi.bad .n{color:#e88b81}
+  :where(:root:not([data-theme="light"])) .fd-kpi.good .n{color:#5fbf8d}
 }
-:root[data-theme="dark"] .fd-kpi.bad .n{color:#e88b81}
-:root[data-theme="dark"] .fd-kpi.good .n{color:#5fbf8d}
-:root[data-theme="light"] .fd-kpi.bad .n{color:var(--fail)}
-:root[data-theme="light"] .fd-kpi.good .n{color:var(--pass)}
+:where(:root[data-theme="dark"]) .fd-kpi.bad .n{color:#e88b81}
+:where(:root[data-theme="dark"]) .fd-kpi.good .n{color:#5fbf8d}
+
+
 
 /* ── 来料检验：录入界面 ──────────────────────────────────────────────
    Its own dedicated top-level section (like #lab), not the shared #mod/CHECKS
@@ -1485,14 +1493,14 @@ table.frec-table tbody tr.draft .lockdot,
    selectors with var(--paper) (--paper deliberately stays print-light in dark
    mode; see the note over #lab's own dark surface patch) */
 @media(prefers-color-scheme:dark){
-  #iqc .iqcard{background:#1c2027;border-color:#2d333c}
-  #iqc .iqfield input,#iqc .iqfield select,#iqc .iqibody select.iqres,#iqc .iqsugg,#iqc .iqdel{
+  :where(:root:not([data-theme="light"])) #iqc .iqcard{background:#1c2027;border-color:#2d333c}
+  :where(:root:not([data-theme="light"])) #iqc .iqfield input,:where(:root:not([data-theme="light"])) #iqc .iqfield select,:where(:root:not([data-theme="light"])) #iqc .iqibody select.iqres,:where(:root:not([data-theme="light"])) #iqc .iqsugg,:where(:root:not([data-theme="light"])) #iqc .iqdel{
     background:#151a20;border-color:#39414c;color:var(--ink)}
 }
-:root[data-theme="dark"] #iqc .iqcard{background:#1c2027;border-color:#2d333c}
-:root[data-theme="dark"] #iqc .iqfield input,:root[data-theme="dark"] #iqc .iqfield select,
-:root[data-theme="dark"] #iqc .iqibody select.iqres,:root[data-theme="dark"] #iqc .iqsugg,
-:root[data-theme="dark"] #iqc .iqdel{
+:where(:root[data-theme="dark"]) #iqc .iqcard{background:#1c2027;border-color:#2d333c}
+:where(:root[data-theme="dark"]) #iqc .iqfield input,:where(:root[data-theme="dark"]) #iqc .iqfield select,
+:where(:root[data-theme="dark"]) #iqc .iqibody select.iqres,:where(:root[data-theme="dark"]) #iqc .iqsugg,
+:where(:root[data-theme="dark"]) #iqc .iqdel{
   background:#151a20;border-color:#39414c;color:var(--ink)}
 
 /* ── 来料检验记录表 ──────────────────────────────────────────────── */
@@ -1567,9 +1575,9 @@ table.frec-table tbody tr.draft .lockdot,
 #iqc table.irec-table td.warn{color:var(--no);font-weight:600}
 
 @media(prefers-color-scheme:dark){
-  #iqc .iqan-field input,#iqc .iqan-field select{background:#151a20;border-color:#39414c}
+  :where(:root:not([data-theme="light"])) #iqc .iqan-field input,:where(:root:not([data-theme="light"])) #iqc .iqan-field select{background:#151a20;border-color:#39414c}
 }
-:root[data-theme="dark"] #iqc .iqan-field input,:root[data-theme="dark"] #iqc .iqan-field select{
+:where(:root[data-theme="dark"]) #iqc .iqan-field input,:where(:root[data-theme="dark"]) #iqc .iqan-field select{
   background:#151a20;border-color:#39414c}
 
 /* ── 制程检验：录入界面 ────────────────────────────────────────────
@@ -1632,13 +1640,13 @@ table.frec-table tbody tr.draft .lockdot,
 #ipqc .ipsum .ok b{color:var(--ok)}
 
 @media(prefers-color-scheme:dark){
-  #ipqc .ipcard{background:#1c2027;border-color:#2d333c}
-  #ipqc .ipfield input,#ipqc .ipfield select,#ipqc .ipdx{
+  :where(:root:not([data-theme="light"])) #ipqc .ipcard{background:#1c2027;border-color:#2d333c}
+  :where(:root:not([data-theme="light"])) #ipqc .ipfield input,:where(:root:not([data-theme="light"])) #ipqc .ipfield select,:where(:root:not([data-theme="light"])) #ipqc .ipdx{
     background:#151a20;border-color:#39414c;color:var(--ink)}
 }
-:root[data-theme="dark"] #ipqc .ipcard{background:#1c2027;border-color:#2d333c}
-:root[data-theme="dark"] #ipqc .ipfield input,:root[data-theme="dark"] #ipqc .ipfield select,
-:root[data-theme="dark"] #ipqc .ipdx{
+:where(:root[data-theme="dark"]) #ipqc .ipcard{background:#1c2027;border-color:#2d333c}
+:where(:root[data-theme="dark"]) #ipqc .ipfield input,:where(:root[data-theme="dark"]) #ipqc .ipfield select,
+:where(:root[data-theme="dark"]) #ipqc .ipdx{
   background:#151a20;border-color:#39414c;color:var(--ink)}
 
 /* ── 制程检验记录表与数据分析 ──────────────────────────────────────── */
@@ -1949,17 +1957,17 @@ table.frec-table tbody tr.draft .lockdot,
 
 /* 深色表面补丁——放在上面所有用 var(--paper) 画这些选择器的基础规则之后 */
 @media(prefers-color-scheme:dark){
-  #oqc .oqcard{background:#1c2027;border-color:#2d333c}
-  #oqc .oqfield input,#oqc .oqfield select,#oqc table.oqg input,#oqc table.oqg select,
-  #oqc .oqcrow input.note,
-  #oqc .oqcrow .rr button,#oqc .oqgdel,#oqc .oqcapi{background:#151a20;border-color:#39414c;color:var(--ink)}
+  :where(:root:not([data-theme="light"])) #oqc .oqcard{background:#1c2027;border-color:#2d333c}
+  :where(:root:not([data-theme="light"])) #oqc .oqfield input,:where(:root:not([data-theme="light"])) #oqc .oqfield select,:where(:root:not([data-theme="light"])) #oqc table.oqg input,:where(:root:not([data-theme="light"])) #oqc table.oqg select,
+  :where(:root:not([data-theme="light"])) #oqc .oqcrow input.note,
+  :where(:root:not([data-theme="light"])) #oqc .oqcrow .rr button,:where(:root:not([data-theme="light"])) #oqc .oqgdel,:where(:root:not([data-theme="light"])) #oqc .oqcapi{background:#151a20;border-color:#39414c;color:var(--ink)}
 }
-:root[data-theme="dark"] #oqc .oqcard{background:#1c2027;border-color:#2d333c}
-:root[data-theme="dark"] #oqc .oqfield input,:root[data-theme="dark"] #oqc .oqfield select,
-:root[data-theme="dark"] #oqc table.oqg input,:root[data-theme="dark"] #oqc table.oqg select,
-:root[data-theme="dark"] #oqc .oqcrow input.note,
-:root[data-theme="dark"] #oqc .oqcrow .rr button,:root[data-theme="dark"] #oqc .oqgdel,
-:root[data-theme="dark"] #oqc .oqcapi{background:#151a20;border-color:#39414c;color:var(--ink)}
+:where(:root[data-theme="dark"]) #oqc .oqcard{background:#1c2027;border-color:#2d333c}
+:where(:root[data-theme="dark"]) #oqc .oqfield input,:where(:root[data-theme="dark"]) #oqc .oqfield select,
+:where(:root[data-theme="dark"]) #oqc table.oqg input,:where(:root[data-theme="dark"]) #oqc table.oqg select,
+:where(:root[data-theme="dark"]) #oqc .oqcrow input.note,
+:where(:root[data-theme="dark"]) #oqc .oqcrow .rr button,:where(:root[data-theme="dark"]) #oqc .oqgdel,
+:where(:root[data-theme="dark"]) #oqc .oqcapi{background:#151a20;border-color:#39414c;color:var(--ink)}
 
 /* √ / × 选中态必须写在上面那条深色补丁**之后**：
    `:root[data-theme="dark"] #oqc .oqcrow .rr button` 的权重是 (1,4,1)
@@ -2193,15 +2201,15 @@ table.frec-table tbody tr.draft .lockdot,
 /* --paper stays light in dark mode (it means "sheet of paper"), so any control
    painted with it needs an explicit dark surface or it is light-on-light */
 @media(prefers-color-scheme:dark){
-  #lab .lcard{background:#1c2027;border-color:#2d333c}
-  #lab .lfield input,#lab .lfield select,#lab .lfield textarea,
-  #lab .lrow input[data-lv],#lab .lsum select{
+  :where(:root:not([data-theme="light"])) #lab .lcard{background:#1c2027;border-color:#2d333c}
+  :where(:root:not([data-theme="light"])) #lab .lfield input,:where(:root:not([data-theme="light"])) #lab .lfield select,:where(:root:not([data-theme="light"])) #lab .lfield textarea,
+  :where(:root:not([data-theme="light"])) #lab .lrow input[data-lv],:where(:root:not([data-theme="light"])) #lab .lsum select{
     background:#151a20;border-color:#39414c;color:var(--ink)}
 }
-:root[data-theme="dark"] #lab .lcard{background:#1c2027;border-color:#2d333c}
-:root[data-theme="dark"] #lab .lfield input,:root[data-theme="dark"] #lab .lfield select,
-:root[data-theme="dark"] #lab .lfield textarea,:root[data-theme="dark"] #lab .lrow input[data-lv],
-:root[data-theme="dark"] #lab .lsum select{
+:where(:root[data-theme="dark"]) #lab .lcard{background:#1c2027;border-color:#2d333c}
+:where(:root[data-theme="dark"]) #lab .lfield input,:where(:root[data-theme="dark"]) #lab .lfield select,
+:where(:root[data-theme="dark"]) #lab .lfield textarea,:where(:root[data-theme="dark"]) #lab .lrow input[data-lv],
+:where(:root[data-theme="dark"]) #lab .lsum select{
   background:#151a20;border-color:#39414c;color:var(--ink)}
 
 /* today's batches */
@@ -2336,10 +2344,10 @@ table.frec-table tbody tr.draft .lockdot,
 }
 #lab .lrecmark{font-size:10.5px;color:var(--ink-3);display:block;margin-top:3px}
 @media(prefers-color-scheme:dark){
-  #lab table.lrec td.over{background:#2a1a19}
-  #lab .lrecbtn{background:#151a20}
+  :where(:root:not([data-theme="light"])) #lab table.lrec td.over{background:#2a1a19}
+  :where(:root:not([data-theme="light"])) #lab .lrecbtn{background:#151a20}
 }
-:root[data-theme="dark"] #lab .lrecbtn{background:#151a20}
+:where(:root[data-theme="dark"]) #lab .lrecbtn{background:#151a20}
 
 /* ── 实验室看板 ────────────────────────────────────────────────────
    A separate screen rather than a side panel: the entry grid wants the full
@@ -2970,7 +2978,355 @@ table.frec-table tbody tr.draft .lockdot,
      试过 grid-auto-rows:1fr 让所有卡片跟最高的对齐，评审要的是反过来。 */
   #home .mcard .desc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
+
+/* ── 界面风格：照 Cloudflare 控制台（2026-10-07 用户要求「照抄 dash.cloudflare.com」）──
+   数值是在控制台页面上量出来的（Kumo 设计系统）：
+     字体 Inter，正文 13~14px、多数文字 500 字重、字距 -0.01em；
+     画布 #fbfbfb，内容直接放在画布上；卡片 / 表格白底、8px 圆角、1px 10% 黑描边
+     + 0 1px 2px 5% 黑投影；顶栏 58px、底部一条 10% 黑细线；
+     侧边栏 260px、画布底 + 右侧细线，菜单项 34px 高、8px 圆角、13px/500，
+     当前项是 #f3f3f3 灰底（不是蓝）；小节标题 13px/500 灰字；
+     主按钮 36px 高、8px 圆角；标题 20px/600，说明 14px 灰字。
+   **蓝 / 绿 / 红（主色、合格、不合格及其浅底）不跟控制台**，沿用原来那套 ——
+   用户 2026-10-07 看过两版后定的：原来的更好看，热力图的红也是原来的。所以下面
+   只覆盖字体、灰阶、描边、圆角，不碰 --accent* / --ok / --no / --okbg / --nobg；
+   数据分析条形图的灰底槽（--rule-2）也沿用原来的。
+   原色值是 oklch，老安卓浏览器不认（整条声明作废），这里全部换算成十六进制。
+   只在 @media screen 里覆盖 token —— 打印件（A4）一个像素不动。 */
+@media screen{
+  :root{
+    --sans:"Inter Variable","Segoe UI","Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,sans-serif;
+    --cf-canvas:#fbfbfb;
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --cf-canvas:#030303 } }
+  :root[data-theme="dark"]{ --cf-canvas:#030303 }
+  body{letter-spacing:-.01em}
+
+  /* 选择器写成 :root:not(dark) :is(...)，特异性跟原来那几段 token 一样高，靠「在后面」赢 ——
+     只写 #home 的话，页面打上 data-theme="light" 时会被原来的 :root[data-theme="light"] 那段盖回去 */
+  :root:not([data-theme="dark"]) :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar,#sidenav){
+    --ink:#18181b; --ink-2:#525252; --ink-3:#737373;
+    --hairline:#e9e9e9;
+    --card:#ffffff; --card-line:rgba(10,10,10,.1);
+    --field:#ffffff; --field-line:rgba(10,10,10,.14);
+    --deck:#fbfbfb; --bar-bg:#fbfbfb; --seg-bg:#f2f2f2; --seg-on:#ffffff; --sunk:#f3f3f3;
+    --r-card:8px; --r-ctl:8px; --r-seg:8px;
+    --sh-1:0 1px 2px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]) :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar,#sidenav){
+      --ink:#f5f5f5; --ink-2:#c4c4c4; --ink-3:#a1a1a1;
+      --hairline:#262626;
+      --card:#0f0f0f; --card-line:#333333;
+      --field:#0f0f0f; --field-line:#3a3a3a;
+      --deck:#030303; --bar-bg:#030303; --seg-bg:#262626; --seg-on:#0f0f0f; --sunk:#0b0b0b;
+      --sh-1:none;
+    }
+  }
+  :root[data-theme="dark"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar,#sidenav){
+    --ink:#f5f5f5; --ink-2:#c4c4c4; --ink-3:#a1a1a1;
+    --hairline:#262626;
+    --card:#0f0f0f; --card-line:#333333;
+    --field:#0f0f0f; --field-line:#3a3a3a;
+    --deck:#030303; --bar-bg:#030303; --seg-bg:#262626; --seg-on:#0f0f0f; --sunk:#0b0b0b;
+    --sh-1:none;
+  }
+  /* 不合格日历的格子沿用原来的样子（用户 2026-10-07：「热力图也是之前的那个红好看」）。
+     空格子用的 --sunk、深浅五档混色用的 --card 都换回原值 —— 只挂在格子和图例上，
+     卡片本身的底色照新风格。控制台的深色凹陷灰是 #0b0b0b，空格子几乎看不见。 */
+  #home .hhcard .hh-grid,#home .hhcard .hh-leg,#home .hhcard .hh-mods{--sunk:#eef0f3;--card:#ffffff}
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]) #home .hhcard .hh-grid,:root:not([data-theme="light"]) #home .hhcard .hh-leg,:root:not([data-theme="light"]) #home .hhcard .hh-mods{--sunk:#252930;--card:#1e2229}
+  }
+  :root[data-theme="dark"] #home .hhcard .hh-grid,:root[data-theme="dark"] #home .hhcard .hh-leg,:root[data-theme="dark"] #home .hhcard .hh-mods{--sunk:#252930;--card:#1e2229}
+  /* 分段控件（记录表 / 数据分析 …）照控制台 Worker 详情页那排标签（量过）：
+     轨道 36px 高、#f3f3f3 底、8px 圆角、左右 2px 内衬；每格 32px 高、14px/500、
+     左右 10px；当前格黑字、其余灰字。白色那块「浮起来的卡」是**单独一层**
+     （.seg-ind），点哪格就滑到哪格：0.2s、cubic-bezier(.4,0,.2,1)，跟控制台一样 ——
+     原来是当前那格自己变白，一点就「啪」地跳过去（用户嫌生硬）。
+     .seg-ind 由 segInit() 插进去、跟着 .cur 走；它没插进去（脚本没跑到）时
+     下面 .cur 自己的白底照样兜底。工具栏按钮一起拉到 36px，跟轨道等高。 */
+  .bar select,.bar button,.bar .sync{min-height:36px}
+  .segnav{position:relative;align-items:center;gap:0;padding:0 2px;height:36px;background:var(--sunk);border-radius:8px}
+  .segnav button{position:relative;z-index:1;min-height:32px;height:32px;padding:0 10px;border-radius:6px;
+    font-size:14px;font-weight:500;color:var(--ink-3);background:transparent;transition:color .15s}
+  .segnav button:hover{color:var(--ink);background:transparent}
+  .segnav button.cur,.segnav button.cur:hover{color:var(--ink);font-weight:500;background:var(--seg-on);
+    box-shadow:0 0 0 1px var(--card-line),0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1)}
+  .segnav.has-ind button.cur,.segnav.has-ind button.cur:hover{background:transparent;box-shadow:none}
+  .segnav .seg-ind{position:absolute;z-index:0;top:2px;bottom:2px;left:0;width:0;border-radius:6px;
+    background:var(--seg-on);box-shadow:0 0 0 1px var(--card-line),0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);
+    transition:transform .2s cubic-bezier(.4,0,.2,1),width .2s cubic-bezier(.4,0,.2,1);pointer-events:none}
+  .segnav .seg-ind.still{transition:none}
+  /* 切屏淡入：记录表 / 数据分析 / 标准表这几屏一出现就 0.18s 淡入，不再「啪」地换掉。
+     只动 opacity 不动 transform —— transform 会让里面的 sticky 表头 / 浮层错位 */
+  :is(#frec,#fdash,#irec,#idash,#iprec,#ipdash,#orec,#oqdash,#ftrec,#ftdash,#lsheetv,#ldash,#lstd):not([hidden]){animation:qcfade .18s ease-out}
+  @keyframes qcfade{from{opacity:0}to{opacity:1}}
+  /* 各板块顶栏：跟控制台顶栏一样，画布底 + 底部细线，板块名改无衬线 */
+  .bar{background:var(--bar-bg);border-bottom:1px solid var(--card-line);min-height:58px}
+  .bar .brand{font-family:var(--sans);font-size:15px;font-weight:600;letter-spacing:-.01em}
+}
+
+/* ── 侧边栏 ───────────────────────────────────────────────────────────
+   宽屏（≥1280）：左边常驻，可以收成只剩图标的窄条（记在 localStorage）。
+   窄屏 / 手机：同一份侧边栏变成抽屉，首页顶栏和各板块顶栏最左边的 ☰ 点开。
+   首页原来那排进入卡片撤掉了（换成数据看板），所以手机上抽屉就是进板块的入口；
+   各板块的「← 板块」也随之隐藏（回记录表用顶栏的「记录表」）。
+   原来首页右上角那组（语言 / 公告 / 角色 / 退出）的元素和监听原样留着，只是
+   藏进侧边栏底部不显示；侧边栏「系统」那几项点的就是它们（sideInit）。
+   打印一律不出现。 */
+#sidenav{
+  display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:80;
+  width:260px;background:var(--deck);color:var(--ink);font-size:13px;
+  border-right:1px solid var(--card-line);
+}
+#sidenav .sn-brand{display:flex;align-items:center;gap:10px;height:58px;flex:0 0 58px;padding:0 14px 0 18px;
+  border-bottom:1px solid var(--card-line)}
+#sidenav .sn-logo{flex:0 0 26px;width:26px;height:26px;border-radius:7px;
+  background:var(--ink);color:var(--card);display:grid;place-items:center}
+#sidenav .sn-logo svg{width:15px;height:15px}
+#sidenav .sn-name{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden}
+#sidenav .sn-name b{font-size:14px;font-weight:500;color:var(--ink)}
+#sidenav .sn-name small{font-size:12px;color:var(--ink-3);font-weight:500;overflow:hidden;text-overflow:ellipsis}
+#sidenav .sn-btn{flex:0 0 30px;width:30px;height:30px;border:0;border-radius:8px;background:transparent;
+  color:var(--ink-3);cursor:pointer;display:grid;place-items:center;padding:0}
+#sidenav .sn-btn:hover{background:var(--sunk);color:var(--ink)}
+#sidenav .sn-btn svg{width:16px;height:16px}
+/* 只竖向滚。overflow-y:auto 会顺带把横向也变成 auto，收起成 64 宽时被裁掉的文字
+   撑出一条横向滚动条（用户嫌难看） */
+#sidenav .sn-body{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;padding:10px 14px;display:flex;flex-direction:column}
+#sidenav .sn-sec{font-size:13px;font-weight:500;color:var(--ink-3);padding:16px 12px 6px;white-space:nowrap;overflow:hidden}
+#sidenav .sn-sec:first-child{padding-top:4px}
+#sidenav .sn-sys{margin-top:auto;padding-top:8px}
+#sidenav .sn-item{
+  display:flex;align-items:center;gap:10px;width:100%;height:34px;border:0;background:transparent;
+  color:var(--ink);font:inherit;font-size:13px;font-weight:500;text-align:left;cursor:pointer;
+  padding:0 12px;border-radius:8px;margin:1px 0;white-space:nowrap;letter-spacing:-.01em;
+}
+#sidenav .sn-item:hover{background:var(--sunk)}
+#sidenav .sn-item.on{background:var(--sunk)}
+#sidenav .sn-ic{flex:0 0 16px;width:16px;height:16px;display:grid;place-items:center;color:var(--ink-3)}
+#sidenav .sn-item.on .sn-ic{color:var(--ink)}
+#sidenav .sn-ic svg{width:16px;height:16px}
+#sidenav .sn-tx{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+#sidenav .sn-badge{flex:0 0 auto;min-width:20px;padding:0 7px;border-radius:999px;font-size:12px;line-height:20px;
+  text-align:center;font-variant-numeric:tabular-nums;background:var(--card);color:var(--ink-2);
+  box-shadow:0 0 0 1px var(--card-line)}
+#sidenav .sn-badge.ng{background:var(--nobg);color:var(--no);box-shadow:none;font-weight:600}
+#sidenav .sn-me{display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;margin-top:2px}
+#sidenav .sn-av{flex:0 0 22px;width:22px;height:22px;border-radius:50%;background:var(--seg-bg);
+  color:var(--ink-2);display:grid;place-items:center;font-size:9.5px;font-weight:600}
+#sidenav .sn-who{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden}
+#sidenav .sn-who b{font-size:13px;font-weight:500;color:var(--ink)}
+#sidenav .sn-who small{font-size:12px;color:var(--ink-3)}
+/* 底部一条：收起按钮（照控制台放左下角，上面一条细线） */
+#sidenav .sn-bottom{flex:0 0 48px;display:flex;align-items:center;gap:4px;padding:0 14px;border-top:1px solid var(--card-line)}
+/* 原来的右上角那组：只做「被点的那个按钮」，不显示 */
+#sidenav .sn-foot{display:none}
+#snshade{position:fixed;inset:0;z-index:79;background:rgba(0,0,0,.4)}
+/* ☰：只在窄屏出现（宽屏侧边栏常驻） */
+.bar [data-snmenu],#home [data-snmenu]{display:none}
+#home .hmenu{width:34px;height:34px;padding:0;cursor:pointer;flex:0 0 auto;
+  border:0;border-radius:8px;background:var(--card);color:var(--ink-2);box-shadow:0 0 0 1px var(--card-line),var(--sh-1)}
+#home .hmenu svg,.bar [data-snmenu] svg{width:17px;height:17px}
+
+/* 整体：画布底 + 原来那种 16px 网格纸（用户 2026-10-07 要加回来），内容直接铺在上面。
+   侧边栏、各板块顶栏、首页顶栏都是实底，盖住格子 —— 格子只露在内容区。 */
+body.sn-on{background-color:var(--cf-canvas,#fbfbfb)!important;
+  background-image:linear-gradient(to right,var(--grid) 1px,transparent 1px),linear-gradient(to bottom,var(--grid) 1px,transparent 1px)!important;
+  background-size:16px 16px!important}
+@media screen{
+  body.sn-on #home{max-width:none;margin:0;padding:0 32px 48px;min-height:100vh;background:transparent}
+}
+
+@media screen and (min-width:1280px){
+  /* 收起 / 展开：宽度 0.22s 平滑过渡、内容区跟着走，文字淡出而不是一下消失
+     （用户嫌原来「啪」地变太生硬）。图标位置在两种宽度下不变（左内衬 14 + 12 =
+     26px，64 宽时正好居中附近），所以收起过程中图标不跳，只是右边被裁掉。 */
+  body.sn-on{padding-left:260px;transition:padding-left .22s cubic-bezier(.4,0,.2,1)}
+  body.sn-on.sn-mini{padding-left:64px}
+  #sidenav{overflow:hidden;transition:width .22s cubic-bezier(.4,0,.2,1)}
+  #sidenav.mini{width:64px}
+  #sidenav .sn-name,#sidenav .sn-tx,#sidenav .sn-badge,#sidenav .sn-who,#sidenav .sn-sec{transition:opacity .16s ease}
+  #sidenav.mini .sn-name,#sidenav.mini .sn-tx,#sidenav.mini .sn-badge,#sidenav.mini .sn-who,#sidenav.mini .sn-sec{opacity:0;pointer-events:none}
+  #sidenav .sn-tog svg{transition:transform .22s cubic-bezier(.4,0,.2,1)}
+  #sidenav.mini .sn-tog svg{transform:scaleX(-1)}
+  #sidenav.mini .sn-bottom{flex-basis:auto;flex-direction:column;align-items:flex-start;padding:8px 14px}
+  #snshade{display:none}
+  /* 板块页：内容跟侧边栏之间留 24px（记录表 1380 宽，1440 的屏上会贴着侧边栏）；
+     顶栏用负边距撑回整宽，仍然贴边 */
+  body.sn-on :is(#lab,#iqc,#ipqc,#oqc,#cfr1633,#mod){padding:0 24px}
+  body.sn-on :is(#lab,#iqc,#ipqc,#oqc,#cfr1633,#mod) > .bar{margin:0 -24px}
+}
+@media screen and (max-width:1279.98px){
+  /* 抽屉：平时推到屏幕外，.open 滑进来 */
+  #sidenav{width:280px;max-width:86vw;transform:translateX(-102%);transition:transform .18s ease}
+  /* 投影只在打开时给 —— 收着的时候投影会从屏幕左边漏出一条灰边 */
+  #sidenav.open{transform:none;box-shadow:0 18px 40px -12px rgba(0,0,0,.45)}
+  #sidenav .sn-tog{display:none}
+  .bar [data-snmenu],#home [data-snmenu]{display:inline-flex;align-items:center;justify-content:center}
+  body.sn-on #home{padding:0 18px 32px}
+}
+@media screen and (max-width:560px){
+  body.sn-on #home{padding:0 14px 24px}
+}
+body.sn-on #back,body.sn-on #iback,body.sn-on #pback,
+body.sn-on #oback,body.sn-on #ftback,body.sn-on #lback{display:none}
+@media print{#sidenav,#snshade{display:none!important}}
+
+/* ── 首页顶部：顶栏（58px，底部细线，面包屑）+ 标题 / 说明 ─────────── */
+/* 首页顶栏钉在顶上，往下翻也在（各板块的顶栏本来就是 sticky） */
+#home .hd-top{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;height:58px;background:var(--cf-canvas,#fbfbfb);
+  border-bottom:1px solid var(--card-line);margin:0 -32px;padding:0 32px}
+#home .hd-crumb{flex:1 1 auto;min-width:0;font-size:13px;font-weight:500;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#home .hd-crumb b{color:var(--ink);font-weight:500}
+#home .hd-date{font-size:13px;font-weight:500;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+#home .hd-title{display:flex;align-items:center;gap:10px;margin-top:32px}
+#home .hd-title .ic{display:none}
+#home .hd-title h1{font-family:var(--sans);font-size:20px;font-weight:600;color:var(--ink);letter-spacing:-.01em;line-height:1.25}
+#home .hd-lede{margin-top:6px;font-size:14px;color:var(--ink-3)}
+/* 原来的居中抬头不再显示（品牌串留在 DOM 里，构建要查它） */
+body.sn-on #home .hhead{display:none}
+
+/* ── 首页数据看板（替换原来的进入卡片）────────────────────────────────
+   三块：本月概况（三个数字 + 较上月同期）、各板块本月（每个板块一张，大数字是
+   合格率，下面一行份数，右边近 6 个月的小折线；点卡片进板块）、近 6 个月
+   合格率走势（单条折线，悬停看当月份数）。口径跟不合格日历完全一样：只算
+   已提交锁定的、按检验日期落月、判定沿用各板块自己的（见 metaIsNg / labNgOf）。
+   颜色：数据线一律 --accent（只有一条序列，不需要分类色）；数字一律墨色
+   token；「较上月」的升降用 --ok / --no 并且带 ▲▼ 和文字，不单靠颜色。
+   卡片照控制台：白底、8px 圆角、1px 10% 黑描边 + 极淡投影。 */
+#home .recent{margin-top:32px}
+#home .recent h2{font-size:14px;font-weight:600;letter-spacing:-.01em;text-transform:none;color:var(--ink);margin-bottom:12px}
+#home .hd-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:24px}
+#home .hd-kpi{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--card-line);
+  border-radius:8px;box-shadow:var(--sh-1);padding:16px;min-width:0}
+/* 水印：跟板块卡片同一种做法（右下角、放大、压淡、右边裁掉一截）。带一点状态色 ——
+   不合格淡红、合格率淡绿、已提交中性 —— 没了彩色图标方块，靠它一眼分出好坏消息 */
+#home .hd-kpi{position:relative;overflow:hidden}
+#home .hd-kpi > .kb{position:relative;z-index:1}
+#home .hd-kpi .mwm{position:absolute;right:-22px;bottom:-16px;width:100px;height:100px;z-index:0;pointer-events:none;
+  color:color-mix(in srgb,var(--ink) 6%,transparent)}
+#home .hd-kpi.k-ng .mwm{color:color-mix(in srgb,var(--no) 12%,transparent)}
+#home .hd-kpi.k-ok .mwm{color:color-mix(in srgb,var(--ok) 12%,transparent)}
+#home .hd-kpi .mwm svg{width:100%;height:100%;display:block}
+#home .hd-kpi .kb{min-width:0}
+#home .hd-kpi .t{font-size:13px;font-weight:500;color:var(--ink-3)}
+#home .hd-kpi .n{font-size:24px;font-weight:600;color:var(--ink);line-height:1.25;margin-top:4px;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+#home .hd-kpi .n small{font-size:13px;font-weight:500;color:var(--ink-3);margin-left:2px;letter-spacing:0}
+#home .hd-kpi .d{font-size:12px;font-weight:500;color:var(--ink-3);margin-top:4px;font-variant-numeric:tabular-nums}
+#home .hd-kpi .d .up{color:var(--ok);font-weight:600}
+#home .hd-kpi .d .dn{color:var(--no);font-weight:600}
+#home .hd-mods{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+#home .hd-mod{display:grid;grid-template-columns:minmax(0,1fr) 96px;align-items:end;gap:6px 12px;
+  text-align:left;font:inherit;color:var(--ink);cursor:pointer;
+  background:var(--card);border:1px solid var(--card-line);border-radius:8px;box-shadow:var(--sh-1);
+  padding:14px 16px}
+#home .hd-mod .nm{grid-column:1 / -1;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--ink)}
+/* 水印：跟原来首页板块卡片一样，板块图标放大压淡、衬在右下角、右边裁掉三成；
+   卡片 overflow:hidden 裁出血，文字和小折线抬到水印上面 */
+#home .hd-mod{position:relative;overflow:hidden}
+#home .hd-mod > :not(.mwm){position:relative;z-index:1}
+#home .hd-mod .mwm{position:absolute;right:-33px;bottom:-8px;width:110px;height:110px;z-index:0;
+  color:color-mix(in srgb,var(--ink) 5%,transparent);pointer-events:none}
+#home .hd-mod .mwm svg{width:100%;height:100%;display:block}
+#home .hd-mod .ds{grid-column:1 / -1;margin:-2px 0 4px;font-size:12px;font-weight:400;color:var(--ink-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#home .hd-mod .rate{font-size:22px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--ink);letter-spacing:-.02em}
+#home .hd-mod .rate.na{color:var(--ink-3);font-weight:500}
+#home .hd-mod .cnt{grid-column:1;min-width:0;font-size:12px;font-weight:500;color:var(--ink-3);font-variant-numeric:tabular-nums;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#home .hd-mod .cnt b{color:var(--no);font-weight:600}
+/* 行：1 名称 / 2 说明 / 3 合格率 / 4 份数；小折线占右边 3~4 行 */
+#home .hd-mod .rate{grid-row:3}
+#home .hd-mod .cnt{grid-row:4}
+#home .hd-mod .spark{grid-column:2;grid-row:3 / span 2;width:96px;height:36px;color:var(--accent)}
+#home .hd-trend{position:relative;background:var(--card);border:1px solid var(--card-line);
+  border-radius:8px;box-shadow:var(--sh-1);padding:18px 20px 12px}
+#home .hd-trend svg{display:block;width:100%;overflow:visible;margin-top:10px}
+/* 卡片里的结论行 / 读法 / 口径 */
+#home .hd-th{font-size:15px;font-weight:600;color:var(--ink);letter-spacing:-.01em}
+#home .hd-th .up{color:var(--ok);font-size:13px}
+#home .hd-th .dn{color:var(--no);font-size:13px}
+#home .hd-th .vs{color:var(--ink-3);font-size:12.5px;font-weight:500}
+#home .hd-ts{margin-top:3px;font-size:12.5px;color:var(--ink-3)}
+#home .hd-tf{margin-top:2px;font-size:10.5px;letter-spacing:.06em;color:var(--ink-3);opacity:.8}
+/* 上层：虚线导轨 + 折线 + 点；关键点大一号、标数 */
+#home .hd-trend .gd{stroke:var(--card-line);stroke-width:1;stroke-dasharray:2 4}
+#home .hd-trend .ax{fill:var(--ink-3);font-size:10.5px;font-weight:500;font-variant-numeric:tabular-nums}
+#home .hd-trend .ln{fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+#home .hd-trend .dot{fill:var(--card);stroke:var(--accent);stroke-width:1.6}
+#home .hd-trend .dot.key{fill:var(--accent);stroke:var(--card);stroke-width:2}
+#home .hd-trend .lab.sm{font-size:10.5px;font-weight:600;fill:var(--ink-2)}
+#home .hd-trend .lab{fill:var(--ink);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;
+  paint-order:stroke;stroke:var(--card);stroke-width:4px;stroke-linejoin:round}
+/* 下层：横档柱 */
+#home .hd-trend .base{stroke:var(--card-line);stroke-width:1}
+#home .hd-trend .rg{fill:#3f9d67}
+#home .hd-trend .rg.ng{fill:#c9483c}
+#home .hd-trend .cnt{fill:var(--ink-2);font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
+#home .hd-trend .mo{fill:var(--ink-2);font-size:11.5px;font-weight:500}
+#home .hd-trend .hot{fill:var(--sunk)}
+/* 入场：折线描出来、柱子一根根升起（只第一次） */
+#home .hd-trend .ln.draw{stroke-dasharray:var(--len,2000);stroke-dashoffset:var(--len,2000);animation:hdDraw .9s cubic-bezier(.25,1,.5,1) .15s forwards}
+#home .hd-trend .bar.rise{transform-box:fill-box;transform-origin:50% 100%;animation:hdRise .55s cubic-bezier(.25,1,.5,1) both}
+@keyframes hdDraw{to{stroke-dashoffset:0}}
+@keyframes hdRise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+#home .hd-tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--card-line);
+  border-radius:8px;box-shadow:0 4px 12px -2px rgba(0,0,0,.14);padding:7px 10px;
+  font-size:12px;font-weight:500;color:var(--ink-2);white-space:nowrap;font-variant-numeric:tabular-nums;transform:translate(-50%,-100%)}
+#home .hd-tip b{color:var(--ink);font-size:13px}
+#home .hd-empty{color:var(--ink-3);font-size:13px;padding:24px 0;text-align:center}
+/* 首页上的日历卡、最近报告的行也照控制台卡片：8px 圆角、细描边、极淡投影 */
+body.sn-on #home .hhcard{border-radius:8px;box-shadow:var(--sh-1)}
+body.sn-on #home .rrow{border-radius:8px;box-shadow:var(--sh-1)}
+/* 首页所有卡片同一种悬浮：抬起 2px + 同一组投影（跟原来首页板块卡片逐字一样）。
+   原来四种卡四个样：日历 / 最近报告只抬不投影（常驻投影那条特异性更高，把 hover
+   的投影盖掉了），板块卡只变描边不抬，概况和走势图没有 hover。统一写在这一处，
+   选择器带 body.sn-on 压过上面两条常驻投影。 */
+body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow){transition:transform .12s,box-shadow .12s}
+body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
+  transform:translateY(-2px);box-shadow:0 2px 4px rgba(15,23,41,.07),0 14px 30px -16px rgba(15,23,41,.4)}
+/* 手机：板块卡片两列，小折线挪到大数字下面整宽 —— 一张一行的话六张要滑好几屏 */
+@media (max-width:560px){
+  #home .hd-top{margin:0 -14px;padding:0 14px;height:54px}
+  #home .hd-date{display:none}
+  #home .hd-title{margin-top:20px}
+  #home .hd-kpis{grid-template-columns:minmax(0,1fr);gap:8px;margin-top:18px}
+  #home .hd-kpi{padding:12px 14px}
+  #home .hd-kpi .n{font-size:20px}
+  #home .hd-mods{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  #home .hd-mod{grid-template-columns:minmax(0,1fr);padding:11px 12px 10px;gap:4px}
+  #home .hd-mod .rate{font-size:19px}
+  #home .hd-mod .rate,#home .hd-mod .cnt{grid-row:auto}
+  #home .hd-mod .spark{grid-column:1;grid-row:auto;width:100%;height:28px}
+  #home .hd-mod .cnt{font-size:11px}
+  #home .recent{margin-top:24px}
+}
+@media (min-width:561px) and (max-width:900px){
+  #home .hd-top{margin:0 -18px;padding:0 18px}
+  #home .hd-kpis{gap:8px}
+  #home .hd-kpi{padding:12px;gap:10px}
+  #home .hd-kpi .mwm{width:80px;height:80px;right:-18px;bottom:-14px}
+  #home .hd-kpi .n{font-size:20px}
+}
+@media print{#home .hd-tip{display:none}}
 </style>
+
+<nav id="sidenav" aria-label="导航">
+  <div class="sn-brand">
+    <span class="sn-logo" id="snlogo"></span>
+    <span class="sn-name"><b>Prestova</b><small id="snsub">质检管理系统</small></span>
+  </div>
+  <div class="sn-body" id="snbody"></div>
+  <div class="sn-bottom">
+    <button type="button" class="sn-btn sn-tog" data-sn="toggle" title="收起 / 展开" aria-label="收起 / 展开"></button>
+    <button type="button" class="sn-btn sn-theme" data-sn="theme" title="浅色 / 深色" aria-label="浅色 / 深色"></button>
+  </div>
+  <div class="sn-foot" id="snfoot"></div>
+</nav>
+<div id="snshade" hidden></div>
 
 <section id="home" hidden>
   <header class="hhead">
@@ -2986,12 +3342,30 @@ table.frec-table tbody tr.draft .lockdot,
       <button type="button" class="logoutbtn" id="logout">退出</button>
     </div>
   </header>
-  <div class="hgrid" id="modcards"></div>
+  <div class="hd-top">
+    <button type="button" class="hmenu" data-snmenu title="菜单" aria-label="菜单"></button>
+    <div class="hd-crumb">质检管理系统 / <b>首页看板</b></div>
+    <span class="hd-date" id="hddate"></span>
+  </div>
+  <div class="hd-title"><span class="ic" id="hdtic"></span><h1>首页看板</h1></div>
+  <p class="hd-lede">本月质检概况</p>
+  <!-- 进入卡片撤掉了（进板块走侧边栏 / 手机抽屉），renderCards 还往这里写，留着不显示 -->
+  <div class="hgrid" id="modcards" hidden></div>
+  <!-- 数据看板：本月概况 / 各板块本月 / 近 6 个月走势（renderDash） -->
+  <div class="hd-kpis" id="hdkpis"></div>
+  <section class="recent">
+    <h2>各板块本月</h2>
+    <div class="hd-mods" id="hdmods"></div>
+  </section>
   <!-- 不合格日历放在最近的报告上面，两块都整行。都挂 .recent：小标题同一条规则，
        上下间距也是 .recent 自带的 margin-top。 -->
   <section class="recent hheat">
     <h2>不合格日历</h2>
     <div class="hhcard" id="hheat"></div>
+  </section>
+  <section class="recent">
+    <h2>近一年合格率</h2>
+    <div class="hd-trend" id="hdtrend"></div>
   </section>
   <section class="recent">
     <h2>最近的报告</h2>
@@ -4395,7 +4769,13 @@ function i18nTextNode(n){
   /* 前后空白照留 —— 好些地方是 '已存 ' + 时间 这样拼出来的 */
   const lead=raw.length-raw.replace(/^\s+/,"").length;
   const tail=raw.length-raw.replace(/\s+$/,"").length;
-  n.nodeValue=raw.slice(0,lead)+t+(tail?raw.slice(raw.length-tail):"");
+  const next=raw.slice(0,lead)+t+(tail?raw.slice(raw.length-tail):"");
+  /* 译文跟原文一样就别写回去（词典里有 "中文":"中文" 这种「原样保留」的条目）。
+     给 nodeValue 赋同一个值**也会**触发 characterData 变动，观察器又来翻一遍、
+     又写一遍 —— 死循环，页面直接卡死（2026-10-07 侧边栏在印尼语下显示「中文」时
+     踩到的）。i18nEl 里属性那边本来就有 t!==v 的判断，文本这边漏了。 */
+  if(next===raw) return;
+  n.nodeValue=next;
 }
 function i18nWalk(root){
   if(LANG!=="id" || !root) return;
@@ -10239,6 +10619,8 @@ async function renderHeat(rows){
     const k=key(d), e=day.get(k)||{n:0,by:{}};
     e.n++; e.by[t]=(e.by[t]||0)+1; day.set(k,e);
   });
+  /* 侧边栏「不合格日历」上的数字 = 本月不合格份数 */
+  sideSetNg([...(mNg.get(curYm)||new Map()).values()].reduce((a,b)=>a+b,0));
   let peak=0;
   day.forEach(e=>{ if(e.n>peak) peak=e.n; });
 
@@ -10423,6 +10805,7 @@ function noticePaintBadge(){
   const n=noticeUnread();
   d.hidden = n===0;
   d.textContent = n>99 ? "99+" : String(n);
+  try{ sideSetNotice(n>99?"99+":n); }catch(e){}
 }
 /* 喇叭图标插在角标前面。用 insertAdjacentHTML 而不是 innerHTML= ——
    后者会把角标那个 span 一起冲掉，它是 JS 拿 id 抓着的。 */
@@ -10490,11 +10873,13 @@ async function showHome(){
   $("#home").hidden=false;
   paintLangSw();
   document.title=tr("荣升家居 · 质检管理系统");
+  sideSync("home");
   let rows=[];
   try{ rows=await metaAll(); }
   catch(e){ toast(tr("无法使用本地存储（隐私模式？）—— 记录不会被保存")); }
   HEAT_SEL=null;   /* 每次进首页都从当月看起，见 HEAT_SEL 那条注释 */
-  renderCards(rows); renderRecent(rows); renderHeat(rows);
+  renderCards(rows); renderRecent(rows); renderDash(rows).catch(e=>console.error("renderDash", e));
+  renderHeat(rows).then(()=>{ if(SIDE_TO_CAL){ SIDE_TO_CAL=false; $("#hheat").scrollIntoView({block:"center"}); } });
   noticePaintIcon();
   await noticeLoad(); noticePaintBadge();
   /* pick up what other devices wrote, then redraw with the fresh counts */
@@ -10510,6 +10895,7 @@ async function enterModule(id,reportId){
   /* 记在分发之前：下面几个 enterXxx 会直接 return。它们末尾各自有一次
      scheduleSync(300)，所以第一次进某板块时那一次同步就会把它带上。 */
   markModUsed(id);
+  sideSync(id);
   /* the lab and iqc keep their own screens: neither is a photo sheet */
   if(id==="lab") return enterLab(reportId);
   if(id==="iqc") return enterIqc(reportId);
@@ -10552,6 +10938,379 @@ function route(){
   if(m && m.ready) enterModule(m.id); else showHome();
 }
 window.addEventListener("hashchange",route);
+
+/* ── 侧边栏 / 手机抽屉（样式见 #sidenav 那段）─────────────────────────
+   点哪项就改 hash，跟原来首页卡片走同一条路由；「不合格日历」= 回首页并滚到
+   日历。当前项高亮由 sideSync() 打：showHome / enterModule 各调一次。
+   窄屏下侧边栏是抽屉：☰ 打开，点项目 / 点遮罩 / Esc 关上。 */
+const SIDE_MQ=matchMedia("(min-width:1280px)");
+const SIDE_MINI_KEY="qc-side-mini";
+const SIDE_IC={
+  home:'<rect x="3.5" y="3.5" width="7" height="7" rx="1.4"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.4"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.4"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.4"/>',
+  cal:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/><path d="M8 13.5h2M12 13.5h2M16 13.5h.01M8 17h2M12 17h2"/>',
+  tog:'<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/>',
+  moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
+  menu:'<path d="M4 6.5h16M4 12h16M4 17.5h16"/>',
+  logo:'<path d="M7 20V4.5h6.2a4.3 4.3 0 0 1 0 8.6H7"/>',
+  bell:'<path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>',
+  lang:'<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.3 3.6 8.5S14.4 18.1 12 20.5M12 3.5C9.6 5.9 8.4 8.8 8.4 12s1.2 6.1 3.6 8.5"/>',
+  out:'<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 16l-4-4 4-4M6 12h10"/>',
+  doc:'<path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10.5A.5.5 0 0 1 6.5 20V4a.5.5 0 0 1 .5-.5Z"/><path d="M14 3.5V8h4M9.5 12.5h5M9.5 16h5"/>',
+  warn:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.5M12 16.3v.2"/>',
+  ok:'<circle cx="12" cy="12" r="8.5"/><path d="m8.3 12.3 2.5 2.5 5-5.2"/>',
+  /* 概况卡水印：检验单夹板 / 三角警告 / 仪表盘 */
+  clip:'<rect x="5.5" y="4.5" width="13" height="16.5" rx="2"/><path d="M9.5 4.5V3h5v1.5"/><path d="M8.8 10h6.4M8.8 13.5h6.4M8.8 17h4"/>',
+  tri:'<path d="M12 3.8 21.2 19.6H2.8L12 3.8Z"/><path d="M12 9.8v4.6M12 17.1v.2"/>',
+  gauge:'<path d="M3.8 17a8.2 8.2 0 1 1 16.4 0"/><path d="m12 17 4-4.8"/><circle cx="12" cy="17" r="1.3"/><path d="M6.6 11.5l1.1.8M17.4 11.5l-1.1.8M12 8.4v1.4"/>'
+};
+/* 水印用细一点的线（跟板块卡片的 micon(id,1.1) 一样） */
+const sideSvgThin=k=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+SIDE_IC[k]+'</svg>';
+const sideSvg=k=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+SIDE_IC[k]+'</svg>';
+let SIDE_CUR="home", SIDE_NG=null, SIDE_NTC=0, SIDE_TO_CAL=false;
+function sideMini(){ try{ return localStorage.getItem(SIDE_MINI_KEY)==="1"; }catch(e){ return false; } }
+function sideItem(key, ic, zh, badge, badgeTip, badgeCls){
+  return '<button type="button" class="sn-item'+(SIDE_CUR===key?' on':'')+'" data-sn="'+key+'" title="'+esc(tr(zh))+'">'+
+    '<span class="sn-ic">'+ic+'</span>'+
+    '<span class="sn-tx">'+esc(tr(zh))+'</span>'+
+    (badge!=null?'<span class="sn-badge'+(badgeCls?' '+badgeCls:'')+'"'+(badgeTip?' title="'+esc(tr(badgeTip))+'"':'')+'>'+badge+'</span>':'')+
+  '</button>';
+}
+function sideRender(){
+  const body=$("#snbody"); if(!body) return;
+  const wide=SIDE_MQ.matches, mini=wide && sideMini();
+  document.body.classList.add("sn-on");
+  document.body.classList.toggle("sn-mini", mini);
+  $("#sidenav").classList.toggle("mini", mini);
+  const role=isAdmin() ? tr("管理员") : isViewer() ? tr("观察者") : tr("检验员 QC");
+  const av=isAdmin() ? "AD" : isViewer() ? "VW" : "QC";
+  body.innerHTML=
+    '<div class="sn-sec">'+esc(tr("概览"))+'</div>'+
+    sideItem("home", sideSvg("home"), "首页看板")+
+    sideItem("cal", sideSvg("cal"), "不合格日历", SIDE_NG, "本月不合格份数", SIDE_NG>0?"ng":"")+
+    '<div class="sn-sec">'+esc(tr("检验"))+'</div>'+
+    MODULES.filter(m=>m.ready).map(m=>sideItem(m.id, micon(m.id), m.zh)).join("")+
+    '<div class="sn-sys">'+
+      '<div class="sn-sec">'+esc(tr("系统"))+'</div>'+
+      sideItem("notice", sideSvg("bell"), "公告", SIDE_NTC||null, "未读公告", "ng")+
+      sideItem("lang", sideSvg("lang"), LANG==="id" ? "中文" : "Bahasa Indonesia")+
+      sideItem("logout", sideSvg("out"), "退出登录")+
+    '</div>'+
+    '<div class="sn-me" title="'+esc(role)+'"><span class="sn-av">'+av+'</span>'+
+      '<span class="sn-who"><b>'+esc(role)+'</b><small>'+esc(isViewer()?tr("只读"):tr("已登录"))+'</small></span></div>';
+}
+function sideSetNotice(n){ if(SIDE_NTC===n) return; SIDE_NTC=n; sideSafeRender(); }
+/* 这三个会被 showHome / enterModule / renderHeat / 公告角标调用 —— 侧边栏画不出来
+   也不能让进板块、画首页跟着失败，所以吞掉异常 */
+function sideSafeRender(){ try{ sideRender(); }catch(e){ console.error("sideRender", e); } }
+function sideSync(key){ SIDE_CUR=key; sideSafeRender(); }
+function sideSetNg(n){ if(SIDE_NG===n) return; SIDE_NG=n; sideSafeRender(); }
+/* 浅色 / 深色：当前值在 <html data-theme>（<head> 里那段小脚本开机就打上，默认浅色），
+   切换时改它并记到 localStorage。颜色全走 token，图表、热力图不用重画。 */
+const THEME_KEY="qc-theme";
+const themeNow=()=>document.documentElement.getAttribute("data-theme")==="dark"?"dark":"light";
+function themePaint(){
+  const b=$("#sidenav .sn-theme"); if(!b) return;
+  const dark=themeNow()==="dark";
+  b.innerHTML=sideSvg(dark?"sun":"moon");
+  const t=tr(dark?"切换到浅色":"切换到深色"); b.title=t; b.setAttribute("aria-label",t);
+}
+function themeSet(v){
+  document.documentElement.setAttribute("data-theme",v);
+  try{ localStorage.setItem(THEME_KEY,v); }catch(e){}
+  themePaint();
+}
+/* 打印一律按浅色出：A4 单据不能因为屏幕是深色就跟着变。打完换回来。 */
+let THEME_BEFORE_PRINT=null;
+window.addEventListener("beforeprint",()=>{ THEME_BEFORE_PRINT=themeNow(); document.documentElement.setAttribute("data-theme","light"); });
+window.addEventListener("afterprint",()=>{ if(THEME_BEFORE_PRINT) document.documentElement.setAttribute("data-theme",THEME_BEFORE_PRINT); THEME_BEFORE_PRINT=null; });
+function sideOpen(on){
+  $("#sidenav").classList.toggle("open", !!on);
+  $("#snshade").hidden=!on;
+}
+function sideInit(){
+  $("#snlogo").innerHTML=sideSvg("logo");
+  $("#snsub").textContent=tr("质检管理系统");
+  $("#sidenav .sn-tog").innerHTML=sideSvg("tog");
+  /* 单机副本 / artifact 里没有 <head> 那段，这里补打一次（默认浅色） */
+  if(!document.documentElement.getAttribute("data-theme")){
+    let v="light"; try{ if(localStorage.getItem(THEME_KEY)==="dark") v="dark"; }catch(e){}
+    document.documentElement.setAttribute("data-theme",v);
+  }
+  themePaint();
+  /* 原来首页右上角那组（语言 / 公告 / 角色 / 退出）整块搬过来，元素和监听都不变 */
+  const corner=$("#home .hcorner"); if(corner) $("#snfoot").appendChild(corner);
+  /* 每个板块顶栏最左边插一个 ☰（窄屏才显示，见样式），首页那个写在 HTML 里 */
+  ["#back","#iback","#pback","#oback","#ftback","#lback"].forEach(sel=>{
+    const back=$(sel); if(!back) return;
+    const b=document.createElement("button");
+    b.type="button"; b.setAttribute("data-snmenu",""); b.title=tr("菜单"); b.setAttribute("aria-label",tr("菜单"));
+    back.parentNode.insertBefore(b, back);
+  });
+  document.querySelectorAll("[data-snmenu]").forEach(b=>{ b.innerHTML=sideSvg("menu"); });
+  $("#hdtic").innerHTML=sideSvg("home");
+  const d=new Date(); $("#hddate").textContent=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  sideRender();
+}
+document.addEventListener("click",e=>{
+  if(e.target.closest("[data-snmenu]")) sideOpen(true);
+});
+$("#snshade").addEventListener("click",()=>sideOpen(false));
+document.addEventListener("keydown",e=>{ if(e.key==="Escape" && $("#sidenav").classList.contains("open")) sideOpen(false); });
+$("#sidenav").addEventListener("click",e=>{
+  const b=e.target.closest("[data-sn]"); if(!b) return;
+  const k=b.dataset.sn;
+  if(k==="theme"){ themeSet(themeNow()==="dark"?"light":"dark"); return; }
+  if(k==="toggle"){
+    try{ localStorage.setItem(SIDE_MINI_KEY, sideMini()?"0":"1"); }catch(err){}
+    sideRender();
+    /* 等 0.22s 的收起 / 展开过渡走完再按新宽度重排日历 */
+    setTimeout(()=>{ try{ heatWidthChanged(); }catch(err){} }, 260);
+    return;
+  }
+  sideOpen(false);
+  /* 「系统」那几项点的是原来首页右上角那组按钮（藏在侧边栏底部），逻辑一行不改 */
+  if(k==="notice"){ $("#ntcbtn").click(); return; }
+  if(k==="lang"){ const b=$('#langsw [data-lang="'+(LANG==="id"?"zh":"id")+'"]'); if(b) b.click(); return; }
+  if(k==="logout"){ $("#logout").click(); return; }
+  if(k==="cal"){
+    if(!$("#home").hidden){ $("#hheat").scrollIntoView({behavior:"smooth",block:"center"}); return; }
+    SIDE_TO_CAL=true; location.hash="#/"; return;
+  }
+  location.hash = k==="home" ? "#/" : "#/"+k;
+});
+SIDE_MQ.addEventListener("change",()=>{ sideOpen(false); sideRender(); setTimeout(()=>{ try{ heatWidthChanged(); }catch(err){} },60); });
+/* sideInit() 在 boot() 开头调 —— 要用 tr()，词典在文件更后面才声明 */
+
+/* 分段控件的滑块（样式见 .segnav .seg-ind）。不去改六个板块各自切 .cur 的那几行，
+   而是盯着 class 变化：哪个按钮拿到 .cur，滑块就滑过去。所在板块刚从隐藏变显示时
+   尺寸从 0 变成实际宽度，ResizeObserver 会补一次定位；第一次定位不带动画。 */
+function segInit(){
+  document.querySelectorAll(".segnav").forEach(nav=>{
+    if(nav.querySelector(".seg-ind")) return;
+    const ind=document.createElement("i");
+    ind.className="seg-ind still"; ind.setAttribute("aria-hidden","true");
+    nav.insertBefore(ind, nav.firstChild);
+    nav.classList.add("has-ind");
+    let placed=false;
+    const place=()=>{
+      const cur=nav.querySelector("button.cur:not([hidden])");
+      if(!cur || !cur.offsetWidth){ ind.style.opacity="0"; return; }
+      if(!placed) ind.classList.add("still");
+      ind.style.opacity="1";
+      ind.style.width=cur.offsetWidth+"px";
+      ind.style.transform="translateX("+cur.offsetLeft+"px)";
+      if(!placed){ placed=true; requestAnimationFrame(()=>requestAnimationFrame(()=>ind.classList.remove("still"))); }
+    };
+    new MutationObserver(place).observe(nav,{subtree:true,attributes:true,attributeFilter:["class","hidden"]});
+    if(window.ResizeObserver) new ResizeObserver(()=>{ if(!nav.offsetWidth) placed=false; place(); }).observe(nav);
+    place();
+  });
+}
+
+/* ── 首页数据看板 ──────────────────────────────────────────────────────
+   口径跟不合格日历一模一样：只算已提交锁定的；按检验日期落月（reportDayOf）；
+   判定沿用各板块自己的（metaIsNg，实验室走 labNgOf —— 同一份缓存，不会多读）。
+   范围固定近一年（DASH_MONTHS，含本月），跟日历的窗口宽度无关。 */
+let DASH_SEQ=0, DASH_ROWS=null, DASH_TREND_W=0, DASH_DREW=false;
+const DASH_MONTHS=12;   /* 看板统计近几个月（含本月） */
+async function renderDash(rows){
+  DASH_ROWS=rows;
+  const kh=$("#hdkpis"), mh=$("#hdmods"), th=$("#hdtrend"); if(!kh||!mh||!th) return;
+  const seq=++DASH_SEQ;
+  const now=new Date(), today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const ymOf=d=>d.getFullYear()+"-"+(d.getMonth()+1);
+  const months=[];
+  /* 近一年（含本月）。原来是近 6 个月，用户 2026-10-07 改成一年 */
+  const N=DASH_MONTHS, LAST=N-1;
+  for(let i=LAST;i>=0;i--){ const d=new Date(today.getFullYear(), today.getMonth()-i, 1); months.push({ym:ymOf(d), d}); }
+  const start=months[0].d, curYm=months[LAST].ym, prevYm=months[LAST-1].ym;
+  const pick=[];
+  rows.forEach(m=>{
+    if(CFG_TYPES.indexOf(m.type)>=0 || !m.locked) return;
+    const d=reportDayOf(m); if(!d || d<start || d>today) return;
+    pick.push({m,d});
+  });
+  const labNg=await labNgOf(pick.filter(x=>x.m.type==="lab").map(x=>x.m));
+  if(seq!==DASH_SEQ) return;
+  /* agg["2026-10"] = {n, ng, by:{type:{n,ng}}} */
+  const agg={}; months.forEach(x=>{ agg[x.ym]={n:0,ng:0,by:{}}; });
+  /* 「较上月」比的是**上月同期**（上月 1 号到同一天）：本月才过了几天，拿去跟上月
+     整月比，份数自然少一大截，看着像出了问题 */
+  const prevTD={n:0,ng:0}, dom=today.getDate();
+  /* 本月按天、按板块：daily[type][日] = {n, ng}，画卡片上的小折线 */
+  const daily={};
+  pick.forEach(({m,d})=>{
+    const a=agg[ymOf(d)]; if(!a) return;
+    const t=m.type||"fqc", ng = t==="lab" ? labNg.has(m.id) : metaIsNg(m);
+    const b=a.by[t]||(a.by[t]={n:0,ng:0});
+    a.n++; b.n++; if(ng){ a.ng++; b.ng++; }
+    if(ymOf(d)===prevYm && d.getDate()<=dom){ prevTD.n++; if(ng) prevTD.ng++; }
+    if(ymOf(d)===curYm){ const dd=(daily[t]||(daily[t]={}))[d.getDate()]||(daily[t][d.getDate()]={n:0,ng:0}); dd.n++; if(ng) dd.ng++; }
+  });
+  const rate=x=>x&&x.n ? (x.n-x.ng)/x.n*100 : null;
+  const monLab=d=> LANG==="id" ? ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][d.getMonth()] : (d.getMonth()+1)+"月";
+  const f1=v=>v==null?"—":(Math.round(v*10)/10).toFixed(1);
+
+  /* 1) 本月概况 */
+  const cur=agg[curYm], prev=prevTD, rc=rate(cur), rp=rate(prev);
+  /* goodUp：true 升是好事、false 降是好事、null 不分好坏（检验份数多少不是好坏） */
+  const diff=(a,b,unit,goodUp)=>{
+    if(a==null||b==null||!prev.n) return esc(tr("上月同期无数据"));
+    const d=Math.round((a-b)*10)/10;
+    if(!d) return esc(tr("与上月同期持平"));
+    const txt=(d>0?"▲ +":"▼ ")+(unit==="pt" ? d.toFixed(1)+" "+tr("个百分点") : Math.abs(d)+" "+tr("份"));
+    const cls = goodUp==null ? "" : ((goodUp ? d>0 : d<0) ? "up" : "dn");
+    return esc(tr("较上月同期"))+' <span class="'+cls+'">'+esc(txt)+'</span>';
+  };
+  kh.innerHTML=
+    '<div class="hd-kpi k-sub"><span class="mwm">'+sideSvgThin("clip")+'</span><div class="kb"><div class="t">'+esc(tr("本月已提交"))+'</div><div class="n">'+cur.n+'<small> '+esc(tr("份"))+'</small></div><div class="d">'+diff(cur.n,prev.n,"n",null)+'</div></div></div>'+
+    '<div class="hd-kpi k-ng"><span class="mwm">'+sideSvgThin("tri")+'</span><div class="kb"><div class="t">'+esc(tr("本月不合格"))+'</div><div class="n">'+cur.ng+'<small> '+esc(tr("份"))+'</small></div><div class="d">'+diff(cur.ng,prev.ng,"n",false)+'</div></div></div>'+
+    '<div class="hd-kpi k-ok"><span class="mwm">'+sideSvgThin("gauge")+'</span><div class="kb"><div class="t">'+esc(tr("本月合格率"))+'</div><div class="n">'+f1(rc)+(rc==null?'':'<small>%</small>')+'</div><div class="d">'+diff(rc,rp,"pt",true)+'</div></div></div>';
+
+  /* 2) 各板块本月：大数字合格率 + 份数 + 近一年小折线 */
+  /* 小折线：本月每一天的合格率（用户 2026-10-07 要的，原来是按月）。横轴是本月
+     1 号到今天（不到月底：月初才几天的时候线会全挤在左边），没检验的日子不画点、
+     前后有数的直接连起来；最后一个有数的点加粗。
+     纵轴 0~100%，一个月里一天全合格、一天一半不合格，起伏一眼看得出。 */
+  const daysIn=Math.max(2, dom);
+  const spark=t=>{
+    const dd=daily[t]||{}, pts=[];
+    for(let d=1; d<=daysIn; d++){ const a=dd[d]; if(!a||!a.n) continue;
+      const y=(a.n-a.ng)/a.n*100; pts.push([4+(d-1)*(88/Math.max(1,daysIn-1)), 34-y/100*28]); }
+    const last=pts[pts.length-1];
+    return '<svg class="spark" viewBox="0 0 96 38" aria-hidden="true">'+
+      '<line x1="4" x2="92" y1="34" y2="34" stroke="var(--card-line)" stroke-width="1"/>'+
+      (pts.length>1?'<polyline points="'+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")+'" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>':'')+
+      pts.slice(0,-1).map(p=>'<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="1.4" fill="currentColor"/>').join("")+
+      (last?'<circle cx="'+last[0].toFixed(1)+'" cy="'+last[1].toFixed(1)+'" r="2.6" fill="currentColor"/>':'')+
+    '</svg>';
+  };
+  mh.innerHTML=MODULES.filter(m=>m.ready).map(m=>{
+    const b=cur.by[m.id], r=rate(b);
+    const dd=daily[m.id]||{};
+    const tip=tr("本月每天合格率")+"："+(Object.keys(dd).length ? Object.keys(dd).map(Number).sort((a,b)=>a-b).map(d=>d+(LANG==="id"?"":"日")+" "+f1((dd[d].n-dd[d].ng)/dd[d].n*100)+"%").join(" · ") : "—");
+    return '<button type="button" class="hd-mod" data-mod="'+m.id+'" title="'+esc(tr(m.zh)+"："+tr(m.desc)+" · "+tip)+'">'+
+      '<span class="mwm">'+micon(m.id,1.1)+'</span>'+
+      '<span class="nm">'+esc(tr(m.zh))+'</span>'+
+      '<span class="ds">'+esc(tr(m.desc))+'</span>'+
+      '<span class="rate'+(r==null?' na':'')+'">'+(r==null?'—':f1(r)+'%')+'</span>'+
+      spark(m.id)+
+      '<span class="cnt">'+(b&&b.n ? esc(tr("不合格"))+' <b>'+b.ng+'</b> / '+esc(tr("已提交"))+' '+b.n : esc(tr("本月暂无已提交")))+'</span>'+
+    '</button>';
+  }).join("");
+
+  /* 3) 近一年：上下两层、共用横轴（2026-10-07 重做，参考了 lieflat-charts 的几条
+     设计原则 —— 只学原则没抄代码，那个仓库是 PolyForm 非商用许可）：
+       · 上层：合格率折线，只给最高 / 最低 / 本月三个点标数，其余悬停看；
+       · 下层：每月已提交份数，柱子由一格一格的横档组成（一格 = N 份，N 自动取
+         1/2/5/10/…，让最高的柱子不超过 ~22 格），最上面的红档是不合格份数 ——
+         数得出来，比一整块颜色更有分量；
+       · 两种量各用各的刻度，**不叠在同一块上**（原来的「柱 + 线」双纵轴，柱子和
+         折线挤在一起，用户嫌难看）；
+       · 卡片里第一行写结论（本月合格率 + 较上月），第二行写读法，底下一行小字
+         写口径 —— 图是给人扫一眼就懂的，不是让人去对轴；
+       · 第一次出现时折线画出来、柱子一根根升起（只播一次，60 秒自动刷新不重播；
+         系统开了「减少动态效果」就不播）。
+     颜色：折线 --accent，合格档绿 #3f9d67、不合格档红 #c9483c（同数据分析页）。 */
+  const tot=months.map(x=>agg[x.ym]);
+  const vals=tot.map(a=>rate(a));
+  const have=vals.filter(v=>v!=null);
+  if(!have.length){ th.innerHTML='<div class="hd-empty">'+esc(tr("近一年还没有已提交的报告"))+'</div>'; return; }
+  const W=Math.max(300, th.clientWidth-40), narrow=th.clientWidth<520, L=narrow?30:36, R=narrow?12:20;
+  DASH_TREND_W=th.clientWidth;
+  /* 竖向分区：上层折线 T1~B1，下层柱子 T2~B2，最下一行月份 */
+  const T1=22, B1=narrow?118:134, T2=B1+30, B2=T2+(narrow?78:92), H=B2+26;
+  const slot=(W-L-R)/N, cx=i=>L+slot*(i+.5);
+  /* 上层纵轴：按数据收紧到 5 的倍数（合格率都在 80~100，从 0 画起就是一条贴顶的直线） */
+  const lo=Math.max(0, Math.floor((Math.min(...have)-2)/5)*5), hi=100;
+  const yR=v=>T1+(hi-v)/(hi-lo)*(B1-T1);
+  const guides=[]; for(let g=lo; g<=hi+.001; g+=5) guides.push(g);
+  /* 下层：一格 = unit 份，最高的柱子不超过 ~22 格 */
+  const maxN=Math.max(...tot.map(a=>a.n));
+  const unit=[1,2,5,10,20,50,100,200,500].find(u=>maxN/u<=22)||1000;
+  const maxR=Math.max(1,Math.ceil(maxN/unit)), pitch=Math.min(6,(B2-T2)/maxR), rungH=Math.max(1.6,pitch*.5);
+  const bw=Math.min(narrow?16:32, slot*.5);
+  const anim = !DASH_DREW;            /* 只在第一次画的时候播动画 */
+  DASH_DREW=true;
+  const iMax=vals.reduce((b,v,i)=>v!=null&&(b<0||v>vals[b])?i:b,-1);
+  const iMin=vals.reduce((b,v,i)=>v!=null&&(b<0||v<vals[b])?i:b,-1);
+  /* 每个月都标数（用户要的）；最高 / 最低 / 本月三个点仍然画大一号 */
+  const keyPts=new Set([iMax,iMin,LAST].filter(i=>i>=0&&vals[i]!=null));
+  /* 折线 */
+  let path="", pen=false;
+  vals.forEach((v,i)=>{ if(v==null){ pen=false; return; } path+=(pen?"L":"M")+cx(i).toFixed(1)+" "+yR(v).toFixed(1)+" "; pen=true; });
+  const line =
+    guides.map(g=>'<line class="gd" x1="'+L+'" x2="'+(W-R)+'" y1="'+yR(g).toFixed(1)+'" y2="'+yR(g).toFixed(1)+'"/>'+
+      '<text class="ax" x="'+(L-6)+'" y="'+(yR(g)+3.5).toFixed(1)+'" text-anchor="end">'+g+'%</text>').join("")+
+    '<path class="ln'+(anim?' draw':'')+'" d="'+path+'"/>'+
+    vals.map((v,i)=>{
+      if(v==null) return '';
+      const k=keyPts.has(i), x=cx(i).toFixed(1), y=yR(v);
+      return '<circle class="'+(k?'dot key':'dot')+'" cx="'+x+'" cy="'+y.toFixed(1)+'" r="'+(k?4.5:2.6)+'"/>'+
+        /* 手机上 12 个数挤不下：跟月份标签一样隔一个标一个，关键点照标 */
+        (k || !narrow || i%2===LAST%2 ? '<text class="lab'+(k?'':' sm')+'" x="'+x+'" y="'+(y-(k?10:8)).toFixed(1)+'" text-anchor="middle">'+f1(v)+'%</text>' : '');
+    }).join("");
+  /* 柱子：一格一格往上码，绿档在下、红档（不合格）在上 */
+  const bars = tot.map((a,i)=>{
+    if(!a.n) return '<text class="ax" x="'+cx(i).toFixed(1)+'" y="'+(B2-4)+'" text-anchor="middle">—</text>';
+    const rungs=Math.max(1,Math.round(a.n/unit)), ngR=a.ng ? Math.min(rungs, Math.max(1,Math.round(a.ng/unit))) : 0;
+    const x0=(cx(i)-bw/2).toFixed(1);
+    let g='<g class="bar'+(anim?' rise':'')+'" style="animation-delay:'+(i*90)+'ms">';
+    for(let k=0;k<rungs;k++){
+      const y=B2-(k+1)*pitch+(pitch-rungH);
+      g+='<rect class="'+(k>=rungs-ngR?'rg ng':'rg')+'" x="'+x0+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+rungH.toFixed(1)+'" rx="'+(rungH/2).toFixed(1)+'"/>';
+    }
+    g+='</g><text class="cnt" x="'+cx(i).toFixed(1)+'" y="'+(B2-rungs*pitch-6).toFixed(1)+'" text-anchor="middle">'+a.n+'</text>';
+    return g;
+  }).join("");
+  /* 结论行：本月合格率 + 近一年的区间。**不写「较上月」**：上面概况卡比的是
+     「上月同期」，这里要是比整月，同一页会出现两个对不上的升降数。 */
+  const rNow=vals[LAST];
+  const best = iMax===LAST && have.length>1 ? '，'+tr("近一年最高") : iMin===LAST && have.length>1 ? '，'+tr("近一年最低") : '';
+  const head = rNow==null ? tr("本月还没有已提交的报告")
+    : tr("本月合格率")+' '+f1(rNow)+'%'+best;
+  const range = have.length>1 ? tr("近一年")+' '+f1(vals[iMin])+'% – '+f1(vals[iMax])+'%' : '';
+  th.innerHTML=
+    '<div class="hd-th">'+esc(head)+(range?' <span class="vs">· '+esc(range)+'</span>':'')+'</div>'+
+    '<svg viewBox="0 0 '+W+' '+H+'" style="height:'+H+'px" role="img" aria-label="'+esc(tr("近一年合格率"))+'">'+
+      '<rect class="hot" id="hdhot" x="0" y="'+(T1-8)+'" width="0" height="'+(B2-T1+8)+'" rx="8" visibility="hidden"/>'+
+      line+
+      '<line class="base" x1="'+L+'" x2="'+(W-R)+'" y1="'+B2+'" y2="'+B2+'"/>'+
+      bars+
+      months.map((m,i)=>'<text class="mo" x="'+cx(i).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(i===LAST?tr("本月"):(narrow&&i%2!==LAST%2?"":monLab(m.d)))+'</text>').join("")+
+    '</svg>'+
+    '<div class="hd-tip" id="hdtip" hidden></div>';
+  /* 折线画出来：先量路径长度，用 dash 偏移做描线 */
+  if(anim){ const ln=$(".ln.draw",th); if(ln && ln.getTotalLength){ const len=ln.getTotalLength(); ln.style.setProperty("--len",len); } }
+  /* 悬停：整列高亮 + 浮框（当月合格率、合格 / 不合格 / 已提交份数） */
+  const svg=$("svg",th), tipEl=$("#hdtip"), hot=$("#hdhot");
+  const showAt=i=>{
+    const a=tot[i], v=vals[i], r=svg.getBoundingClientRect(), hr=th.getBoundingClientRect();
+    hot.setAttribute("x",(cx(i)-slot/2+4).toFixed(1)); hot.setAttribute("width",(slot-8).toFixed(1)); hot.setAttribute("visibility","visible");
+    tipEl.innerHTML='<b>'+esc(monLab(months[i].d))+(i===LAST?' '+esc(tr("（截至今天）")):'')+' · '+(v==null?"—":f1(v)+"%")+'</b><br>'+
+      esc(tr("合格"))+' '+(a.n-a.ng)+' · '+esc(tr("不合格"))+' '+a.ng+' · '+esc(tr("已提交"))+' '+a.n;
+    tipEl.style.left=(r.left-hr.left + cx(i)/W*r.width)+"px";
+    tipEl.style.top=(r.top-hr.top + (v==null?T1:yR(v))/H*r.height - 22)+"px";
+    tipEl.hidden=false;
+  };
+  svg.addEventListener("mousemove",e=>{
+    const r=svg.getBoundingClientRect(), px=(e.clientX-r.left)/r.width*W;
+    showAt(Math.max(0,Math.min(LAST,Math.floor((px-L)/slot))));
+  });
+  svg.addEventListener("mouseleave",()=>{ tipEl.hidden=true; hot.setAttribute("visibility","hidden"); });
+}
+if(window.ResizeObserver){
+  let t=null;
+  new ResizeObserver(()=>{
+    const w=($("#hdtrend")||{}).clientWidth||0;
+    if(!DASH_ROWS || !w || Math.abs(w-DASH_TREND_W)<24) return;
+    clearTimeout(t); t=setTimeout(()=>renderDash(DASH_ROWS),120);
+  }).observe($("#hdtrend"));
+}
+$("#hdmods").addEventListener("click",e=>{
+  const b=e.target.closest("[data-mod]"); if(b) location.hash="#/"+b.dataset.mod;
+});
 
 /* ── sync with the server ─────────────────────────────────────────────
    Offline-first on purpose: every edit lands in IndexedDB first and the page
@@ -11462,7 +12221,7 @@ async function runSync(){
    another device, and the periodic pass has no other way to surface them. */
 async function refreshHomeIfVisible(){
   if(!$("#home") || $("#home").hidden) return;
-  try{ const rows=await metaAll(); renderCards(rows); renderRecent(rows); renderHeat(rows); }catch(e){}
+  try{ const rows=await metaAll(); renderCards(rows); renderRecent(rows); renderDash(rows).catch(e=>console.error("renderDash", e)); renderHeat(rows); }catch(e){}
   /* 公告也吃这一轮同步的结果。原来只有 showHome() 里做了这件事，而那只在
      「进首页」时跑一次 —— 人停在首页不动的话，别人刚发的公告数据同步下来了、
      角标却一直不亮，要切走再回来才看得见。而 60 秒轮询的**全部意义**就是
@@ -12416,6 +13175,51 @@ const I18N_ID={
   "最近的报告": "Laporan Terakhir",
   "不合格日历": "Kalender Tidak Lolos",
   "当月分布": "Sebaran bulan ini",
+  /* 侧边栏 + 首页数据看板（2026-10-07） */
+  "概览": "Ringkasan",
+  "检验": "Inspeksi",
+  "系统": "Sistem",
+  "首页看板": "Dasbor",
+  "本月质检概况": "Ringkasan QC bulan ini",
+  "本月每天合格率": "Persen OK harian bulan ini",
+  "退出登录": "Keluar",
+  "已登录": "Sudah masuk",
+  "只读": "Hanya lihat",
+  "本月不合格份数": "Jumlah NG bulan ini",
+  "未读公告": "Pengumuman belum dibaca",
+  "收起 / 展开": "Ciutkan / Bentangkan",
+  "切换到浅色": "Mode terang",
+  "切换到深色": "Mode gelap",
+  "浅色 / 深色": "Terang / Gelap",
+  "菜单": "Menu",
+  "导航": "Navigasi",
+  "质检管理系统": "Sistem Manajemen QC",
+  "质检管理系统 /": "Sistem Manajemen QC /",
+  "各板块本月": "Per modul bulan ini",
+  "近一年合格率": "Persen OK setahun terakhir",
+  "本月已提交": "Terkirim bulan ini",
+  "本月不合格": "NG bulan ini",
+  "本月合格率": "Persen OK bulan ini",
+  "较上月同期": "vs periode sama bulan lalu",
+  "上月同期无数据": "Bulan lalu belum ada data",
+  "与上月同期持平": "Sama dengan bulan lalu",
+  "个百分点": "poin",
+  "已提交": "Terkirim",
+  "本月暂无已提交": "Belum ada yang terkirim",
+  "近一年还没有已提交的报告": "Belum ada laporan terkirim dalam setahun",
+  "合格份数": "Jumlah OK",
+  "近一年最高": "tertinggi dalam setahun",
+  "近一年最低": "terendah dalam setahun",
+  "本月还没有已提交的报告": "Bulan ini belum ada laporan terkirim",
+  "上：合格率": "Atas: persen OK",
+  "下：每月已提交份数，一格": "Bawah: laporan terkirim per bulan, 1 garis",
+  "红格 = 不合格": "garis merah = NG",
+  "近一年": "setahun terakhir",
+  "按检验日期 · 只算已提交锁定的报告 · 本月截至今天": "Menurut tanggal inspeksi · hanya laporan yang dikirim & dikunci · bulan ini sampai hari ini",
+  "不合格份数": "Jumlah NG",
+  "左轴：份　右轴：合格率 %": "Sumbu kiri: laporan　Sumbu kanan: persen OK",
+  "本月": "Bulan ini",
+  "（截至今天）": "(sampai hari ini)",
   "少": "Sedikit",
   "多": "Banyak",
   "月度不良率": "Persen NG per Bulan",
@@ -13985,6 +14789,9 @@ applyRole();
 
 /* ── boot ─────────────────────────────────────────────────────────── */
 (async function boot(){
+  /* 侧边栏 / 分段控件只是外观：它们出任何错都不能拖垮后面的读库、路由、同步 */
+  try{ sideInit(); }catch(e){ console.error("sideInit", e); }
+  try{ segInit(); }catch(e){ console.error("segInit", e); }
   try{ await ensureMeta(); }catch(e){ /* storage unavailable — route still works */ }
   const fixed=await migrateLabIds();
   if(fixed) toast(fixed+" "+tr("条历史记录已修复编号，现在可以同步了"));
