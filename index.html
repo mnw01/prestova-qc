@@ -8228,6 +8228,10 @@ function labNgPersist(){
   clearTimeout(LAB_NG_SAVE);
   LAB_NG_SAVE=setTimeout(()=>{
     try{
+      if(LAB_NG_CACHE.size>6000){
+        const keep=[...LAB_NG_CACHE].sort((a,b)=>b[1].u-a[1].u).slice(0,6000);
+        LAB_NG_CACHE.clear(); keep.forEach(([id,v])=>LAB_NG_CACHE.set(id,v));
+      }
       const m={}; LAB_NG_CACHE.forEach((v,id)=>{ m[id]=[v.u, v.bad?1:0]; });
       localStorage.setItem(LAB_NG_KEY, JSON.stringify({sig:LAB_NG_SIG, m}));
     }catch(e){}

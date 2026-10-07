@@ -10603,6 +10603,12 @@ function labNgPersist(){
   clearTimeout(LAB_NG_SAVE);
   LAB_NG_SAVE=setTimeout(()=>{
     try{
+      /* 只增不减的话几年下来会越攒越大：超过 6000 条就只留最近改过的 6000 条
+         （首页最多看一年，一年的实验室记录远到不了这个数），被挤掉的下次用到再判 */
+      if(LAB_NG_CACHE.size>6000){
+        const keep=[...LAB_NG_CACHE].sort((a,b)=>b[1].u-a[1].u).slice(0,6000);
+        LAB_NG_CACHE.clear(); keep.forEach(([id,v])=>LAB_NG_CACHE.set(id,v));
+      }
       const m={}; LAB_NG_CACHE.forEach((v,id)=>{ m[id]=[v.u, v.bad?1:0]; });
       localStorage.setItem(LAB_NG_KEY, JSON.stringify({sig:LAB_NG_SIG, m}));
     }catch(e){}
