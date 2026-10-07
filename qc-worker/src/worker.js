@@ -116,53 +116,67 @@ const clearCookie = (secure) => [
 const GATE = `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PT. Prestova Home Living Indonesia</title>
+<script>
+/* 跟主应用同一个开关（localStorage qc-theme，同源所以读得到），默认浅色 */
+try{document.documentElement.setAttribute("data-theme",localStorage.getItem("qc-theme")==="dark"?"dark":"light")}catch(e){}
+</script>
 <style>
-/* 配色跟主应用的改版方向 C 对齐（值抄自那边的共用 token 块）。这一页是 worker
-   独立发的一段 HTML，拿不到主应用的样式表，所以只能把值写一遍 —— 改这里的时候
-   记得跟前端源文件顶上那个共用 token 块一起改。 */
+/* 2026-10-07 跟主应用新界面对齐：内容区的格子底、白卡片、侧边栏那个「P」标志；
+   深色是 Claude 面板那套暖灰。这一页是 worker 独立发的一段 HTML，拿不到主应用的
+   样式表，所以值写一遍 —— 改这里的时候记得跟前端源文件里「界面风格：照 Cloudflare
+   控制台」那段 token 一起改。蓝色按钮沿用原来的主色（用户定的）。
+   字体：主应用内联了 Inter，这一页没有（48KB 不值得为一个登录框带上），
+   用系统无衬线，Windows 上是 Segoe UI，观感接近。 */
 :root{
-  --deck:#e8ecf3; --card:#ffffff; --card-line:#e2e7ee;
-  --ink:#0f1729; --ink-2:#414d63; --ink-3:#5d6b83;
-  --field:#ffffff; --field-line:#cdd5e0;
+  color-scheme:light;
+  --canvas:#fbfbfb; --grid:rgba(15,23,41,.055);
+  --card:#ffffff; --card-line:rgba(10,10,10,.1);
+  --ink:#18181b; --ink-2:#525252; --ink-3:#737373;
+  --field:#ffffff; --field-line:rgba(10,10,10,.14);
   --accent:#005FB8; --accent-fill:#005FB8; --accent-on:#ffffff; --no:#b0342a;
-  --sh:0 1px 3px rgba(15,23,41,.08),0 14px 34px -18px rgba(15,23,41,.3);
+  --logo:#18181b; --logo-on:#ffffff;
+  --sh:0 1px 2px rgba(0,0,0,.05);
 }
-@media (prefers-color-scheme:dark){
-  :root{
-    --deck:#0d1014; --card:#1e2229; --card-line:#2e3239;
-    --ink:#e8ecf3; --ink-2:#b3bdcd; --ink-3:#8593a8;
-    --field:#181c23; --field-line:#363a41;
-    --accent:#4CC2FF; --accent-fill:#4CC2FF; --accent-on:#08202e; --no:#e08c82;
-    --sh:0 1px 3px rgba(0,0,0,.55),0 16px 38px -20px rgba(0,0,0,.85);
-  }
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --canvas:#262624; --grid:rgba(235,225,205,.05);
+  --card:#30302e; --card-line:#3e3d39;
+  --ink:#e3e1d9; --ink-2:#bcbab1; --ink-3:#8e8c85;
+  --field:#262624; --field-line:#4a4844;
+  --accent:#4CC2FF; --accent-fill:#4CC2FF; --accent-on:#08202e; --no:#e08c82;
+  --logo:#e3e1d9; --logo-on:#30302e;
+  --sh:none;
 }
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--deck);
-     font-family:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
-     color:var(--ink);padding:20px}
-.card{background:var(--card);border:1px solid var(--card-line);border-radius:11px;
-      padding:28px 26px;width:min(380px,100%);box-shadow:var(--sh)}
-/* 公司名用衬线，跟首页那个大标题同一套字体族（前端源文件里的 --serif）。
-   这一页拿不到主应用的样式表，所以值写一遍 —— 改这里记得跟那边一起改。
-   其余（18px / -.015em / balance）是改版定的，原样保留。 */
-h1{font-family:"Times New Roman","Nimbus Roman","Songti SC",serif;
-   font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.3;margin:0 0 5px;
-   text-align:center;text-wrap:balance}
-p.sub{margin:0 0 22px;text-align:center;font-size:11px;letter-spacing:.13em;
-      text-transform:uppercase;color:var(--ink-3)}
-label{display:block;font-size:12.5px;font-weight:500;color:var(--ink-2);margin-bottom:6px}
-input,select{width:100%;padding:10px 12px;font-size:16px;border:1px solid var(--field-line);
-  border-radius:7px;background:var(--field);color:var(--ink);font-family:inherit}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;
+     background-color:var(--canvas);
+     background-image:linear-gradient(to right,var(--grid) 1px,transparent 1px),linear-gradient(to bottom,var(--grid) 1px,transparent 1px);
+     background-size:16px 16px;
+     font-family:"Segoe UI","Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,sans-serif;
+     color:var(--ink);font-size:14px;letter-spacing:-.01em}
+.card{background:var(--card);border:1px solid var(--card-line);border-radius:12px;
+      padding:32px 28px 26px;width:min(380px,100%);box-shadow:var(--sh)}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+.logo{flex:0 0 32px;width:32px;height:32px;border-radius:8px;background:var(--logo);color:var(--logo-on);
+      display:grid;place-items:center;font-size:16px;font-weight:600}
+.brand b{font-size:15px;font-weight:600}
+h1{font-size:20px;font-weight:600;line-height:1.3;margin:0 0 4px;text-wrap:balance}
+p.sub{margin:0 0 24px;font-size:14px;color:var(--ink-3)}
+label{display:block;font-size:13px;font-weight:500;color:var(--ink-2);margin-bottom:6px}
+input,select{width:100%;height:40px;padding:0 12px;font-size:16px;border:1px solid var(--field-line);
+  border-radius:8px;background:var(--field);color:var(--ink);font-family:inherit}
 select{margin-bottom:16px}
 input:focus,select:focus{outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);
   outline-offset:1px;border-color:var(--accent)}
-button{width:100%;margin-top:14px;padding:11px;font-size:15px;font-weight:600;color:var(--accent-on);
-       background:var(--accent-fill);border:1px solid var(--accent-fill);border-radius:7px;cursor:pointer}
-button:hover:not(:disabled){filter:brightness(1.14)}
+button{width:100%;height:40px;margin-top:18px;font-size:14px;font-weight:600;color:var(--accent-on);
+       background:var(--accent-fill);border:1px solid var(--accent-fill);border-radius:8px;cursor:pointer;font-family:inherit}
+button:hover:not(:disabled){filter:brightness(1.1)}
+button:focus-visible{outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:2px}
 button:disabled{opacity:.6;cursor:default}
-.err{margin-top:10px;font-size:12.5px;color:var(--no);min-height:1.2em}
+.err{margin-top:10px;font-size:13px;color:var(--no);min-height:1.2em}
 </style></head><body>
 <form class="card" id="f">
+  <div class="brand"><span class="logo" aria-hidden="true">P</span><b>Prestova</b></div>
   <h1>PT. Prestova Home Living Indonesia</h1>
   <p class="sub">Quality Management System</p>
   <label for="r">Role</label>

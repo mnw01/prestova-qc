@@ -3190,10 +3190,11 @@ body.sn-on #oback,body.sn-on #ftback,body.sn-on #lback{display:none}
 #home .hd-crumb{flex:1 1 auto;min-width:0;font-size:13px;font-weight:500;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #home .hd-crumb b{color:var(--ink);font-weight:500}
 #home .hd-date{font-size:13px;font-weight:500;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
-#home .hd-title{display:flex;align-items:center;gap:10px;margin-top:32px}
+#home .hd-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin-top:32px}
 #home .hd-title .ic{display:none}
 #home .hd-title h1{font-family:var(--sans);font-size:20px;font-weight:600;color:var(--ink);letter-spacing:-.01em;line-height:1.25}
-#home .hd-lede{margin-top:6px;font-size:14px;color:var(--ink-3)}
+/* 说明跟在标题后面同一行（用户 2026-10-07：不用另起一行），放不下才折行 */
+#home .hd-lede{margin:0;font-size:14px;color:var(--ink-3)}
 /* 原来的居中抬头不再显示（品牌串留在 DOM 里，构建要查它） */
 body.sn-on #home .hhead{display:none}
 
@@ -3356,8 +3357,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
     <div class="hd-crumb">质检管理系统 / <b>首页看板</b></div>
     <span class="hd-date" id="hddate"></span>
   </div>
-  <div class="hd-title"><span class="ic" id="hdtic"></span><h1>首页看板</h1></div>
-  <p class="hd-lede">本月质检概况</p>
+  <div class="hd-title"><span class="ic" id="hdtic"></span><h1>首页看板</h1><p class="hd-lede">本月质检概况</p></div>
   <!-- 进入卡片撤掉了（进板块走侧边栏 / 手机抽屉），renderCards 还往这里写，留着不显示 -->
   <div class="hgrid" id="modcards" hidden></div>
   <!-- 数据看板：本月概况 / 各板块本月 / 近 6 个月走势（renderDash） -->
@@ -10628,8 +10628,14 @@ async function renderHeat(rows){
     const k=key(d), e=day.get(k)||{n:0,by:{}};
     e.n++; e.by[t]=(e.by[t]||0)+1; day.set(k,e);
   });
-  /* 侧边栏「不合格日历」上的数字 = 本月不合格份数 */
-  sideSetNg([...(mNg.get(curYm)||new Map()).values()].reduce((a,b)=>a+b,0));
+  /* 侧边栏「不合格日历」上的数字 = 前一天的不合格份数（用户 2026-10-07 要的：
+     每天一看就知道昨天有几份要处理；原来是本月累计，越到月底越大、看不出新增）。
+     前一天一份已提交报告都没有（周日、放假）就再往前找，最多 7 天 —— 不然周一
+     看到的永远是周日的 0，周六的不合格就漏过去了。 */
+  let ngDay=null;
+  for(let b=1;b<=7;b++){ const d=new Date(today); d.setDate(today.getDate()-b); if(d<start) break; if(mAll.has(key(d))){ ngDay=d; break; } }
+  if(!ngDay){ ngDay=new Date(today); ngDay.setDate(today.getDate()-1); }
+  sideSetNg([...(mNg.get(key(ngDay))||new Map()).values()].reduce((a,b)=>a+b,0), key(ngDay));
   let peak=0;
   day.forEach(e=>{ if(e.n>peak) peak=e.n; });
 
@@ -10888,6 +10894,7 @@ async function showHome(){
   catch(e){ toast(tr("无法使用本地存储（隐私模式？）—— 记录不会被保存")); }
   HEAT_SEL=null;   /* 每次进首页都从当月看起，见 HEAT_SEL 那条注释 */
   renderCards(rows); renderRecent(rows); renderDash(rows).catch(e=>console.error("renderDash", e));
+  if(SIDE_TO_CAL && SIDE_NG_DAY) HEAT_SEL=SIDE_NG_DAY;
   renderHeat(rows).then(()=>{ if(SIDE_TO_CAL){ SIDE_TO_CAL=false; $("#hheat").scrollIntoView({block:"center"}); } });
   noticePaintIcon();
   await noticeLoad(); noticePaintBadge();
@@ -10976,7 +10983,7 @@ const SIDE_IC={
 /* 水印用细一点的线（跟板块卡片的 micon(id,1.1) 一样） */
 const sideSvgThin=k=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+SIDE_IC[k]+'</svg>';
 const sideSvg=k=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+SIDE_IC[k]+'</svg>';
-let SIDE_CUR="home", SIDE_NG=null, SIDE_NTC=0, SIDE_TO_CAL=false;
+let SIDE_CUR="home", SIDE_NG=null, SIDE_NG_DAY="", SIDE_NTC=0, SIDE_TO_CAL=false;
 function sideMini(){ try{ return localStorage.getItem(SIDE_MINI_KEY)==="1"; }catch(e){ return false; } }
 function sideItem(key, ic, zh, badge, badgeTip, badgeCls){
   return '<button type="button" class="sn-item'+(SIDE_CUR===key?' on':'')+'" data-sn="'+key+'" title="'+esc(tr(zh))+'">'+
@@ -10996,7 +11003,7 @@ function sideRender(){
   body.innerHTML=
     '<div class="sn-sec">'+esc(tr("概览"))+'</div>'+
     sideItem("home", sideSvg("home"), "首页看板")+
-    sideItem("cal", sideSvg("cal"), "不合格日历", SIDE_NG, "本月不合格份数", SIDE_NG>0?"ng":"")+
+    sideItem("cal", sideSvg("cal"), "不合格日历", SIDE_NG, sideNgTip(), SIDE_NG>0?"ng":"")+
     '<div class="sn-sec">'+esc(tr("检验"))+'</div>'+
     MODULES.filter(m=>m.ready).map(m=>sideItem(m.id, micon(m.id), m.zh)).join("")+
     '<div class="sn-sys">'+
@@ -11013,7 +11020,12 @@ function sideSetNotice(n){ if(SIDE_NTC===n) return; SIDE_NTC=n; sideSafeRender()
    也不能让进板块、画首页跟着失败，所以吞掉异常 */
 function sideSafeRender(){ try{ sideRender(); }catch(e){ console.error("sideRender", e); } }
 function sideSync(key){ SIDE_CUR=key; sideSafeRender(); }
-function sideSetNg(n){ if(SIDE_NG===n) return; SIDE_NG=n; sideSafeRender(); }
+function sideSetNg(n, day){ if(SIDE_NG===n && SIDE_NG_DAY===day) return; SIDE_NG=n; SIDE_NG_DAY=day||""; sideSafeRender(); }
+/* 角标的悬停提示写明是哪一天的（往前找过的话不一定是昨天） */
+function sideNgTip(){
+  const p=SIDE_NG_DAY.split("-"); if(p.length!==3) return "";
+  return LANG==="id" ? "Jumlah NG tanggal "+p[2]+"/"+p[1] : p[1]+"月"+p[2]+"日不合格份数";
+}
 /* 浅色 / 深色：当前值在 <html data-theme>（<head> 里那段小脚本开机就打上，默认浅色），
    切换时改它并记到 localStorage。颜色全走 token，图表、热力图不用重画。 */
 const THEME_KEY="qc-theme";
@@ -11083,7 +11095,8 @@ $("#sidenav").addEventListener("click",e=>{
   if(k==="lang"){ const b=$('#langsw [data-lang="'+(LANG==="id"?"zh":"id")+'"]'); if(b) b.click(); return; }
   if(k==="logout"){ $("#logout").click(); return; }
   if(k==="cal"){
-    if(!$("#home").hidden){ $("#hheat").scrollIntoView({behavior:"smooth",block:"center"}); return; }
+    /* 日历顺手选中角标那一天，右边分布就是那天各板块的不合格 */
+    if(!$("#home").hidden){ if(SIDE_NG_DAY && HEAT_LAST_ROWS){ HEAT_SEL=SIDE_NG_DAY; renderHeat(HEAT_LAST_ROWS); } $("#hheat").scrollIntoView({behavior:"smooth",block:"center"}); return; }
     SIDE_TO_CAL=true; location.hash="#/"; return;
   }
   location.hash = k==="home" ? "#/" : "#/"+k;
@@ -11168,7 +11181,7 @@ async function renderDash(rows){
     if(a==null||b==null||!prev.n) return esc(tr("上月同期无数据"));
     const d=Math.round((a-b)*10)/10;
     if(!d) return esc(tr("与上月同期持平"));
-    const txt=(d>0?"▲ +":"▼ ")+(unit==="pt" ? d.toFixed(1)+" "+tr("个百分点") : Math.abs(d)+" "+tr("份"));
+    const txt=(d>0?"▲ +":"▼ ")+(unit==="pt" ? d.toFixed(1)+"%" : Math.abs(d)+" "+tr("份"));
     const cls = goodUp==null ? "" : ((goodUp ? d>0 : d<0) ? "up" : "dn");
     return esc(tr("较上月同期"))+' <span class="'+cls+'">'+esc(txt)+'</span>';
   };
@@ -13215,7 +13228,6 @@ const I18N_ID={
   "较上月同期": "vs periode sama bulan lalu",
   "上月同期无数据": "Bulan lalu belum ada data",
   "与上月同期持平": "Sama dengan bulan lalu",
-  "个百分点": "poin",
   "已提交": "Terkirim",
   "本月暂无已提交": "Belum ada yang terkirim",
   "近一年还没有已提交的报告": "Belum ada laporan terkirim dalam setahun",
