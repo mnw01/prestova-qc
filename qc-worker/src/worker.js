@@ -121,7 +121,7 @@ const GATE = `<!doctype html><html lang="en"><head>
 try{document.documentElement.setAttribute("data-theme",localStorage.getItem("qc-theme")==="dark"?"dark":"light")}catch(e){}
 </script>
 <style>
-/* 2026-10-07 跟主应用新界面对齐：内容区的格子底、白卡片、侧边栏那个「P」标志；
+/* 2026-10-07 跟主应用新界面对齐：内容区的格子底、白卡片、公司 logo；
    深色是 Claude 面板那套暖灰。这一页是 worker 独立发的一段 HTML，拿不到主应用的
    样式表，所以值写一遍 —— 改这里的时候记得跟前端源文件里「界面风格：照 Cloudflare
    控制台」那段 token 一起改。蓝色按钮沿用原来的主色（用户定的）。
@@ -134,7 +134,6 @@ try{document.documentElement.setAttribute("data-theme",localStorage.getItem("qc-
   --ink:#18181b; --ink-2:#525252; --ink-3:#737373;
   --field:#ffffff; --field-line:rgba(10,10,10,.14);
   --accent:#005FB8; --accent-fill:#005FB8; --accent-on:#ffffff; --no:#b0342a;
-  --logo:#18181b; --logo-on:#ffffff;
   --sh:0 1px 2px rgba(0,0,0,.05);
 }
 :root[data-theme="dark"]{
@@ -144,7 +143,6 @@ try{document.documentElement.setAttribute("data-theme",localStorage.getItem("qc-
   --ink:#e3e1d9; --ink-2:#bcbab1; --ink-3:#8e8c85;
   --field:#262624; --field-line:#4a4844;
   --accent:#4CC2FF; --accent-fill:#4CC2FF; --accent-on:#08202e; --no:#e08c82;
-  --logo:#e3e1d9; --logo-on:#30302e;
   --sh:none;
 }
 *{box-sizing:border-box}
@@ -155,13 +153,14 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;
      font-family:"Segoe UI","Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,sans-serif;
      color:var(--ink);font-size:14px;letter-spacing:-.01em}
 .card{background:var(--card);border:1px solid var(--card-line);border-radius:12px;
-      padding:32px 28px 26px;width:min(380px,100%);box-shadow:var(--sh)}
-.brand{display:flex;align-items:center;gap:10px;margin-bottom:22px}
-.logo{flex:0 0 32px;width:32px;height:32px;border-radius:8px;background:var(--logo);color:var(--logo-on);
-      display:grid;place-items:center;font-size:16px;font-weight:600}
-.brand b{font-size:15px;font-weight:600}
-h1{font-size:20px;font-weight:600;line-height:1.3;margin:0 0 4px;text-wrap:balance}
-p.sub{margin:0 0 24px;font-size:14px;color:var(--ink-3)}
+      padding:26px 28px 28px;width:min(440px,100%);box-shadow:var(--sh)}
+/* 抬头：左边公司标志、右边公司名 + 系统名（用户要的横排），下面一条细线隔开表单。
+   标志是主应用侧边栏同一张（logo 里的房子 + 叶子，米色底），两个主题都不变 */
+.head{display:flex;align-items:center;gap:14px;padding-bottom:20px;margin-bottom:22px;
+      border-bottom:1px solid var(--card-line)}
+.logo{flex:0 0 52px;width:52px;height:52px;border-radius:12px;box-shadow:0 0 0 1px var(--card-line)}
+h1{font-size:17px;font-weight:600;line-height:1.3;margin:0 0 3px;text-wrap:balance}
+p.sub{margin:0;font-size:13px;color:var(--ink-3)}
 label{display:block;font-size:13px;font-weight:500;color:var(--ink-2);margin-bottom:6px}
 input,select{width:100%;height:40px;padding:0 12px;font-size:16px;border:1px solid var(--field-line);
   border-radius:8px;background:var(--field);color:var(--ink);font-family:inherit}
@@ -174,11 +173,13 @@ button:hover:not(:disabled){filter:brightness(1.1)}
 button:focus-visible{outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:2px}
 button:disabled{opacity:.6;cursor:default}
 .err{margin-top:10px;font-size:13px;color:var(--no);min-height:1.2em}
+.err:empty{margin:0;min-height:0}   /* 没出错时不占地方，卡片上下留白才对称 */
 </style></head><body>
 <form class="card" id="f">
-  <div class="brand"><span class="logo" aria-hidden="true">P</span><b>Prestova</b></div>
-  <h1>PT. Prestova Home Living Indonesia</h1>
-  <p class="sub">Quality Management System</p>
+  <div class="head">
+    <img class="logo" alt="Prestova Home Living" src="data:image/png;base64,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">
+    <div><h1>PT. Prestova Home Living Indonesia</h1><p class="sub">Quality Management System</p></div>
+  </div>
   <label for="r">Role</label>
   <select id="r" name="r">
     <option value="qc">QC Inspector</option>
