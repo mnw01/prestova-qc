@@ -2384,7 +2384,7 @@ table.frec-table tbody tr.draft .lockdot,
 #lab table.lmodel th{font-size:11px;color:var(--ink-3);letter-spacing:.03em;text-align:center;font-weight:600;
   border-bottom:1px solid var(--rule-2)}
 #lab table.lmodel th:first-child,#lab table.lmodel td:first-child{text-align:left;font-weight:600}
-#lab table.lmodel tr:hover td{background:var(--accent-soft)}
+#lab table.lmodel tr:hover td{background:color-mix(in srgb,var(--accent) 15%,transparent)}   /* 跟记录表悬停同一档；--accent-soft 深色下是深海军蓝 */
 #lab table.lmodel td.warn{color:var(--no);font-weight:600}
 /* 2016-08-03: fourth pass, this time centred (not right-aligned) on both the
    header <th> and the data <td> — same rule, same text-align:center, so the
@@ -2779,9 +2779,13 @@ table.frec-table tbody tr.draft .lockdot,
   #oqc table.orec-table,#lab table.lrec{color:var(--ink)}
   table.frec-table td,#iqc table.irec-table td,#ipqc table.iprec-table td,
   #oqc table.orec-table td,#lab table.lrec td{color:var(--ink)}
+  /* 悬停跟实验室那张一样用主色 15% 调和（三档梯度 15 / 20 / 24 的第一档）。
+     原来这里写的是 --accent-soft：板块那套深色 token 里它是 #0f2a38 深海军蓝，
+     铺在暖灰卡片上是一条发黑的蓝（用户 2026-10-07 报的），浅色下也比固定行那 20%
+     浅得不成梯度。 */
   table.frec-table tr:hover td,#iqc table.irec-table tr:hover td,
   #ipqc table.iprec-table tr:hover td,#oqc table.orec-table tr:hover td{
-    background:var(--accent-soft);
+    background:color-mix(in srgb,var(--accent) 15%,transparent);
   }
   /* 「查看」只换配色和圆角，尺寸不动 —— 它才是行高的实际决定者。
      实验室那个叫 .lrecbtn，一起纳进来（漏掉它的话五张表就它一个是 4px 圆角）。
@@ -11018,10 +11022,11 @@ function sideRender(){
   body.innerHTML=
     '<div class="sn-sec">'+esc(tr("概览"))+'</div>'+
     sideItem("home", sideSvg("home"), "首页看板")+
-    sideItem("cal", sideSvg("cal"), "不合格日历", SIDE_NG, sideNgTip(), SIDE_NG>0?"ng":"")+
+    sideItem("cal", sideSvg("cal"), "不合格日历", SIDE_NG||null, sideNgTip(), "ng")+
     '<div class="sn-sec">'+esc(tr("检验"))+'</div>'+
-    MODULES.filter(m=>m.ready).map(m=>{ const n=SIDE_NG_BY ? (SIDE_NG_BY[m.id]||0) : null;
-      return sideItem(m.id, micon(m.id), m.zh, n, sideNgTip(), n>0?"ng":""); }).join("")+
+    /* 角标跟公告一样：没有就不显示（用户 2026-10-07：「没必要显示个 0」） */
+    MODULES.filter(m=>m.ready).map(m=>sideItem(m.id, micon(m.id), m.zh,
+      (SIDE_NG_BY && SIDE_NG_BY[m.id]) || null, sideNgTip(), "ng")).join("")+
     '<div class="sn-sys">'+
       '<div class="sn-sec">'+esc(tr("系统"))+'</div>'+
       sideItem("notice", sideSvg("bell"), "公告", SIDE_NTC||null, "未读公告", "ng")+

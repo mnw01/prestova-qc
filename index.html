@@ -1668,7 +1668,7 @@ table.frec-table tbody tr.draft .lockdot,
 #lab table.lmodel th{font-size:11px;color:var(--ink-3);letter-spacing:.03em;text-align:center;font-weight:600;
   border-bottom:1px solid var(--rule-2)}
 #lab table.lmodel th:first-child,#lab table.lmodel td:first-child{text-align:left;font-weight:600}
-#lab table.lmodel tr:hover td{background:var(--accent-soft)}
+#lab table.lmodel tr:hover td{background:color-mix(in srgb,var(--accent) 15%,transparent)} 
 #lab table.lmodel td.warn{color:var(--no);font-weight:600}
 #lab .lrate{display:inline-block;width:46px;text-align:right;margin-right:7px}
 #lab .ldoff{position:relative;height:15px;width:96px;background:var(--rule-2);border-radius:2px;
@@ -1885,7 +1885,7 @@ table.frec-table tbody tr.draft .lockdot,
   #oqc table.orec-table td,#lab table.lrec td{color:var(--ink)}
   table.frec-table tr:hover td,#iqc table.irec-table tr:hover td,
   #ipqc table.iprec-table tr:hover td,#oqc table.orec-table tr:hover td{
-    background:var(--accent-soft);
+    background:color-mix(in srgb,var(--accent) 15%,transparent);
   }
   .frec-open,#iqc .irec-open,#ipqc .iprec-open,#oqc .orec-open,
   #lab table.lrec tbody .lrecbtn{
@@ -8570,10 +8570,10 @@ function sideRender(){
   body.innerHTML=
     '<div class="sn-sec">'+esc(tr("概览"))+'</div>'+
     sideItem("home", sideSvg("home"), "首页看板")+
-    sideItem("cal", sideSvg("cal"), "不合格日历", SIDE_NG, sideNgTip(), SIDE_NG>0?"ng":"")+
+    sideItem("cal", sideSvg("cal"), "不合格日历", SIDE_NG||null, sideNgTip(), "ng")+
     '<div class="sn-sec">'+esc(tr("检验"))+'</div>'+
-    MODULES.filter(m=>m.ready).map(m=>{ const n=SIDE_NG_BY ? (SIDE_NG_BY[m.id]||0) : null;
-      return sideItem(m.id, micon(m.id), m.zh, n, sideNgTip(), n>0?"ng":""); }).join("")+
+    MODULES.filter(m=>m.ready).map(m=>sideItem(m.id, micon(m.id), m.zh,
+      (SIDE_NG_BY && SIDE_NG_BY[m.id]) || null, sideNgTip(), "ng")).join("")+
     '<div class="sn-sys">'+
       '<div class="sn-sec">'+esc(tr("系统"))+'</div>'+
       sideItem("notice", sideSvg("bell"), "公告", SIDE_NTC||null, "未读公告", "ng")+
