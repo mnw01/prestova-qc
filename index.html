@@ -8211,20 +8211,54 @@ function metaIsNg(m){
   if(m.type==="cfr1633") return m.ftVerdict==="不合格";
   return m.verdict==="reject";
 }
+const LAB_NG_KEY="qc-lab-ng";
+let LAB_NG_SIG=null, LAB_NG_SAVE=0;
+const LAB_NG_FLIGHT=new Map();
+function labNgSync(){
+  const sig=LAB_STD.length ? hash36(JSON.stringify(LAB_STD)) : "";
+  if(sig===LAB_NG_SIG) return;
+  LAB_NG_CACHE.clear(); LAB_NG_SIG=sig;
+  if(!sig) return;
+  try{
+    const p=JSON.parse(localStorage.getItem(LAB_NG_KEY)||"null");
+    if(p && p.sig===sig && p.m) for(const id in p.m) LAB_NG_CACHE.set(id,{u:p.m[id][0],bad:!!p.m[id][1]});
+  }catch(e){}
+}
+function labNgPersist(){
+  clearTimeout(LAB_NG_SAVE);
+  LAB_NG_SAVE=setTimeout(()=>{
+    try{
+      const m={}; LAB_NG_CACHE.forEach((v,id)=>{ m[id]=[v.u, v.bad?1:0]; });
+      localStorage.setItem(LAB_NG_KEY, JSON.stringify({sig:LAB_NG_SIG, m}));
+    }catch(e){}
+  },500);
+}
 async function labNgOf(metas){
-  const miss=metas.filter(m=>{ const c=LAB_NG_CACHE.get(m.id); return !c || c.u!==m.updatedAt; });
-  const out=new Set(metas.filter(m=>(LAB_NG_CACHE.get(m.id)||{}).bad).map(m=>m.id));
-  if(!miss.length) return out;
   if(!LAB_STD.length){
     try{ const s=await dbGet(LAB_STD_ID); if(s && Array.isArray(s.std) && s.std.length) LAB_STD=s.std; }catch(e){}
   }
-  const haveStd=LAB_STD.length>0;
+  labNgSync();
+  const haveStd=LAB_STD.length>0, sig=LAB_NG_SIG;
+  const out=new Set(), miss=[];
+  for(const m of metas){
+    const c=LAB_NG_CACHE.get(m.id);
+    if(c && c.u===m.updatedAt){ if(c.bad) out.add(m.id); }
+    else miss.push(m);
+  }
+  if(!miss.length) return out;
+  let added=0;
   await withPool(miss, 8, async m=>{
-    let bad=false;
-    try{ const r=await dbGet(m.id); bad = !!(r && r.lab && labVerdict(r)==="不合格"); }catch(e){}
+    const k=m.id+"|"+m.updatedAt+"|"+sig;
+    let p=LAB_NG_FLIGHT.get(k);
+    if(!p){
+      p=(async()=>{ try{ const r=await dbGet(m.id); return !!(r && r.lab && labVerdict(r)==="不合格"); }catch(e){ return false; } })();
+      LAB_NG_FLIGHT.set(k,p); p.then(()=>LAB_NG_FLIGHT.delete(k));
+    }
+    const bad=await p;
     if(bad) out.add(m.id);
-    if(haveStd) LAB_NG_CACHE.set(m.id,{u:m.updatedAt,bad});
+    if(haveStd && LAB_NG_SIG===sig){ LAB_NG_CACHE.set(m.id,{u:m.updatedAt,bad}); added++; }
   });
+  if(added) labNgPersist();
   return out;
 }
 async function renderHeat(rows){
@@ -11200,8 +11234,8 @@ function hash36(s){
 }
 const histId = c => "h"+hash36(histKey(c));
 
-async function migrateLabIds(){
-  let rows=[]; try{ rows=await metaAll(); }catch(e){ return 0; }
+async function migrateLabIds(pre){
+  let rows=pre||[]; if(!pre){ try{ rows=await metaAll(); }catch(e){ return 0; } }
   let n=0;
   for(const m of rows){
     if(SAFE_ID.test(m.id) || !/^h\|/.test(m.id)) continue;
@@ -11213,8 +11247,8 @@ async function migrateLabIds(){
   }
   return n;
 }
-async function migrateOqcPodi(){
-  let rows=[]; try{ rows=await metaAll(); }catch(e){ return 0; }
+async function migrateOqcPodi(pre){
+  let rows=pre||[]; if(!pre){ try{ rows=await metaAll(); }catch(e){ return 0; } }
   let n=0;
   for(const m of rows){
     if(m.type!=="oqc" || m.podi!==undefined) continue;
@@ -11473,10 +11507,12 @@ applyRole();
 (async function boot(){
   try{ sideInit(); }catch(e){ console.error("sideInit", e); }
   try{ segInit(); }catch(e){ console.error("segInit", e); }
-  try{ await ensureMeta(); }catch(e){  }
-  const fixed=await migrateLabIds();
+  try{ await noticeLoad(); noticePaintBadge(); }catch(e){}
+  let metaRows=null;
+  try{ metaRows=await ensureMeta(); }catch(e){  }
+  const fixed=await migrateLabIds(metaRows);
   if(fixed) toast(fixed+" "+tr("条历史记录已修复编号，现在可以同步了"));
-  await migrateOqcPodi();
+  await migrateOqcPodi(metaRows);
   route();
   refreshPending();
   await syncNow(); 

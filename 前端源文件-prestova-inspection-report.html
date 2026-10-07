@@ -10578,10 +10578,37 @@ function metaIsNg(m){
   if(m.type==="cfr1633") return m.ftVerdict==="不合格";
   return m.verdict==="reject";
 }
+/* 实验室判定缓存存到本机（2026-10-07）。原来只在内存里，刷新一次就空了：首页的
+   日历、近一年合格率得把窗口里上千条实验室记录逐条从本机数据库读出来重判，
+   慢电脑上要好几秒，侧边栏的不合格角标就跟着等（用户报「刷新后角标要等很久」）。
+   缓存挂在标准表的指纹上：标准表一变（改了标准、同步拉下来新的），整份作废重判；
+   单条记录改过（updatedAt 变了）就只重判那一条。没有标准表时照旧不进缓存。 */
+const LAB_NG_KEY="qc-lab-ng";
+let LAB_NG_SIG=null, LAB_NG_SAVE=0;
+/* 同一时刻几路都要同一条的判定（日历、近一年走势、同步后又重画一遍）时只读一次 */
+const LAB_NG_FLIGHT=new Map();
+/* 指纹每次都重算，不能只比数组引用：标准表编辑器是原地改 LAB_STD 的
+   （push / splice / LAB_STD[i][k]=…）。标准表就几十行，算一次可以忽略 */
+function labNgSync(){
+  const sig=LAB_STD.length ? hash36(JSON.stringify(LAB_STD)) : "";
+  if(sig===LAB_NG_SIG) return;
+  LAB_NG_CACHE.clear(); LAB_NG_SIG=sig;
+  if(!sig) return;
+  try{
+    const p=JSON.parse(localStorage.getItem(LAB_NG_KEY)||"null");
+    if(p && p.sig===sig && p.m) for(const id in p.m) LAB_NG_CACHE.set(id,{u:p.m[id][0],bad:!!p.m[id][1]});
+  }catch(e){}
+}
+function labNgPersist(){
+  clearTimeout(LAB_NG_SAVE);
+  LAB_NG_SAVE=setTimeout(()=>{
+    try{
+      const m={}; LAB_NG_CACHE.forEach((v,id)=>{ m[id]=[v.u, v.bad?1:0]; });
+      localStorage.setItem(LAB_NG_KEY, JSON.stringify({sig:LAB_NG_SIG, m}));
+    }catch(e){}
+  },500);
+}
 async function labNgOf(metas){
-  const miss=metas.filter(m=>{ const c=LAB_NG_CACHE.get(m.id); return !c || c.u!==m.updatedAt; });
-  const out=new Set(metas.filter(m=>(LAB_NG_CACHE.get(m.id)||{}).bad).map(m=>m.id));
-  if(!miss.length) return out;
   /* ⚠ **不要调 loadLabStd()**。本机没有标准表时它会把内置种子写进去、时间戳是
      「现在」、再排一次同步 —— 同步是后写的赢，等于拿出厂默认值覆盖服务器上
      真正的标准表。进实验室板块时调它没事（那时同步早跑过了），首页却是开机
@@ -10590,13 +10617,30 @@ async function labNgOf(metas){
   if(!LAB_STD.length){
     try{ const s=await dbGet(LAB_STD_ID); if(s && Array.isArray(s.std) && s.std.length) LAB_STD=s.std; }catch(e){}
   }
-  const haveStd=LAB_STD.length>0;
+  labNgSync();
+  const haveStd=LAB_STD.length>0, sig=LAB_NG_SIG;
+  /* 命中的直接用；没命中（或记录改过）的才去读。原来 out 是拿缓存里所有 bad 先填，
+     记录改过、现在合格了的那条也会留在 out 里 —— 一并改掉 */
+  const out=new Set(), miss=[];
+  for(const m of metas){
+    const c=LAB_NG_CACHE.get(m.id);
+    if(c && c.u===m.updatedAt){ if(c.bad) out.add(m.id); }
+    else miss.push(m);
+  }
+  if(!miss.length) return out;
+  let added=0;
   await withPool(miss, 8, async m=>{
-    let bad=false;
-    try{ const r=await dbGet(m.id); bad = !!(r && r.lab && labVerdict(r)==="不合格"); }catch(e){}
+    const k=m.id+"|"+m.updatedAt+"|"+sig;
+    let p=LAB_NG_FLIGHT.get(k);
+    if(!p){
+      p=(async()=>{ try{ const r=await dbGet(m.id); return !!(r && r.lab && labVerdict(r)==="不合格"); }catch(e){ return false; } })();
+      LAB_NG_FLIGHT.set(k,p); p.then(()=>LAB_NG_FLIGHT.delete(k));
+    }
+    const bad=await p;
     if(bad) out.add(m.id);
-    if(haveStd) LAB_NG_CACHE.set(m.id,{u:m.updatedAt,bad});
+    if(haveStd && LAB_NG_SIG===sig){ LAB_NG_CACHE.set(m.id,{u:m.updatedAt,bad}); added++; }
   });
+  if(added) labNgPersist();
   return out;
 }
 async function renderHeat(rows){
@@ -14533,8 +14577,8 @@ const histId = c => "h"+hash36(histKey(c));
 /* One-off repair for anything imported under the old scheme: same record, safe
    id, so sync can finally take it. Rewritten rather than dropped — the readings
    are real data. */
-async function migrateLabIds(){
-  let rows=[]; try{ rows=await metaAll(); }catch(e){ return 0; }
+async function migrateLabIds(pre){
+  let rows=pre||[]; if(!pre){ try{ rows=await metaAll(); }catch(e){ return 0; } }
   let n=0;
   for(const m of rows){
     if(SAFE_ID.test(m.id) || !/^h\|/.test(m.id)) continue;
@@ -14561,8 +14605,8 @@ async function migrateLabIds(){
    这里补算一次。跟前面两个回填一样自限（有 podi 的直接跳过）、**不碰
    updatedAt**（podi 是从 goods 推出来的派生值，每台设备都能自己算出来，
    没必要为它推一轮同步）。 */
-async function migrateOqcPodi(){
-  let rows=[]; try{ rows=await metaAll(); }catch(e){ return 0; }
+async function migrateOqcPodi(pre){
+  let rows=pre||[]; if(!pre){ try{ rows=await metaAll(); }catch(e){ return 0; } }
   let n=0;
   for(const m of rows){
     if(m.type!=="oqc" || m.podi!==undefined) continue;
@@ -14844,10 +14888,16 @@ applyRole();
   /* 侧边栏 / 分段控件只是外观：它们出任何错都不能拖垮后面的读库、路由、同步 */
   try{ sideInit(); }catch(e){ console.error("sideInit", e); }
   try{ segInit(); }catch(e){ console.error("segInit", e); }
-  try{ await ensureMeta(); }catch(e){ /* storage unavailable — route still works */ }
-  const fixed=await migrateLabIds();
+  /* 公告角标先亮：只读本机一条记录，不用等下面的建索引 / 迁移 / 首页统计
+     （原来排在那一串后面，慢电脑上要两三秒才出来） */
+  try{ await noticeLoad(); noticePaintBadge(); }catch(e){}
+  /* 索引只扫一遍：ensureMeta 读出来的那份给两个迁移共用（原来各自再 metaAll 一次，
+     几千条记录时每次都是全表读） */
+  let metaRows=null;
+  try{ metaRows=await ensureMeta(); }catch(e){ /* storage unavailable — route still works */ }
+  const fixed=await migrateLabIds(metaRows);
   if(fixed) toast(fixed+" "+tr("条历史记录已修复编号，现在可以同步了"));
-  await migrateOqcPodi();
+  await migrateOqcPodi(metaRows);
   route();
   refreshPending();
   await syncNow();    /* also probes whether a backend exists at all */
