@@ -420,6 +420,9 @@ input,textarea,button,select{font:inherit;color:inherit}
 @media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .bar .miss{color:#e88b81}}
 
 .wrap{padding:18px 14px 64px;display:flex;flex-direction:column;align-items:center;gap:18px}
+#mod .fe-bar{width:210mm;max-width:100%;display:flex;justify-content:flex-end;margin-bottom:-14px}
+#mod .fe-bar .plx{padding:3px 7px}
+@media print{ #mod .fe-bar{display:none!important} }
 .sheet{
   width:210mm;max-width:100%;background:var(--paper);color:var(--ink);
   padding:10mm;box-shadow:var(--shadow);
@@ -790,9 +793,8 @@ body.dropping::after{
 
 .frec-card{position:relative;max-width:1180px;margin:18px auto;padding:14px 16px;
   background:var(--card);border:1px solid var(--card-line);border-radius:6px}
-.frec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;padding-right:26px}
+.frec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px}
 .frec-head h2{font-size:15px;font-weight:700;color:var(--ink-2);margin:0;margin-right:auto}
-.frec-head .plx{position:absolute;top:10px;right:10px;padding:3px 7px}
 .frec-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
 .frec-field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:0 0 150px}
 .frec-field span{font-size:11px;color:var(--ink-3);letter-spacing:.03em}
@@ -1068,9 +1070,8 @@ table.frec-table tbody tr.draft .lockdot,
 
 #iqc .irec-card{position:relative;max-width:1180px;margin:18px auto;padding:14px 16px;
   background:var(--card);border:1px solid var(--card-line);border-radius:6px}
-#iqc .irec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;padding-right:26px}
+#iqc .irec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px}
 #iqc .irec-head h2{font-size:15px;font-weight:700;color:var(--ink-2);margin:0;margin-right:auto}
-#iqc .irec-head .plx{position:absolute;top:10px;right:10px;padding:3px 7px}
 #iqc .irec-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
 #iqc .irec-field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:0 0 150px}
 #iqc .irec-field span{font-size:11px;color:var(--ink-3);letter-spacing:.03em}
@@ -1182,11 +1183,8 @@ table.frec-table tbody tr.draft .lockdot,
 
 #ipqc .iprec-card{position:relative;max-width:1180px;margin:18px auto;padding:14px 16px;
   background:var(--card);border:1px solid var(--card-line);border-radius:6px}
-#ipqc .iprec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;padding-right:26px}
+#ipqc .iprec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px}
 #ipqc .iprec-head h2{font-size:15px;font-weight:700;color:var(--ink-2);margin:0;margin-right:auto}
-#ipqc .iprec-head .plx{position:absolute;top:10px;right:10px;border:0;background:transparent;
-  padding:3px 7px;font-size:15px;cursor:pointer;color:inherit;font-weight:400}
-#ipqc .iprec-head .plx:hover{background:color-mix(in srgb,currentColor 10%,transparent)}
 #ipqc .iprec-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
 #ipqc .iprec-field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:0 0 150px}
 #ipqc .iprec-field.wide{flex:0 0 170px}
@@ -1408,11 +1406,8 @@ table.frec-table tbody tr.draft .lockdot,
 #oqc .oqcrow .rr button.on.ng{background:var(--nobg);border-color:var(--no);color:var(--no);font-weight:700}
 
 #oqc .orec-card{max-width:1180px;margin:18px auto}
-#oqc .orec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;padding-right:26px}
+#oqc .orec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px}
 #oqc .orec-head h2{font-size:15px;font-weight:700;color:var(--ink-2);margin:0;margin-right:auto}
-#oqc .orec-head .plx{position:absolute;top:10px;right:10px;border:0;background:transparent;
-  padding:3px 7px;font-size:15px;cursor:pointer;color:inherit;font-weight:400}
-#oqc .orec-head .plx:hover{background:color-mix(in srgb,currentColor 10%,transparent)}
 #oqc .orec-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
 #oqc .orec-field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:0 0 150px}
 #oqc .orec-field.wide{flex:0 0 170px}
@@ -2063,6 +2058,7 @@ table.frec-table tbody tr.draft .lockdot,
 #sidenav .sn-btn:hover{background:var(--sunk);color:var(--ink)}
 #sidenav .sn-btn svg{width:16px;height:16px}
 #sidenav .sn-body{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;padding:10px 14px;display:flex;flex-direction:column}
+#sidenav .sn-body > *{flex-shrink:0}
 #sidenav .sn-sec{font-size:13px;font-weight:500;color:var(--ink-3);padding:16px 12px 6px;white-space:nowrap;overflow:hidden}
 #sidenav .sn-sec:first-child{padding-top:4px}
 #sidenav .sn-sys{margin-top:auto;padding-top:8px}
@@ -2347,6 +2343,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 
 <div class="wrap">
 <div id="lockbar" hidden></div>
+<div class="fe-bar"><button type="button" class="plx" id="fe-close" title="关闭" data-lockok>✕</button></div>
 
 <section class="sheet" id="s1">
   <div class="head">
@@ -2470,7 +2467,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="frec-head">
     <h2>记录表 <span id="frec-scope"></span></h2>
     <button type="button" class="recnew" id="new">+ 新报告</button>
-    <button type="button" class="plx" id="frec-close" title="关闭">✕</button>
   </div>
   <div class="frec-bar">
     <label class="frec-field"><span>项目编号</span><input type="text" id="frec-itemNo" placeholder="全部"></label>
@@ -2501,7 +2497,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <section class="frec-card">
   <div class="frec-head">
     <h2>数据分析</h2>
-    <button type="button" class="plx" id="fd-close" title="关闭">✕</button>
   </div>
   <div class="frec-bar">
     <label class="frec-field"><span>区间</span>
@@ -2576,7 +2571,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <div class="iqwrap" id="iqcv">
 <div id="ilockbar" hidden></div>
   <section class="iqcard">
-    <h2>批次信息</h2>
+    <h2>批次信息<button type="button" class="plx" id="iqe-close" title="关闭" data-lockok>✕</button></h2>
     <div class="iqhead">
       <label class="iqfield"><span>进料日期</span>
         <input type="date" id="iq-date"></label>
@@ -2626,7 +2621,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="irec-head">
     <h2>记录表 <span id="irec-scope"></span></h2>
     <button type="button" class="recnew" id="inew">+ 新批次</button>
-    <button type="button" class="plx" id="irec-close" title="关闭">✕</button>
   </div>
   <div class="irec-bar">
     <label class="irec-field"><span>品号 / 品名</span><input type="text" id="irec-code" placeholder="全部"></label>
@@ -2664,7 +2658,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="iqwrap">
     <section class="iqcard">
       <h2 class="dtitle">数据分析
-        <button type="button" class="plx" id="id-close" title="关闭">✕</button>
       </h2>
       <div class="iqan-bar">
         <label class="iqan-field"><span>起始日期</span><input type="date" id="id-from"></label>
@@ -2725,7 +2718,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <div class="ipwrap" id="ipqcv">
 <div id="plockbar" hidden></div>
   <section class="ipcard">
-    <h2>本次检验</h2>
+    <h2>本次检验<button type="button" class="plx" id="ipe-close" title="关闭" data-lockok>✕</button></h2>
     <div class="iphead">
       <label class="ipfield"><span>日期</span><input type="date" id="ip-date"></label>
       <label class="ipfield"><span>班次</span><select id="ip-shift"></select></label>
@@ -2754,7 +2747,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="iprec-head">
     <h2>记录表 <span id="iprec-scope"></span></h2>
     <button type="button" class="recnew" id="pnew">+ 新记录</button>
-    <button type="button" class="plx" id="iprec-close" title="关闭">✕</button>
   </div>
   <div class="iprec-bar">
     <label class="iprec-field wide"><span>起始日期</span><input type="date" id="iprec-from"></label>
@@ -2773,7 +2765,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="ipwrap">
     <section class="ipcard">
       <h2 class="dtitle">数据分析
-        <button type="button" class="plx" id="ipd-close" title="关闭">✕</button>
       </h2>
       <div class="iprec-bar">
         <label class="iprec-field wide"><span>起始日期</span><input type="date" id="ipd-from"></label>
@@ -2846,7 +2837,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <div class="oqwrap" id="oqcv">
 <div id="olockbar" hidden></div>
   <section class="oqcard">
-    <h2>柜信息</h2>
+    <h2>柜信息<button type="button" class="plx" id="oqe-close" title="关闭" data-lockok>✕</button></h2>
     <div class="oqhead">
       <label class="oqfield"><span>柜号 NO. CONTAINER</span><input id="oq-container"></label>
       <label class="oqfield"><span>封条号 NO.SEAL</span><input id="oq-seal"></label>
@@ -2903,7 +2894,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="orec-head">
     <h2>记录表 <span id="orec-scope"></span></h2>
     <button type="button" class="recnew" id="onew">+ 新柜</button>
-    <button type="button" class="plx" id="orec-close" title="关闭">✕</button>
   </div>
   <div class="orec-bar">
     <label class="orec-field"><span>PO/DI</span><input type="text" id="orec-podi" placeholder="全部"></label>
@@ -2927,7 +2917,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="oqwrap">
     <section class="oqcard">
     <h2 class="dtitle">数据分析
-      <button type="button" class="plx" id="oqd-close" title="关闭">✕</button>
     </h2>
     <div class="orec-bar">
       <label class="orec-field"><span>区间</span>
@@ -3010,7 +2999,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <div class="ftwrap" id="ftentryv">
 <div id="ftlockbar" hidden></div>
   <section class="ftcard">
-    <h2>测试信息</h2>
+    <h2>测试信息<button type="button" class="plx" id="fte-close" title="关闭" data-lockok>✕</button></h2>
     <div class="fthead">
       <label class="ftfield"><span>产品类型</span>
         <select id="ft-prodtype">
@@ -3084,7 +3073,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="frec-head">
     <h2>成品防火检验记录 <span id="ftrec-scope"></span></h2>
     <button type="button" class="recnew" id="ftnew">+ 新记录</button>
-    <button type="button" class="plx" id="ftrec-close" title="关闭">✕</button>
   </div>
   <div class="frec-bar">
     <label class="frec-field"><span>SKU</span><input type="text" id="ftrec-sku" placeholder="全部"></label>
@@ -3121,7 +3109,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="ftwrap">
     <section class="ftcard">
       <h2 class="dtitle">数据分析
-        <button type="button" class="plx" id="ftd-close" title="关闭">✕</button>
       </h2>
       <div class="frec-bar">
         <label class="frec-field"><span>区间</span>
@@ -3221,7 +3208,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <div class="lwrap" id="labv">
 <div id="llockbar" hidden></div>
   <section class="lcard">
-    <h2>批次信息</h2>
+    <h2>批次信息<button type="button" class="plx" id="le-close" title="关闭" data-lockok>✕</button></h2>
     <div class="lhead">
       <label class="lfield"><span>品名 / 品号</span>
         <select id="lmodel"></select></label>
@@ -3331,7 +3318,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
     <section class="lcard">
       <h2 class="dtitle">海绵物性测试表 <span class="lhint" id="lrec-scope"></span>
         <button type="button" class="recnew" id="lnew">+ 新批次</button>
-        <button type="button" class="plx" id="lrec-close" title="关闭">✕</button>
       </h2>
       <div class="lrecbar">
         <label class="lfield" style="flex:0 0 150px"><span>范围</span>
@@ -3368,7 +3354,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="lwrap">
     <section class="lcard">
       <h2 class="dtitle">数据分析
-        <button type="button" class="plx" id="ld-close" title="关闭">✕</button>
       </h2>
       <div class="lrecbar">
         <label class="lfield" style="flex:0 0 130px"><span>区间</span>
@@ -4544,7 +4529,7 @@ async function frecRender(){
       }).join('')+'</tbody>';
 }
 $("#frecbtn").addEventListener("click",()=>frecShow($("#frec").hidden));
-$("#frec-close").addEventListener("click",()=>frecShow(false));
+$("#fe-close").addEventListener("click",()=>frecShow(true));
 ["#frec-itemNo","#frec-desc"].forEach(id=>$(id).addEventListener("input",frecRender));
 ["#frec-verdict","#frec-mattress"].forEach(id=>$(id).addEventListener("change",frecRender));
 rangeWire("#frec-range","#frec-date",frecRender);
@@ -4675,7 +4660,6 @@ async function fqcDashRender(){
       }).join('')+'</tbody>';
 }
 $("#fdashbtn").addEventListener("click",()=>{ fqcShow($("#fdash").hidden?"dash":"form"); });
-$("#fd-close").addEventListener("click",()=>fqcShow("form"));
 rangeWire("#fd-range","#fd-date",fqcDashRender);
 $("#fd-mattress").addEventListener("change",fqcDashRender);
 $("#fd-clear").addEventListener("click",()=>{
@@ -5168,7 +5152,7 @@ async function irecRender(){
       }).join('')+'</tbody>';
 }
 $("#irecbtn").addEventListener("click",()=>irecShow($("#irec").hidden));
-$("#irec-close").addEventListener("click",()=>irecShow(false));
+$("#iqe-close").addEventListener("click",()=>irecShow(true));
 ["#irec-code","#irec-supplier"].forEach(id=>$(id).addEventListener("input",irecRender));
 ["#irec-verdict","#irec-cat"].forEach(id=>$(id).addEventListener("change",irecRender));
 rangeWire("#irec-range","#irec-date",irecRender);
@@ -5286,7 +5270,6 @@ async function idashRender(){
     iqcRankTable(a.bySupplier);
 }
 $("#idashbtn").addEventListener("click",()=>{ iqcShow($("#idash").hidden?"dash":"entry"); });
-$("#id-close").addEventListener("click",()=>iqcShow("entry"));
 ["#id-from","#id-to","#id-cat"].forEach(id=>$(id).addEventListener("change",idashRender));
 ["#id-from","#id-to"].forEach(id=>$(id).addEventListener("change",()=>{ RANGE_TOUCHED[id]=true; }));
 $("#id-supplier").addEventListener("input",idashRender);
@@ -6334,7 +6317,7 @@ async function iprecRender(){
       }).join('')+'</tbody>';
 }
 $("#precbtn").addEventListener("click",()=>ipqcShow($("#iprec").hidden?"rec":"entry"));
-$("#iprec-close").addEventListener("click",()=>ipqcShow("entry"));
+$("#ipe-close").addEventListener("click",()=>ipqcShow("rec"));
 ["#iprec-from","#iprec-to"].forEach(id=>$(id).addEventListener("change",()=>{ RANGE_TOUCHED[id]=true; iprecRender(); }));
 ["#iprec-shift","#iprec-ws","#iprec-proc"].forEach(id=>$(id).addEventListener("change",iprecRender));
 $("#iprec-clear").addEventListener("click",()=>{
@@ -6507,7 +6490,6 @@ async function ipdashRender(){
         '<td class="num">'+(a.bad?pct(n,a.bad)+"%":"—")+'</td></tr>').join('')+'</tbody>';
 }
 $("#pdashbtn").addEventListener("click",()=>ipqcShow($("#ipdash").hidden?"dash":"entry"));
-$("#ipd-close").addEventListener("click",()=>ipqcShow("entry"));
 ["#ipd-from","#ipd-to","#ipd-shift","#ipd-ws","#ipd-proc"].forEach(id=>$(id).addEventListener("change",ipdashRender));
 ["#ipd-from","#ipd-to"].forEach(id=>$(id).addEventListener("change",()=>{ RANGE_TOUCHED[id]=true; }));
 $("#ipd-clear").addEventListener("click",()=>{
@@ -7070,6 +7052,7 @@ async function orecRender(){
       }).join('')+'</tbody>';
 }
 $("#orecbtn").addEventListener("click",()=>oqcShow($("#orec").hidden?"rec":"entry"));
+$("#oqe-close").addEventListener("click",()=>oqcShow("rec"));
 
 
 function oqTypeOf(g){
@@ -7187,7 +7170,6 @@ async function oqdashRender(){
 }
 
 $("#odashbtn").addEventListener("click",()=>oqcShow($("#oqdash").hidden?"dash":"entry"));
-$("#oqd-close").addEventListener("click",()=>oqcShow("entry"));
 rangeWire("#oqd-range","#oqd-date",oqdashRender);
 $("#oqd-type").addEventListener("change",oqdashRender);
 $("#oqd-clear").addEventListener("click",()=>{
@@ -7195,7 +7177,6 @@ $("#oqd-clear").addEventListener("click",()=>{
   rangeToday("#oqd-date", true);
   oqdashRender();
 });
-$("#orec-close").addEventListener("click",()=>oqcShow("entry"));
 ["#orec-podi","#orec-container"].forEach(id=>$(id).addEventListener("input",orecRender));
 $("#orec-verdict").addEventListener("change",orecRender);
 rangeWire("#orec-range","#orec-date",orecRender);
@@ -7935,7 +7916,6 @@ async function ftdashRender(){
         '<td class="num">'+(s.n?pct(s.n-s.fail,s.n)+"%":"—")+'</td></tr>').join('')+'</tbody>';
 }
 $("#ftdashbtn").addEventListener("click",()=>ftShow($("#ftdash").hidden?"dash":"entry"));
-$("#ftd-close").addEventListener("click",()=>ftShow("entry"));
 rangeWire("#ftd-range","#ftd-date",ftdashRender);
 $("#ftd-prodtype").addEventListener("change",ftdashRender);
 $("#ftd-sku").addEventListener("input",ftdashRender); 
@@ -8129,8 +8109,8 @@ $("#ftrec-clear").addEventListener("click",()=>{
   rangeToday("#ftrec-date", true); 
   ftrecRender();
 });
-$("#ftrec-close").addEventListener("click",()=>ftShow("entry"));
 $("#ftrecbtn").addEventListener("click",()=>ftShow("rec"));
+$("#fte-close").addEventListener("click",()=>ftShow("rec"));
 
 let FT_PICK_OPEN={};
 function ftDayKey(m){
@@ -10956,7 +10936,7 @@ function labRenderRec(){
   labStickyHead();
 }
 $("#lsheetbtn").addEventListener("click",labToggle("sheet",labOpenSheet));
-$("#lrec-close").addEventListener("click",()=>labShow("entry"));
+$("#le-close").addEventListener("click",()=>labOpenSheet());
 ["lrec-range","lrec-model","lrec-verdict"].forEach(id=>$("#"+id).addEventListener("change",labRenderRec));
 $("#lrec-date").addEventListener("change",()=>{ RANGE_TOUCHED["#lrec-date"]=true; labRenderRec(); });
 $("#lrec-clear").addEventListener("click",()=>{
@@ -11158,7 +11138,6 @@ async function labOpenDash(){
   labRenderDash();
 }
 $("#ldashbtn").addEventListener("click",labToggle("dash",labOpenDash));
-$("#ld-close").addEventListener("click",()=>labShow("entry"));
 rangeWire("#ld-range","#ld-date",labRenderDash);
 $("#ld-model").addEventListener("change",labRenderDash);
 $("#ld-clear").addEventListener("click",()=>{

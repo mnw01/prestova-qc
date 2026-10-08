@@ -516,6 +516,10 @@ input,textarea,button,select{font:inherit;color:inherit}
 
 /* ── sheet ────────────────────────────────────────────────────────── */
 .wrap{padding:18px 14px 64px;display:flex;flex-direction:column;align-items:center;gap:18px}
+/* 成品录入页的 ✕（回记录表）：在 A4 纸右上角外面，跟纸同宽、靠右 */
+#mod .fe-bar{width:210mm;max-width:100%;display:flex;justify-content:flex-end;margin-bottom:-14px}
+#mod .fe-bar .plx{padding:3px 7px}
+@media print{ #mod .fe-bar{display:none!important} }
 .sheet{
   width:210mm;max-width:100%;background:var(--paper);color:var(--ink);
   padding:10mm;box-shadow:var(--shadow);
@@ -1010,12 +1014,11 @@ body.dropping::after{
    purpose — see the #lab dark-mode note below. #frec is chrome, not paper, so
    like #lab it gets its own dark surface + re-declared ink tokens instead of
    inheriting the page's print-safe ones. */
-.frec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;padding-right:26px}
+.frec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px}
 .frec-head h2{font-size:15px;font-weight:700;color:var(--ink-2);margin:0;margin-right:auto}
 /* same corner-✕ treatment as #lab's cards, see the note over #lab .lcard > h2 button.plx */
 /* padding 跟另外五个板块对齐（3px 7px → 26×26）。不写就落回 .plx 的
    2px 6px，只有 24×24，六个屏里就它小一圈。 */
-.frec-head .plx{position:absolute;top:10px;right:10px;padding:3px 7px}
 .frec-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
 .frec-field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:0 0 150px}
 .frec-field span{font-size:11px;color:var(--ink-3);letter-spacing:.03em}
@@ -1506,10 +1509,9 @@ table.frec-table tbody tr.draft .lockdot,
 /* ── 来料检验记录表 ──────────────────────────────────────────────── */
 #iqc .irec-card{position:relative;max-width:1180px;margin:18px auto;padding:14px 16px;
   background:var(--card);border:1px solid var(--card-line);border-radius:6px}
-#iqc .irec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;padding-right:26px}
+#iqc .irec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px}
 #iqc .irec-head h2{font-size:15px;font-weight:700;color:var(--ink-2);margin:0;margin-right:auto}
 /* padding 跟另外五个板块对齐（3px 7px → 26×26）；不写就落回通用 .plx 的 2px 6px。 */
-#iqc .irec-head .plx{position:absolute;top:10px;right:10px;padding:3px 7px}
 #iqc .irec-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
 /* 150px（跟第一版一样，不要再往上调）——手机上要保证两列，日期框超宽的问题靠
    上面 input[type=date] 那条 max-width/overflow 兜底，不是靠把格子撑大解决 */
@@ -1652,15 +1654,12 @@ table.frec-table tbody tr.draft .lockdot,
 /* ── 制程检验记录表与数据分析 ──────────────────────────────────────── */
 #ipqc .iprec-card{position:relative;max-width:1180px;margin:18px auto;padding:14px 16px;
   background:var(--card);border:1px solid var(--card-line);border-radius:6px}
-#ipqc .iprec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;padding-right:26px}
+#ipqc .iprec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px}
 #ipqc .iprec-head h2{font-size:15px;font-weight:700;color:var(--ink-2);margin:0;margin-right:auto}
 /* 跟上面卡片标题那个 ✕ 同一个坑：这条把 background 写成 transparent，权重 (1,2,0)
    压过通用的 .plx:hover (0,2,0)，不在同权重上再写一次，鼠标移上去毫无反馈。
    成品和来料的对应规则没写 background，所以它们靠通用那条就够。
    font-weight:400 同理 —— .plx 不重置的话会继承标题的粗细。 */
-#ipqc .iprec-head .plx{position:absolute;top:10px;right:10px;border:0;background:transparent;
-  padding:3px 7px;font-size:15px;cursor:pointer;color:inherit;font-weight:400}
-#ipqc .iprec-head .plx:hover{background:color-mix(in srgb,currentColor 10%,transparent)}
 #ipqc .iprec-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
 #ipqc .iprec-field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:0 0 150px}
 #ipqc .iprec-field.wide{flex:0 0 170px}
@@ -1982,15 +1981,12 @@ table.frec-table tbody tr.draft .lockdot,
 
 /* ── 装柜检验记录表 ──────────────────────────────────────────────── */
 #oqc .orec-card{max-width:1180px;margin:18px auto}
-#oqc .orec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px;padding-right:26px}
+#oqc .orec-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:10px}
 #oqc .orec-head h2{font-size:15px;font-weight:700;color:var(--ink-2);margin:0;margin-right:auto}
 /* 跟上面卡片标题那个 ✕ 同一个坑：这条把 background 写成 transparent，权重 (1,2,0)
    压过通用的 .plx:hover (0,2,0)，不在同权重上再写一次，鼠标移上去毫无反馈。
    成品和来料的对应规则没写 background，所以它们靠通用那条就够。
    font-weight:400 同理 —— .plx 不重置的话会继承标题的粗细。 */
-#oqc .orec-head .plx{position:absolute;top:10px;right:10px;border:0;background:transparent;
-  padding:3px 7px;font-size:15px;cursor:pointer;color:inherit;font-weight:400}
-#oqc .orec-head .plx:hover{background:color-mix(in srgb,currentColor 10%,transparent)}
 #oqc .orec-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
 #oqc .orec-field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:0 0 150px}
 #oqc .orec-field.wide{flex:0 0 170px}
@@ -3109,6 +3105,9 @@ table.frec-table tbody tr.draft .lockdot,
 /* 只竖向滚。overflow-y:auto 会顺带把横向也变成 auto，收起成 64 宽时被裁掉的文字
    撑出一条横向滚动条（用户嫌难看） */
 #sidenav .sn-body{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;padding:10px 14px;display:flex;flex-direction:column}
+/* 里面的菜单项不许被压扁：sn-body 是纵向 flex，子项默认 flex-shrink:1，窗口矮
+   （笔记本 + 浏览器工具栏）时菜单会挤成一团，而不是让侧边栏自己滚（2026-10-08 发现的） */
+#sidenav .sn-body > *{flex-shrink:0}
 #sidenav .sn-sec{font-size:13px;font-weight:500;color:var(--ink-3);padding:16px 12px 6px;white-space:nowrap;overflow:hidden}
 #sidenav .sn-sec:first-child{padding-top:4px}
 #sidenav .sn-sys{margin-top:auto;padding-top:8px}
@@ -3446,6 +3445,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 
 <div class="wrap">
 <div id="lockbar" hidden></div>
+<div class="fe-bar"><button type="button" class="plx" id="fe-close" title="关闭" data-lockok>✕</button></div>
 
 <!-- ══ SHEET 1 ═══════════════════════════════════════════════════════ -->
 <section class="sheet" id="s1">
@@ -3582,7 +3582,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="frec-head">
     <h2>记录表 <span id="frec-scope"></span></h2>
     <button type="button" class="recnew" id="new">+ 新报告</button>
-    <button type="button" class="plx" id="frec-close" title="关闭">✕</button>
   </div>
   <div class="frec-bar">
     <label class="frec-field"><span>项目编号</span><input type="text" id="frec-itemNo" placeholder="全部"></label>
@@ -3614,7 +3613,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <section class="frec-card">
   <div class="frec-head">
     <h2>数据分析</h2>
-    <button type="button" class="plx" id="fd-close" title="关闭">✕</button>
   </div>
   <div class="frec-bar">
     <label class="frec-field"><span>区间</span>
@@ -3690,7 +3688,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <div class="iqwrap" id="iqcv">
 <div id="ilockbar" hidden></div>
   <section class="iqcard">
-    <h2>批次信息</h2>
+    <h2>批次信息<button type="button" class="plx" id="iqe-close" title="关闭" data-lockok>✕</button></h2>
     <div class="iqhead">
       <label class="iqfield"><span>进料日期</span>
         <input type="date" id="iq-date"></label>
@@ -3740,7 +3738,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="irec-head">
     <h2>记录表 <span id="irec-scope"></span></h2>
     <button type="button" class="recnew" id="inew">+ 新批次</button>
-    <button type="button" class="plx" id="irec-close" title="关闭">✕</button>
   </div>
   <div class="irec-bar">
     <label class="irec-field"><span>品号 / 品名</span><input type="text" id="irec-code" placeholder="全部"></label>
@@ -3780,7 +3777,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="iqwrap">
     <section class="iqcard">
       <h2 class="dtitle">数据分析
-        <button type="button" class="plx" id="id-close" title="关闭">✕</button>
       </h2>
       <div class="iqan-bar">
         <label class="iqan-field"><span>起始日期</span><input type="date" id="id-from"></label>
@@ -3846,7 +3842,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <div class="ipwrap" id="ipqcv">
 <div id="plockbar" hidden></div>
   <section class="ipcard">
-    <h2>本次检验</h2>
+    <h2>本次检验<button type="button" class="plx" id="ipe-close" title="关闭" data-lockok>✕</button></h2>
     <div class="iphead">
       <label class="ipfield"><span>日期</span><input type="date" id="ip-date"></label>
       <label class="ipfield"><span>班次</span><select id="ip-shift"></select></label>
@@ -3876,7 +3872,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
     <h2>记录表 <span id="iprec-scope"></span></h2>
     <!-- 从工具栏挪过来的：新建属于列表，不属于全局导航 -->
     <button type="button" class="recnew" id="pnew">+ 新记录</button>
-    <button type="button" class="plx" id="iprec-close" title="关闭">✕</button>
   </div>
   <div class="iprec-bar">
     <label class="iprec-field wide"><span>起始日期</span><input type="date" id="iprec-from"></label>
@@ -3895,7 +3890,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="ipwrap">
     <section class="ipcard">
       <h2 class="dtitle">数据分析
-        <button type="button" class="plx" id="ipd-close" title="关闭">✕</button>
       </h2>
       <div class="iprec-bar">
         <label class="iprec-field wide"><span>起始日期</span><input type="date" id="ipd-from"></label>
@@ -3970,7 +3964,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <div class="oqwrap" id="oqcv">
 <div id="olockbar" hidden></div>
   <section class="oqcard">
-    <h2>柜信息</h2>
+    <h2>柜信息<button type="button" class="plx" id="oqe-close" title="关闭" data-lockok>✕</button></h2>
     <div class="oqhead">
       <label class="oqfield"><span>柜号 NO. CONTAINER</span><input id="oq-container"></label>
       <label class="oqfield"><span>封条号 NO.SEAL</span><input id="oq-seal"></label>
@@ -4029,7 +4023,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="orec-head">
     <h2>记录表 <span id="orec-scope"></span></h2>
     <button type="button" class="recnew" id="onew">+ 新柜</button>
-    <button type="button" class="plx" id="orec-close" title="关闭">✕</button>
   </div>
   <div class="orec-bar">
     <label class="orec-field"><span>PO/DI</span><input type="text" id="orec-podi" placeholder="全部"></label>
@@ -4056,7 +4049,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="oqwrap">
     <section class="oqcard">
     <h2 class="dtitle">数据分析
-      <button type="button" class="plx" id="oqd-close" title="关闭">✕</button>
     </h2>
     <!-- 只统计**已提交锁定**的柜：没锁的还在改，数字会跳。 -->
     <div class="orec-bar">
@@ -4143,7 +4135,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <div class="ftwrap" id="ftentryv">
 <div id="ftlockbar" hidden></div>
   <section class="ftcard">
-    <h2>测试信息</h2>
+    <h2>测试信息<button type="button" class="plx" id="fte-close" title="关闭" data-lockok>✕</button></h2>
     <div class="fthead">
       <label class="ftfield"><span>产品类型</span>
         <select id="ft-prodtype">
@@ -4225,7 +4217,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="frec-head">
     <h2>成品防火检验记录 <span id="ftrec-scope"></span></h2>
     <button type="button" class="recnew" id="ftnew">+ 新记录</button>
-    <button type="button" class="plx" id="ftrec-close" title="关闭">✕</button>
   </div>
   <!-- 字段顺序照另外三张记录表：标识 → 分类 → 范围 → 日期 → 判定 → 清除筛选。
        「判定」一律压在最后（成品 / 来料 / 装柜都是），别插在范围和日期中间。 -->
@@ -4265,7 +4256,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="ftwrap">
     <section class="ftcard">
       <h2 class="dtitle">数据分析
-        <button type="button" class="plx" id="ftd-close" title="关闭">✕</button>
       </h2>
       <div class="frec-bar">
         <label class="frec-field"><span>区间</span>
@@ -4370,7 +4360,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <div class="lwrap" id="labv">
 <div id="llockbar" hidden></div>
   <section class="lcard">
-    <h2>批次信息</h2>
+    <h2>批次信息<button type="button" class="plx" id="le-close" title="关闭" data-lockok>✕</button></h2>
     <div class="lhead">
       <label class="lfield"><span>品名 / 品号</span>
         <select id="lmodel"></select></label>
@@ -4483,7 +4473,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
     <section class="lcard">
       <h2 class="dtitle">海绵物性测试表 <span class="lhint" id="lrec-scope"></span>
         <button type="button" class="recnew" id="lnew">+ 新批次</button>
-        <button type="button" class="plx" id="lrec-close" title="关闭">✕</button>
       </h2>
       <div class="lrecbar">
         <label class="lfield" style="flex:0 0 150px"><span>范围</span>
@@ -4521,7 +4510,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="lwrap">
     <section class="lcard">
       <h2 class="dtitle">数据分析
-        <button type="button" class="plx" id="ld-close" title="关闭">✕</button>
       </h2>
       <!-- 筛选自己一行，不再塞进 h2 —— 跟来料 (.iqan-bar) / 制程 (.iprec-bar) /
            成品 (.frec-bar) 一致。复用 .lrecbar：实验室记录表那一屏的筛选栏就是它，
@@ -6068,7 +6056,8 @@ async function frecRender(){
       }).join('')+'</tbody>';
 }
 $("#frecbtn").addEventListener("click",()=>frecShow($("#frec").hidden));
-$("#frec-close").addEventListener("click",()=>frecShow(false));
+/* 录入页右上角的 ✕：回记录表（2026-10-08 用户要的：记录表 / 数据分析页的 ✕ 去掉，改放在录入页） */
+$("#fe-close").addEventListener("click",()=>frecShow(true));
 ["#frec-itemNo","#frec-desc"].forEach(id=>$(id).addEventListener("input",frecRender));
 ["#frec-verdict","#frec-mattress"].forEach(id=>$(id).addEventListener("change",frecRender));
 rangeWire("#frec-range","#frec-date",frecRender);
@@ -6246,7 +6235,6 @@ async function fqcDashRender(){
       }).join('')+'</tbody>';
 }
 $("#fdashbtn").addEventListener("click",()=>{ fqcShow($("#fdash").hidden?"dash":"form"); });
-$("#fd-close").addEventListener("click",()=>fqcShow("form"));
 rangeWire("#fd-range","#fd-date",fqcDashRender);
 $("#fd-mattress").addEventListener("change",fqcDashRender);
 /* ── 数据分析的「清除筛选」：四个板块各一个 ──────────────────────────
@@ -6857,7 +6845,7 @@ async function irecRender(){
       }).join('')+'</tbody>';
 }
 $("#irecbtn").addEventListener("click",()=>irecShow($("#irec").hidden));
-$("#irec-close").addEventListener("click",()=>irecShow(false));
+$("#iqe-close").addEventListener("click",()=>irecShow(true));
 ["#irec-code","#irec-supplier"].forEach(id=>$(id).addEventListener("input",irecRender));
 ["#irec-verdict","#irec-cat"].forEach(id=>$(id).addEventListener("change",irecRender));
 rangeWire("#irec-range","#irec-date",irecRender);
@@ -7004,7 +6992,6 @@ async function idashRender(){
     iqcRankTable(a.bySupplier);
 }
 $("#idashbtn").addEventListener("click",()=>{ iqcShow($("#idash").hidden?"dash":"entry"); });
-$("#id-close").addEventListener("click",()=>iqcShow("entry"));
 ["#id-from","#id-to","#id-cat"].forEach(id=>$(id).addEventListener("change",idashRender));
 /* 人自己动过起止框就别再拿默认值覆盖 —— rollMonthRange 靠这个标记 */
 ["#id-from","#id-to"].forEach(id=>$(id).addEventListener("change",()=>{ RANGE_TOUCHED[id]=true; }));
@@ -8220,7 +8207,7 @@ async function iprecRender(){
       }).join('')+'</tbody>';
 }
 $("#precbtn").addEventListener("click",()=>ipqcShow($("#iprec").hidden?"rec":"entry"));
-$("#iprec-close").addEventListener("click",()=>ipqcShow("entry"));
+$("#ipe-close").addEventListener("click",()=>ipqcShow("rec"));
 ["#iprec-from","#iprec-to"].forEach(id=>$(id).addEventListener("change",()=>{ RANGE_TOUCHED[id]=true; iprecRender(); }));
 ["#iprec-shift","#iprec-ws","#iprec-proc"].forEach(id=>$(id).addEventListener("change",iprecRender));
 $("#iprec-clear").addEventListener("click",()=>{
@@ -8423,7 +8410,6 @@ async function ipdashRender(){
         '<td class="num">'+(a.bad?pct(n,a.bad)+"%":"—")+'</td></tr>').join('')+'</tbody>';
 }
 $("#pdashbtn").addEventListener("click",()=>ipqcShow($("#ipdash").hidden?"dash":"entry"));
-$("#ipd-close").addEventListener("click",()=>ipqcShow("entry"));
 ["#ipd-from","#ipd-to","#ipd-shift","#ipd-ws","#ipd-proc"].forEach(id=>$(id).addEventListener("change",ipdashRender));
 /* 人自己动过起止框就别再拿默认值覆盖 —— rollMonthRange 靠这个标记 */
 ["#ipd-from","#ipd-to"].forEach(id=>$(id).addEventListener("change",()=>{ RANGE_TOUCHED[id]=true; }));
@@ -9082,6 +9068,7 @@ async function orecRender(){
       }).join('')+'</tbody>';
 }
 $("#orecbtn").addEventListener("click",()=>oqcShow($("#orec").hidden?"rec":"entry"));
+$("#oqe-close").addEventListener("click",()=>oqcShow("rec"));
 
 /* ── 数据分析 ──────────────────────────────────────────────────────────
    全部只算**已提交锁定**的柜（meta 行上的 locked）。没锁的还在改，
@@ -9234,7 +9221,6 @@ async function oqdashRender(){
 }
 
 $("#odashbtn").addEventListener("click",()=>oqcShow($("#oqdash").hidden?"dash":"entry"));
-$("#oqd-close").addEventListener("click",()=>oqcShow("entry"));
 rangeWire("#oqd-range","#oqd-date",oqdashRender);
 $("#oqd-type").addEventListener("change",oqdashRender);
 $("#oqd-clear").addEventListener("click",()=>{
@@ -9242,7 +9228,6 @@ $("#oqd-clear").addEventListener("click",()=>{
   rangeToday("#oqd-date", true);
   oqdashRender();
 });
-$("#orec-close").addEventListener("click",()=>oqcShow("entry"));
 ["#orec-podi","#orec-container"].forEach(id=>$(id).addEventListener("input",orecRender));
 $("#orec-verdict").addEventListener("change",orecRender);
 rangeWire("#orec-range","#orec-date",orecRender);
@@ -10216,7 +10201,6 @@ async function ftdashRender(){
         '<td class="num">'+(s.n?pct(s.n-s.fail,s.n)+"%":"—")+'</td></tr>').join('')+'</tbody>';
 }
 $("#ftdashbtn").addEventListener("click",()=>ftShow($("#ftdash").hidden?"dash":"entry"));
-$("#ftd-close").addEventListener("click",()=>ftShow("entry"));
 rangeWire("#ftd-range","#ftd-date",ftdashRender);
 $("#ftd-prodtype").addEventListener("change",ftdashRender);
 $("#ftd-sku").addEventListener("input",ftdashRender);   /* 文本框打一个字就重算 */
@@ -10458,8 +10442,8 @@ $("#ftrec-clear").addEventListener("click",()=>{
   rangeToday("#ftrec-date", true);   /* force：连 RANGE_TOUCHED 一起复位 */
   ftrecRender();
 });
-$("#ftrec-close").addEventListener("click",()=>ftShow("entry"));
 $("#ftrecbtn").addEventListener("click",()=>ftShow("rec"));
+$("#fte-close").addEventListener("click",()=>ftShow("rec"));
 
 /* picker */
 let FT_PICK_OPEN={};
@@ -14246,7 +14230,7 @@ function labRenderRec(){
    window, a long 测试备注, fatigue columns present) exactly like 标准表
    already does, with no JS and nothing to feel janky. */
 $("#lsheetbtn").addEventListener("click",labToggle("sheet",labOpenSheet));
-$("#lrec-close").addEventListener("click",()=>labShow("entry"));
+$("#le-close").addEventListener("click",()=>labOpenSheet());
 ["lrec-range","lrec-model","lrec-verdict"].forEach(id=>$("#"+id).addEventListener("change",labRenderRec));
 $("#lrec-date").addEventListener("change",()=>{ RANGE_TOUCHED["#lrec-date"]=true; labRenderRec(); });
 /* 清除筛选：回到打开记录表时的默认窗口（当月 + 今天 + 全部品号），不是清空 ——
@@ -14504,7 +14488,6 @@ async function labOpenDash(){
   labRenderDash();
 }
 $("#ldashbtn").addEventListener("click",labToggle("dash",labOpenDash));
-$("#ld-close").addEventListener("click",()=>labShow("entry"));
 rangeWire("#ld-range","#ld-date",labRenderDash);
 $("#ld-model").addEventListener("change",labRenderDash);
 $("#ld-clear").addEventListener("click",()=>{
