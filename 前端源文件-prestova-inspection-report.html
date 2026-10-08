@@ -3211,6 +3211,12 @@ body.sn-on #oback,body.sn-on #ftback,body.sn-on #lback{display:none}
 #home .hd-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin-top:32px}
 #home .hd-title .ic{display:none}
 #home .hd-title h1{font-family:var(--sans);font-size:20px;font-weight:600;color:var(--ink);letter-spacing:-.01em;line-height:1.25}
+#home .hd-scope{align-self:center;font-size:12px;font-weight:500;color:var(--ink-3);background:var(--sunk);
+  border-radius:999px;padding:3px 10px;line-height:1.4}
+#home .hd-scope[hidden]{display:none}
+#home .hd-mod.off{opacity:.6}
+#home .hd-mod.off .cnt{color:var(--ink-3)}
+#home .hhcard .hh-mod.off{opacity:.5}
 /* 说明跟在标题后面同一行（用户 2026-10-07：不用另起一行），放不下才折行 */
 #home .hd-lede{margin:0;font-size:14px;color:var(--ink-3)}
 /* 原来的居中抬头不再显示（品牌串留在 DOM 里，构建要查它） */
@@ -3375,7 +3381,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
     <div class="hd-crumb">质检管理系统 / <b>首页看板</b></div>
     <span class="hd-date" id="hddate"></span>
   </div>
-  <div class="hd-title"><span class="ic" id="hdtic"></span><h1>首页看板</h1><p class="hd-lede">本月质检概况</p></div>
+  <div class="hd-title"><span class="ic" id="hdtic"></span><h1>首页看板</h1><p class="hd-lede">本月质检概况</p><span class="hd-scope" id="hdscope" hidden></span></div>
   <!-- 进入卡片撤掉了（进板块走侧边栏 / 手机抽屉），renderCards 还往这里写，留着不显示 -->
   <div class="hgrid" id="modcards" hidden></div>
   <!-- 数据看板：本月概况 / 各板块本月 / 近 6 个月走势（renderDash） -->
@@ -10668,6 +10674,12 @@ async function labNgOf(metas){
    **单独成一个函数**：原来是日历（renderHeat）顺带算的，刷新时停在记录表 / 数据分析，
    首页那段根本不跑，角标要点一下首页才出来（用户报的）。现在开机算一次、每次同步完
    算一次、首页画日历时也走这里。只看那一天，实验室记录也只读那天的几条，很轻。 */
+/* 首页统计算哪些板块（2026-10-08）。检验员的设备只同步近 7 天进过的板块（见 indexUrl），
+   本机里其它板块要么没有数据、要么是停止同步前留下的旧数据 —— 旧数据还在本机，
+   原来照样被算进总数，而没同步的板块显示「本月暂无已提交」，像是那个板块没人检验。
+   现在看板、不合格日历、侧边栏角标都只算正在同步的板块，其余的标出来。
+   管理员、观察者同步全部板块，返回 null = 不过滤。 */
+function statTypes(){ return (isAdmin() || isViewer()) ? null : new Set(usedMods()); }
 let SIDE_NG_SEQ=0;
 async function sideNgRefresh(rows){
   const seq=++SIDE_NG_SEQ;
@@ -10678,9 +10690,10 @@ async function sideNgRefresh(rows){
      2026-10-08 改：原来上没上班也按已提交的看 —— 可当天的记录要第二天才审核提交，
      8 号早上 7 号一份都还没交，就被当成休息日、退回去显示 6 号（用户报的）。
      现在 8 号一打开就是 7 号，7 号的报告交一份算一份；周日连草稿都没有，照样跳到周六。 */
-  const byDay=new Map(), worked=new Set();
+  const byDay=new Map(), worked=new Set(), st=statTypes();
   rows.forEach(m=>{
     if(CFG_TYPES.indexOf(m.type)>=0) return;
+    if(st && !st.has(m.type||"fqc")) return;
     const d=reportDayOf(m); if(!d || d>=today) return;
     const k=key(d); worked.add(k);
     if(!m.locked) return;
@@ -10723,9 +10736,10 @@ async function renderHeat(rows){
   const mark = HEAT_SEL && sel===HEAT_SEL ? sel : "";
 
   /* 窗口内、已锁的报告，各带上落格日期 */
-  const inWin=[];
+  const inWin=[], st=statTypes();
   rows.forEach(m=>{
     if(CFG_TYPES.indexOf(m.type)>=0 || !m.locked) return;
+    if(st && !st.has(m.type||"fqc")) return;
     const d=reportDayOf(m); if(!d || d<start || d>today) return;
     inWin.push({m,d});
   });
@@ -10807,6 +10821,9 @@ async function renderHeat(rows){
                  : monName(selMo)+"分布";
   const maxM=Math.max(1,...MODULES.map(m=>gSel.get(m.id)||0));
   const mods='<div class="hh-mods">'+MODULES.map(m=>{
+    if(st && !st.has(m.id))
+      return '<div class="hh-mod off" title="'+esc(tr("近 7 天没进过这个板块，这台设备没有同步它的数据。点进去就开始同步。"))+'"><span class="nm">'+micon(m.id)+esc(tr(m.zh))+'</span>'+
+        '<span class="tk"></span><span class="n">'+esc(tr("未同步"))+'</span></div>';
     const ng=gSel.get(m.id)||0, all=aSel.get(m.id)||0;
     return '<div class="hh-mod"><span class="nm">'+micon(m.id)+esc(tr(m.zh))+'</span>'+
       '<span class="tk"><i style="width:'+(ng/maxM*100).toFixed(1)+'%"></i></span>'+
@@ -11264,9 +11281,17 @@ async function renderDash(rows){
   const N=DASH_MONTHS, LAST=N-1;
   for(let i=LAST;i>=0;i--){ const d=new Date(today.getFullYear(), today.getMonth()-i, 1); months.push({ym:ymOf(d), d}); }
   const start=months[0].d, curYm=months[LAST].ym, prevYm=months[LAST-1].ym;
-  const pick=[];
+  const pick=[], st=statTypes();
+  const scope=$("#hdscope");
+  if(scope){
+    const on=st ? MODULES.filter(m=>m.ready && st.has(m.id)) : null;
+    scope.hidden=!st;
+    if(st) scope.textContent = on.length ? tr("仅统计本机在同步的板块")+"："+on.map(m=>tr(m.zh)).join(LANG==="id"?", ":"、")
+                                         : tr("本机还没有同步任何板块，进入板块后开始统计");
+  }
   rows.forEach(m=>{
     if(CFG_TYPES.indexOf(m.type)>=0 || !m.locked) return;
+    if(st && !st.has(m.type||"fqc")) return;
     const d=reportDayOf(m); if(!d || d<start || d>today) return;
     pick.push({m,d});
   });
@@ -11338,6 +11363,14 @@ async function renderDash(rows){
     '</svg>';
   };
   mh.innerHTML=MODULES.filter(m=>m.ready).map(m=>{
+    if(st && !st.has(m.id))
+      return '<button type="button" class="hd-mod off" data-mod="'+m.id+'" title="'+esc(tr("近 7 天没进过这个板块，这台设备没有同步它的数据。点进去就开始同步。"))+'">'+
+        '<span class="mwm">'+micon(m.id,1.1)+'</span>'+
+        '<span class="nm">'+esc(tr(m.zh))+'</span>'+
+        '<span class="ds">'+esc(tr(m.desc))+'</span>'+
+        '<span class="rate na">—</span>'+
+        '<span class="cnt">'+esc(tr("近 7 天未进入"))+'</span>'+
+      '</button>';
     const b=cur.by[m.id], r=rate(b);
     const dd=daily[m.id]||{};
     const tip=tr("本月每天合格率")+"："+(Object.keys(dd).length ? Object.keys(dd).map(Number).sort((a,b)=>a-b).map(d=>d+(LANG==="id"?"":"日")+" "+f1((dd[d].n-dd[d].ng)/dd[d].n*100)+"%").join(" · ") : "—");
@@ -13361,6 +13394,11 @@ const I18N_ID={
   "上月同期无数据": "Bulan lalu belum ada data",
   "与上月同期持平": "Sama dengan bulan lalu",
   "明天开始对比上月": "Perbandingan mulai besok",
+  "仅统计本机在同步的板块": "Hanya modul yang disinkronkan di perangkat ini",
+  "本机还没有同步任何板块，进入板块后开始统计": "Belum ada modul yang disinkronkan di perangkat ini; buka modul untuk mulai",
+  "近 7 天未进入": "Tidak dibuka 7 hari terakhir",
+  "近 7 天没进过这个板块，这台设备没有同步它的数据。点进去就开始同步。": "Modul ini tidak dibuka dalam 7 hari terakhir, datanya tidak disinkronkan di perangkat ini. Buka untuk mulai sinkron.",
+  "未同步": "Belum sinkron",
   "已提交": "Terkirim",
   "本月暂无已提交": "Belum ada yang terkirim",
   "近一年还没有已提交的报告": "Belum ada laporan terkirim dalam setahun",

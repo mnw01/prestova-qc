@@ -2144,6 +2144,12 @@ body.sn-on #oback,body.sn-on #ftback,body.sn-on #lback{display:none}
 #home .hd-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin-top:32px}
 #home .hd-title .ic{display:none}
 #home .hd-title h1{font-family:var(--sans);font-size:20px;font-weight:600;color:var(--ink);letter-spacing:-.01em;line-height:1.25}
+#home .hd-scope{align-self:center;font-size:12px;font-weight:500;color:var(--ink-3);background:var(--sunk);
+  border-radius:999px;padding:3px 10px;line-height:1.4}
+#home .hd-scope[hidden]{display:none}
+#home .hd-mod.off{opacity:.6}
+#home .hd-mod.off .cnt{color:var(--ink-3)}
+#home .hhcard .hh-mod.off{opacity:.5}
 #home .hd-lede{margin:0;font-size:14px;color:var(--ink-3)}
 body.sn-on #home .hhead{display:none}
 
@@ -2283,7 +2289,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
     <div class="hd-crumb">质检管理系统 / <b>首页看板</b></div>
     <span class="hd-date" id="hddate"></span>
   </div>
-  <div class="hd-title"><span class="ic" id="hdtic"></span><h1>首页看板</h1><p class="hd-lede">本月质检概况</p></div>
+  <div class="hd-title"><span class="ic" id="hdtic"></span><h1>首页看板</h1><p class="hd-lede">本月质检概况</p><span class="hd-scope" id="hdscope" hidden></span></div>
   <div class="hgrid" id="modcards" hidden></div>
   <div class="hd-kpis" id="hdkpis"></div>
   <section class="recent">
@@ -8275,15 +8281,17 @@ async function labNgOf(metas){
   if(added) labNgPersist();
   return out;
 }
+function statTypes(){ return (isAdmin() || isViewer()) ? null : new Set(usedMods()); }
 let SIDE_NG_SEQ=0;
 async function sideNgRefresh(rows){
   const seq=++SIDE_NG_SEQ;
   if(!rows){ try{ rows=await metaAll(); }catch(e){ return; } }
   const key=d=>d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
   const now=new Date(), today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  const byDay=new Map(), worked=new Set();
+  const byDay=new Map(), worked=new Set(), st=statTypes();
   rows.forEach(m=>{
     if(CFG_TYPES.indexOf(m.type)>=0) return;
+    if(st && !st.has(m.type||"fqc")) return;
     const d=reportDayOf(m); if(!d || d>=today) return;
     const k=key(d); worked.add(k);
     if(!m.locked) return;
@@ -8321,9 +8329,10 @@ async function renderHeat(rows){
   const selDay = sel.split("-").length===3;
   const mark = HEAT_SEL && sel===HEAT_SEL ? sel : "";
 
-  const inWin=[];
+  const inWin=[], st=statTypes();
   rows.forEach(m=>{
     if(CFG_TYPES.indexOf(m.type)>=0 || !m.locked) return;
+    if(st && !st.has(m.type||"fqc")) return;
     const d=reportDayOf(m); if(!d || d<start || d>today) return;
     inWin.push({m,d});
   });
@@ -8393,6 +8402,9 @@ async function renderHeat(rows){
                  : monName(selMo)+"分布";
   const maxM=Math.max(1,...MODULES.map(m=>gSel.get(m.id)||0));
   const mods='<div class="hh-mods">'+MODULES.map(m=>{
+    if(st && !st.has(m.id))
+      return '<div class="hh-mod off" title="'+esc(tr("近 7 天没进过这个板块，这台设备没有同步它的数据。点进去就开始同步。"))+'"><span class="nm">'+micon(m.id)+esc(tr(m.zh))+'</span>'+
+        '<span class="tk"></span><span class="n">'+esc(tr("未同步"))+'</span></div>';
     const ng=gSel.get(m.id)||0, all=aSel.get(m.id)||0;
     return '<div class="hh-mod"><span class="nm">'+micon(m.id)+esc(tr(m.zh))+'</span>'+
       '<span class="tk"><i style="width:'+(ng/maxM*100).toFixed(1)+'%"></i></span>'+
@@ -8769,9 +8781,17 @@ async function renderDash(rows){
   const N=DASH_MONTHS, LAST=N-1;
   for(let i=LAST;i>=0;i--){ const d=new Date(today.getFullYear(), today.getMonth()-i, 1); months.push({ym:ymOf(d), d}); }
   const start=months[0].d, curYm=months[LAST].ym, prevYm=months[LAST-1].ym;
-  const pick=[];
+  const pick=[], st=statTypes();
+  const scope=$("#hdscope");
+  if(scope){
+    const on=st ? MODULES.filter(m=>m.ready && st.has(m.id)) : null;
+    scope.hidden=!st;
+    if(st) scope.textContent = on.length ? tr("仅统计本机在同步的板块")+"："+on.map(m=>tr(m.zh)).join(LANG==="id"?", ":"、")
+                                         : tr("本机还没有同步任何板块，进入板块后开始统计");
+  }
   rows.forEach(m=>{
     if(CFG_TYPES.indexOf(m.type)>=0 || !m.locked) return;
+    if(st && !st.has(m.type||"fqc")) return;
     const d=reportDayOf(m); if(!d || d<start || d>today) return;
     pick.push({m,d});
   });
@@ -8828,6 +8848,14 @@ async function renderDash(rows){
     '</svg>';
   };
   mh.innerHTML=MODULES.filter(m=>m.ready).map(m=>{
+    if(st && !st.has(m.id))
+      return '<button type="button" class="hd-mod off" data-mod="'+m.id+'" title="'+esc(tr("近 7 天没进过这个板块，这台设备没有同步它的数据。点进去就开始同步。"))+'">'+
+        '<span class="mwm">'+micon(m.id,1.1)+'</span>'+
+        '<span class="nm">'+esc(tr(m.zh))+'</span>'+
+        '<span class="ds">'+esc(tr(m.desc))+'</span>'+
+        '<span class="rate na">—</span>'+
+        '<span class="cnt">'+esc(tr("近 7 天未进入"))+'</span>'+
+      '</button>';
     const b=cur.by[m.id], r=rate(b);
     const dd=daily[m.id]||{};
     const tip=tr("本月每天合格率")+"："+(Object.keys(dd).length ? Object.keys(dd).map(Number).sort((a,b)=>a-b).map(d=>d+(LANG==="id"?"":"日")+" "+f1((dd[d].n-dd[d].ng)/dd[d].n*100)+"%").join(" · ") : "—");
@@ -10229,6 +10257,11 @@ const I18N_ID={
   "上月同期无数据": "Bulan lalu belum ada data",
   "与上月同期持平": "Sama dengan bulan lalu",
   "明天开始对比上月": "Perbandingan mulai besok",
+  "仅统计本机在同步的板块": "Hanya modul yang disinkronkan di perangkat ini",
+  "本机还没有同步任何板块，进入板块后开始统计": "Belum ada modul yang disinkronkan di perangkat ini; buka modul untuk mulai",
+  "近 7 天未进入": "Tidak dibuka 7 hari terakhir",
+  "近 7 天没进过这个板块，这台设备没有同步它的数据。点进去就开始同步。": "Modul ini tidak dibuka dalam 7 hari terakhir, datanya tidak disinkronkan di perangkat ini. Buka untuk mulai sinkron.",
+  "未同步": "Belum sinkron",
   "已提交": "Terkirim",
   "本月暂无已提交": "Belum ada yang terkirim",
   "近一年还没有已提交的报告": "Belum ada laporan terkirim dalam setahun",
