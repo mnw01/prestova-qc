@@ -3530,6 +3530,7 @@ const micon = (id,sw) => !MICONS[id] ? '' :
   'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+MICONS[id]+'</svg>';
 const moduleById = id => MODULES.find(m=>m.id===id);
 let CURRENT="fqc";
+const REC_SEEN={};
 
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g,
   c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -4494,6 +4495,7 @@ function wireBatchHover(sel){
 wireBatchHover("#lrec-table");
 
 function fqcShow(view){
+  if(view==="form") REC_SEEN.fqc=true;
   $(".wrap").hidden = view!=="form";
   $("#frec").hidden = view!=="rec";
   $("#fdash").hidden = view!=="dash";
@@ -4528,7 +4530,7 @@ async function frecRender(){
     : '<thead><tr><th class="seq">序号</th><th>项目编号</th><th>品名</th><th>床垫类型</th><th>PO</th><th>检查日期</th><th>检验员</th><th>判定</th><th>状态/操作</th></tr></thead>'+
       '<tbody>'+rows.map((r,i)=>{
         const bad = r.verdict==="reject";
-        const cls=(R&&r.id===R.id?"cur ":"")+(r.locked?"":"draft");
+        const cls=(REC_SEEN.fqc&&R&&r.id===R.id?"cur ":"")+(r.locked?"":"draft");
         return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+
           '><td class="seq">'+(i+1)+'</td>'+
           '<td>'+esc(r.itemNo||"（未填）")+'</td>'+
@@ -5107,6 +5109,7 @@ $("#iqitems").addEventListener("click",e=>{
 });
 
 function iqcShow(view){
+  if(view==="entry") REC_SEEN.iqc=true;
   $("#iqcv").hidden = view!=="entry";
   $("#irec").hidden = view!=="rec";
   $("#idash").hidden = view!=="dash";
@@ -5151,7 +5154,7 @@ async function irecRender(){
     : '<thead><tr><th class="seq">序号</th><th>品号</th><th>类别</th><th>供应商</th><th>进料日期</th><th>检验员</th><th>判定</th><th>状态/操作</th></tr></thead>'+
       '<tbody>'+rows.map((r,i)=>{
         const bad=r.verdict==="reject", pend=!r.verdict;
-        const cls=(IR&&r.id===IR.id?"cur ":"")+(r.locked?"":"draft");
+        const cls=(REC_SEEN.iqc&&IR&&r.id===IR.id?"cur ":"")+(r.locked?"":"draft");
         return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+
           '><td class="seq">'+(i+1)+'</td>'+
           '<td>'+esc(r.itemNo||"（未填）")+'</td>'+
@@ -6110,6 +6113,7 @@ async function ipqcLoad(id){
   ipqcPaintAll();
 }
 function ipqcShow(view){
+  if(view==="entry") REC_SEEN.ipqc=true;
   $("#ipqcv").hidden = view!=="entry";
   $("#iprec").hidden = view!=="rec";
   $("#ipdash").hidden = view!=="dash";
@@ -6316,7 +6320,7 @@ async function iprecRender(){
     : '<thead><tr><th class="seq">序号</th><th>日期</th><th>班次</th><th>车间</th><th>工序</th><th class="num">检查数量</th><th class="num">不良数量</th><th class="num">不良率</th><th>检验员</th><th>状态/操作</th></tr></thead>'+
       '<tbody>'+rows.map((r,i)=>{
         const q=lnum(r.qty)||0, b=lnum(r.bad)||0, rate=q?pct(b,q):null;
-        const cls=(PR&&r.id===PR.id?"cur ":"")+(r.locked?"":"draft");
+        const cls=(REC_SEEN.ipqc&&PR&&r.id===PR.id?"cur ":"")+(r.locked?"":"draft");
         return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+
           '><td class="seq">'+(i+1)+'</td>'+
           '<td>'+esc(r.date||"—")+'</td>'+
@@ -6774,6 +6778,7 @@ async function oqcLoad(id, skipPhotos){
   if(!skipPhotos) oqcHydrate(id);
 }
 function oqcShow(view){
+  if(view==="entry") REC_SEEN.oqc=true;
   $("#oqcv").hidden = view!=="entry";
   $("#orec").hidden = view!=="rec";
   $("#oqdash").hidden = view!=="dash";
@@ -7051,7 +7056,7 @@ async function orecRender(){
     : '<thead><tr><th class="seq">序号</th><th>PO/DI</th><th>柜号</th><th>封条号</th><th>装柜日期</th><th>检验员</th><th>判定</th><th>状态/操作</th></tr></thead>'+
       '<tbody>'+rows.map((r,i)=>{
         const bad=r.verdict==="reject", pend=!r.verdict;
-        const cls=(OR&&r.id===OR.id?"cur ":"")+(r.locked?"":"draft");
+        const cls=(REC_SEEN.oqc&&OR&&r.id===OR.id?"cur ":"")+(r.locked?"":"draft");
         return '<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+
           '><td class="seq">'+(i+1)+'</td>'+
           '<td>'+esc(r.podi||"—")+'</td>'+
@@ -7752,6 +7757,7 @@ async function ftLoad(id, skipPhotos){
 }
 
 function ftShow(view){
+  if(view==="entry") REC_SEEN.cfr1633=true;
   $("#ftentryv").hidden = view!=="entry";
   $("#ftrec").hidden = view!=="rec";
   $("#ftdash").hidden = view!=="dash";
@@ -8089,7 +8095,7 @@ async function ftrecRender(){
     const row=document.createElement("tr");
     row.dataset.row=r.id;
     if(!r.locked) row.classList.add("draft");
-    if(FT && r.id===FT.id) row.classList.add("cur");
+    if(REC_SEEN.cfr1633 && FT && r.id===FT.id) row.classList.add("cur");
     const v=r.ftVerdict||"";
     const vbadge=v?('<span class="frec-badge '+(v==="合格"?"ok":"no")+'">'+esc(v)+'</span>'):"—";
     const skuFull=r.sku||"";
@@ -8585,6 +8591,7 @@ async function enterModule(id,reportId){
   const m=moduleById(id); if(!m || !m.ready) return showHome();
   markModUsed(id);
   sideSync(id);
+  REC_SEEN[id]=false;
   if(id==="lab") return enterLab(reportId);
   if(id==="iqc") return enterIqc(reportId);
   if(id==="oqc") return enterOqc(reportId);
@@ -10816,6 +10823,7 @@ const LAB_VIEWS={
 let LAB_VIEW="entry";
 function labShow(view){
   if(LAB_VIEW==="std" && view!=="std") saveLabStd();
+  if(view==="entry") REC_SEEN.lab=true;
   LAB_VIEW=view;
   Object.entries(LAB_VIEWS).forEach(([k,v])=>{
     if(v.node) $(v.node).hidden = (k!==view);
@@ -10940,7 +10948,7 @@ function labRenderRec(){
         '<span class="lockdot" aria-hidden="true"></span>'+
         '<button type="button" class="lrecbtn" data-rpt="'+esc(r.id)+'">查看</button>'+
         (r.lab.override?'<span class="lrecmark">人工改判</span>':'')+'</td>');
-      const cls=(i===0?"top ":"")+(LR&&r.id===LR.id?"cur ":"")+(r.locked?"":"draft");
+      const cls=(i===0?"top ":"")+(REC_SEEN.lab&&LR&&r.id===LR.id?"cur ":"")+(r.locked?"":"draft");
       body.push('<tr data-row="'+esc(r.id)+'"'+(cls.trim()?' class="'+cls.trim()+'"':'')+'>'+c.join('')+'</tr>');
     });
   });
