@@ -6171,7 +6171,8 @@ async function fqcDashRender(){
   rangeToday("#fd-date");
   /* 候选来自**已有记录里出现过的品名**，不是整份产品基础资料 —— 基础资料里
      一千多个型号，绝大多数根本没做过成品检验，摆进筛选框只会添乱。 */
-  FQC_DESCS=[...new Set((await metaAll()).filter(m=>m.type==="fqc")
+  /* 选项也只从已提交的里取，跟下面的统计同一个范围：只在草稿里出现过的品名选了也是空的 */
+  FQC_DESCS=[...new Set((await metaAll()).filter(m=>m.type==="fqc" && m.locked)
     .map(m=>(m.desc||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"zh"));
 
   $("#fd-kpis").innerHTML='<div class="fd-kpi"><div class="n">…</div><div class="t">读取中</div></div>';
@@ -14491,7 +14492,8 @@ async function labOpenDash(){
   labShow("dash");
   $("#ld-kpis").innerHTML='<div class="lkpi"><div class="n">…</div><div class="t">读取中</div></div>';
   await labLoadAll(true);
-  const models=[...new Set(LAB_CACHE.map(r=>(r.lab||{}).model).filter(Boolean))].sort();
+  /* 品号下拉只列已提交批次里出现过的 —— 跟 labRenderDash 的统计范围一致 */
+  const models=[...new Set(LAB_CACHE.filter(r=>r.locked).map(r=>(r.lab||{}).model).filter(Boolean))].sort();
   const cur=$("#ld-model").value;
   $("#ld-model").innerHTML='<option value="">全部品号</option>'+
     models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join("");

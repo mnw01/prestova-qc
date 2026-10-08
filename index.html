@@ -4599,7 +4599,7 @@ async function fqcDashAgg(range,item,mattress){
 }
 async function fqcDashRender(){
   rangeToday("#fd-date");
-  FQC_DESCS=[...new Set((await metaAll()).filter(m=>m.type==="fqc")
+  FQC_DESCS=[...new Set((await metaAll()).filter(m=>m.type==="fqc" && m.locked)
     .map(m=>(m.desc||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"zh"));
 
   $("#fd-kpis").innerHTML='<div class="fd-kpi"><div class="n">…</div><div class="t">读取中</div></div>';
@@ -11132,7 +11132,7 @@ async function labOpenDash(){
   labShow("dash");
   $("#ld-kpis").innerHTML='<div class="lkpi"><div class="n">…</div><div class="t">读取中</div></div>';
   await labLoadAll(true);
-  const models=[...new Set(LAB_CACHE.map(r=>(r.lab||{}).model).filter(Boolean))].sort();
+  const models=[...new Set(LAB_CACHE.filter(r=>r.locked).map(r=>(r.lab||{}).model).filter(Boolean))].sort();
   const cur=$("#ld-model").value;
   $("#ld-model").innerHTML='<option value="">全部品号</option>'+
     models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join("");
