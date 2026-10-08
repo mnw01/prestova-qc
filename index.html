@@ -2160,6 +2160,10 @@ body.sn-on #home .hhead{display:none}
 #home .hd-kpi.k-ng .mwm{color:color-mix(in srgb,var(--no) 12%,transparent)}
 #home .hd-kpi.k-ok .mwm{color:color-mix(in srgb,var(--ok) 12%,transparent)}
 #home .hd-kpi .mwm svg{width:100%;height:100%;display:block}
+#home .hd-kpi > .spark{position:relative;z-index:1;flex:0 1 140px;width:140px;min-width:0;height:40px;
+  margin:auto 56px auto auto;color:var(--accent);cursor:crosshair}
+#home .hd-kpi > .spark .sp-hot{fill:var(--card);stroke:currentColor;stroke-width:1.6}
+#home .hd-kpi.k-ok > .kb{flex:0 0 auto}
 #home .hd-kpi .kb{min-width:0}
 #home .hd-kpi .t{font-size:13px;font-weight:500;color:var(--ink-3)}
 #home .hd-kpi .n{font-size:24px;font-weight:600;color:var(--ink);line-height:1.25;margin-top:4px;
@@ -8826,8 +8830,8 @@ async function renderDash(rows){
     '<div class="hd-kpi k-ok"><span class="mwm">'+sideSvgThin("gauge")+'</span><div class="kb"><div class="t">'+esc(tr("本月合格率"))+'</div><div class="n">'+f1(rc)+(rc==null?'':'<small>%</small>')+'</div><div class="d"'+cmpAttr+'>'+diff(rcTD,rp,"pt",true)+'</div></div></div>';
 
   const daysIn=Math.max(2, dom);
-  const spark=t=>{
-    const dd=daily[t]||{}, pts=[];
+  const sparkOf=dd=>{
+    const pts=[];
     for(let d=1; d<=daysIn; d++){ const a=dd[d]; if(!a||!a.n) continue;
       const y=(a.n-a.ng)/a.n*100; pts.push([4+(d-1)*(132/Math.max(1,daysIn-1)), 34-y/100*28, d, a.n, a.ng]); }
     const last=pts[pts.length-1];
@@ -8839,6 +8843,7 @@ async function renderDash(rows){
       '<circle class="sp-hot" r="3.4" visibility="hidden"/>'+
     '</svg>';
   };
+  const spark=t=>sparkOf(daily[t]||{});
   mh.innerHTML=MODULES.filter(m=>m.ready).map(m=>{
     if(st && !st.has(m.id))
       return '<button type="button" class="hd-mod off" data-mod="'+m.id+'" title="'+esc(tr("近 7 天没进过这个板块，这台设备没有同步它的数据。点进去就开始同步。"))+'">'+
@@ -8858,6 +8863,12 @@ async function renderDash(rows){
       '<span class="cnt">'+(b&&b.n ? esc(tr("不合格"))+' <b>'+b.ng+'</b> / '+esc(tr("已提交"))+' '+b.n : esc(tr("本月暂无已提交")))+'</span>'+
     '</button>';
   }).join("");
+
+  const allDaily={};
+  Object.values(daily).forEach(dd=>Object.entries(dd).forEach(([d,a])=>{
+    const x=allDaily[d]||(allDaily[d]={n:0,ng:0}); x.n+=a.n; x.ng+=a.ng; }));
+  const kOk=kh.querySelector(".k-ok");
+  if(kOk) kOk.insertAdjacentHTML("beforeend", sparkOf(allDaily));
 
   const tot=months.map(x=>agg[x.ym]);
   const vals=tot.map(a=>rate(a));
@@ -8941,7 +8952,7 @@ if(window.ResizeObserver){
   }).observe($("#hdtrend"));
 }
 let SP_TOUCH=false;
-function spHide(){ const t=$("#hdsptip"); if(t) t.hidden=true; document.querySelectorAll("#hdmods .sp-hot").forEach(c=>c.setAttribute("visibility","hidden")); }
+function spHide(){ const t=$("#hdsptip"); if(t) t.hidden=true; document.querySelectorAll("#home .sp-hot").forEach(c=>c.setAttribute("visibility","hidden")); }
 function spShow(svg, clientX){
   let pts=[]; try{ pts=JSON.parse(svg.dataset.sp||"[]"); }catch(e){}
   const ctm=svg.getScreenCTM(); if(!pts.length || !ctm) return spHide();
@@ -8962,13 +8973,20 @@ function spShow(svg, clientX){
   tip.style.left=Math.max(half+8, Math.min(vw-half-8, at.x))+"px";
   tip.style.top=(at.y-10)+"px";
 }
-$("#hdmods").addEventListener("pointerdown",e=>{ SP_TOUCH = e.pointerType!=="mouse"; });
-$("#hdmods").addEventListener("pointermove",e=>{
-  if(e.pointerType!=="mouse") return;
-  const svg=e.target.closest(".spark");
-  if(svg) spShow(svg, e.clientX); else spHide();
+["#hdmods","#hdkpis"].forEach(sel=>{
+  const box=$(sel); if(!box) return;
+  box.addEventListener("pointerdown",e=>{ SP_TOUCH = e.pointerType!=="mouse"; });
+  box.addEventListener("pointermove",e=>{
+    if(e.pointerType!=="mouse") return;
+    const svg=e.target.closest(".spark");
+    if(svg) spShow(svg, e.clientX); else spHide();
+  });
+  box.addEventListener("pointerleave",spHide);
 });
-$("#hdmods").addEventListener("pointerleave",spHide);
+$("#hdkpis").addEventListener("click",e=>{
+  const svg=e.target.closest(".spark");
+  if(svg && SP_TOUCH) spShow(svg, e.clientX);
+});
 window.addEventListener("scroll",spHide,{passive:true});
 $("#hdmods").addEventListener("click",e=>{
   const svg=e.target.closest(".spark");
@@ -8976,7 +8994,7 @@ $("#hdmods").addEventListener("click",e=>{
   spHide();
   const b=e.target.closest("[data-mod]"); if(b) location.hash="#/"+b.dataset.mod;
 });
-document.addEventListener("pointerdown",e=>{ if(!e.target.closest("#hdmods .spark")) spHide(); });
+document.addEventListener("pointerdown",e=>{ if(!e.target.closest("#home .spark")) spHide(); });
 
 const SYNC = { enabled:true, probed:false, busy:false, err:null, at:0, pending:0, stuck:0 };
 const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
