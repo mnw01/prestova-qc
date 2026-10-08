@@ -4141,11 +4141,21 @@ document.addEventListener("keydown",e=>{
   if(next){ next.focus(); next.select && next.select(); return; }
   if(!e.shiftKey){ const ta=$("textarea[data-f]"); if(ta) ta.focus(); }
 });
+let FQC_PRINT_TITLE="";
 function syncTitle(){
   const m=moduleById(CURRENT)||{};
   const id=(R.fields.itemNo||"").trim() || (R.fields.po||"").trim();
-  document.title = (id ? id+" " : "") + (m.reportZh || "检查报告");
+  FQC_PRINT_TITLE = (id ? id+" " : "") + (m.reportZh || "检查报告");
+  document.title = tr("荣升家居 · 成品检验");
 }
+let FQC_TITLE_BEFORE_PRINT="";
+window.addEventListener("beforeprint",()=>{
+  if(CURRENT!=="fqc" || !$("#mod") || $("#mod").hidden || !FQC_PRINT_TITLE) return;
+  FQC_TITLE_BEFORE_PRINT=document.title; document.title=FQC_PRINT_TITLE;
+});
+window.addEventListener("afterprint",()=>{
+  if(FQC_TITLE_BEFORE_PRINT){ document.title=FQC_TITLE_BEFORE_PRINT; FQC_TITLE_BEFORE_PRINT=""; }
+});
 function num(v){ const n=parseFloat(String(v||"").replace(/[^\d.\-]/g,"")); return isNaN(n)?null:n; }
 function computeGW(){
   const nw=num(R.fields.nw), gw=num(R.fields.gw);
@@ -8271,14 +8281,16 @@ async function sideNgRefresh(rows){
   if(!rows){ try{ rows=await metaAll(); }catch(e){ return; } }
   const key=d=>d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
   const now=new Date(), today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  const byDay=new Map();
+  const byDay=new Map(), worked=new Set();
   rows.forEach(m=>{
-    if(CFG_TYPES.indexOf(m.type)>=0 || !m.locked) return;
+    if(CFG_TYPES.indexOf(m.type)>=0) return;
     const d=reportDayOf(m); if(!d || d>=today) return;
-    const k=key(d); if(!byDay.has(k)) byDay.set(k,[]); byDay.get(k).push(m);
+    const k=key(d); worked.add(k);
+    if(!m.locked) return;
+    if(!byDay.has(k)) byDay.set(k,[]); byDay.get(k).push(m);
   });
   let day=null;
-  for(let b=1;b<=7;b++){ const d=new Date(today); d.setDate(today.getDate()-b); if(byDay.has(key(d))){ day=d; break; } }
+  for(let b=1;b<=7;b++){ const d=new Date(today); d.setDate(today.getDate()-b); if(worked.has(key(d))){ day=d; break; } }
   if(!day){ day=new Date(today); day.setDate(today.getDate()-1); }
   const list=byDay.get(key(day))||[];
   const labNg=await labNgOf(list.filter(m=>m.type==="lab"));
@@ -8841,8 +8853,7 @@ async function renderDash(rows){
   const yR=v=>T1+(hi-v)/(hi-lo)*(B1-T1);
   const guides=[lo, ...(lo>=60?[80,90]:[20,50,80]).filter(g=>g>lo+(hi-lo)*.2&&g<96), hi];
   const maxN=Math.max(...tot.map(a=>a.n));
-  const unit=[1,2,5,10,20,50,100,200,500].find(u=>maxN/u<=22)||1000;
-  const maxR=Math.max(1,Math.ceil(maxN/unit)), pitch=Math.min(6,(B2-T2)/maxR), rungH=Math.max(1.6,pitch*.5);
+  const pxPer=(B2-T2)/Math.max(1,maxN);
   const bw=Math.min(narrow?16:32, slot*.5);
   const anim = !DASH_DREW; 
   DASH_DREW=true;
@@ -8863,14 +8874,12 @@ async function renderDash(rows){
     }).join("");
   const bars = tot.map((a,i)=>{
     if(!a.n) return '<text class="ax" x="'+cx(i).toFixed(1)+'" y="'+(B2-4)+'" text-anchor="middle">—</text>';
-    const rungs=Math.max(1,Math.round(a.n/unit)), ngR=a.ng ? Math.min(rungs, Math.max(1,Math.round(a.ng/unit))) : 0;
-    const x0=(cx(i)-bw/2).toFixed(1);
+    const hTot=Math.max(3, a.n*pxPer), hNg=a.ng ? Math.min(hTot, Math.max(1, hTot*a.ng/a.n)) : 0;
+    const x0=(cx(i)-bw/2).toFixed(1), top=B2-hTot;
     let g='<g class="bar'+(anim?' rise':'')+'" style="animation-delay:'+(i*90)+'ms">';
-    for(let k=0;k<rungs;k++){
-      const y=B2-(k+1)*pitch+(pitch-rungH);
-      g+='<rect class="'+(k>=rungs-ngR?'rg ng':'rg')+'" x="'+x0+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+rungH.toFixed(1)+'" rx="'+(rungH/2).toFixed(1)+'"/>';
-    }
-    g+='</g><text class="cnt" x="'+cx(i).toFixed(1)+'" y="'+(B2-rungs*pitch-6).toFixed(1)+'" text-anchor="middle">'+a.n+'</text>';
+    if(hTot-hNg>0) g+='<rect class="rg" x="'+x0+'" y="'+(top+hNg).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(hTot-hNg).toFixed(1)+'"/>';
+    if(hNg) g+='<rect class="rg ng" x="'+x0+'" y="'+top.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+hNg.toFixed(1)+'"/>';
+    g+='</g><text class="cnt" x="'+cx(i).toFixed(1)+'" y="'+(top-6).toFixed(1)+'" text-anchor="middle">'+a.n+'</text>';
     return g;
   }).join("");
   const rNow=vals[LAST];
@@ -10347,6 +10356,7 @@ const I18N_ID={
   "自动判定": "Hasil Otomatis",
   "范围": "Rentang",
   "荣升家居 · 制程检验": "Prestova · Pemeriksaan Proses",
+  "荣升家居 · 成品检验": "Prestova · Pemeriksaan Barang Jadi",
   "荣升家居 · 实验室检测": "Prestova · Tes Laboratorium",
   "荣升家居 · 来料检验": "Prestova · Pemeriksaan Bahan Masuk",
   "荣升家居 · 装柜检验": "Prestova · Pemeriksaan Muat Kontainer",
