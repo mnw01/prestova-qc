@@ -2169,7 +2169,7 @@ body.sn-on #home .hhead{display:none}
 #home .hd-kpi .d .up{color:var(--ok);font-weight:600}
 #home .hd-kpi .d .dn{color:var(--no);font-weight:600}
 #home .hd-mods{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
-#home .hd-mod{display:grid;grid-template-columns:minmax(0,1fr) 96px;align-items:end;gap:6px 12px;
+#home .hd-mod{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:end;gap:6px 12px;
   text-align:left;font:inherit;color:var(--ink);cursor:pointer;
   background:var(--card);border:1px solid var(--card-line);border-radius:8px;box-shadow:var(--sh-1);
   padding:14px 16px}
@@ -2183,12 +2183,12 @@ body.sn-on #home .hhead{display:none}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #home .hd-mod .rate{font-size:22px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--ink);letter-spacing:-.02em}
 #home .hd-mod .rate.na{color:var(--ink-3);font-weight:500}
-#home .hd-mod .cnt{grid-column:1;min-width:0;font-size:12px;font-weight:500;color:var(--ink-3);font-variant-numeric:tabular-nums;
+#home .hd-mod .cnt{grid-column:1 / -1;min-width:0;font-size:12px;font-weight:500;color:var(--ink-3);font-variant-numeric:tabular-nums;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #home .hd-mod .cnt b{color:var(--no);font-weight:600}
 #home .hd-mod .rate{grid-row:3}
 #home .hd-mod .cnt{grid-row:4}
-#home .hd-mod .spark{grid-column:2;grid-row:3 / span 2;width:96px;height:36px;color:var(--accent)}
+#home .hd-mod .spark{grid-column:2;grid-row:3;justify-self:end;width:140px;max-width:100%;height:36px;color:var(--accent)}
 #home .hd-trend{position:relative;background:var(--card);border:1px solid var(--card-line);
   border-radius:8px;box-shadow:var(--sh-1);padding:18px 20px 12px}
 #home .hd-trend svg{display:block;width:100%;overflow:visible;margin-top:10px}
@@ -2220,6 +2220,10 @@ body.sn-on #home .hhead{display:none}
   border-radius:8px;box-shadow:0 4px 12px -2px rgba(0,0,0,.14);padding:7px 10px;
   font-size:12px;font-weight:500;color:var(--ink-2);white-space:nowrap;font-variant-numeric:tabular-nums;transform:translate(-50%,-100%)}
 #home .hd-tip b{color:var(--ink);font-size:13px}
+#home .hd-sptip{position:fixed;z-index:60;line-height:1.5}
+#home .hd-sptip[hidden]{display:none}
+#home .hd-mod .spark{cursor:crosshair}
+#home .hd-mod .spark .sp-hot{fill:var(--card);stroke:currentColor;stroke-width:1.6}
 #home .hd-empty{color:var(--ink-3);font-size:13px;padding:24px 0;text-align:center}
 body.sn-on #home .hhcard{border-radius:8px;box-shadow:var(--sh-1)}
 body.sn-on #home .rrow{border-radius:8px;box-shadow:var(--sh-1)}
@@ -2290,6 +2294,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <section class="recent">
     <h2>各板块本月</h2>
     <div class="hd-mods" id="hdmods"></div>
+    <div class="hd-tip hd-sptip" id="hdsptip" hidden></div>
   </section>
   <section class="recent hheat">
     <h2>不合格日历</h2>
@@ -8824,13 +8829,14 @@ async function renderDash(rows){
   const spark=t=>{
     const dd=daily[t]||{}, pts=[];
     for(let d=1; d<=daysIn; d++){ const a=dd[d]; if(!a||!a.n) continue;
-      const y=(a.n-a.ng)/a.n*100; pts.push([4+(d-1)*(88/Math.max(1,daysIn-1)), 34-y/100*28]); }
+      const y=(a.n-a.ng)/a.n*100; pts.push([4+(d-1)*(132/Math.max(1,daysIn-1)), 34-y/100*28, d, a.n, a.ng]); }
     const last=pts[pts.length-1];
-    return '<svg class="spark" viewBox="0 0 96 38" aria-hidden="true">'+
-      '<line x1="4" x2="92" y1="34" y2="34" stroke="var(--card-line)" stroke-width="1"/>'+
+    return '<svg class="spark" viewBox="0 0 140 38" aria-hidden="true" data-sp="'+esc(JSON.stringify(pts.map(p=>[+p[0].toFixed(1),+p[1].toFixed(1),p[2],p[3],p[4]])))+'">'+
+      '<line x1="4" x2="136" y1="34" y2="34" stroke="var(--card-line)" stroke-width="1"/>'+
       (pts.length>1?'<polyline points="'+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")+'" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>':'')+
       pts.slice(0,-1).map(p=>'<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="1.4" fill="currentColor"/>').join("")+
       (last?'<circle cx="'+last[0].toFixed(1)+'" cy="'+last[1].toFixed(1)+'" r="2.6" fill="currentColor"/>':'')+
+      '<circle class="sp-hot" r="3.4" visibility="hidden"/>'+
     '</svg>';
   };
   mh.innerHTML=MODULES.filter(m=>m.ready).map(m=>{
@@ -8843,9 +8849,7 @@ async function renderDash(rows){
         '<span class="cnt">'+esc(tr("近 7 天未进入"))+'</span>'+
       '</button>';
     const b=cur.by[m.id], r=rate(b);
-    const dd=daily[m.id]||{};
-    const tip=tr("本月每天合格率")+"："+(Object.keys(dd).length ? Object.keys(dd).map(Number).sort((a,b)=>a-b).map(d=>d+(LANG==="id"?"":"日")+" "+f1((dd[d].n-dd[d].ng)/dd[d].n*100)+"%").join(" · ") : "—");
-    return '<button type="button" class="hd-mod" data-mod="'+m.id+'" title="'+esc(tr(m.zh)+"："+tr(m.desc)+" · "+tip)+'">'+
+    return '<button type="button" class="hd-mod" data-mod="'+m.id+'" title="'+esc(tr(m.zh)+"："+tr(m.desc))+'">'+
       '<span class="mwm">'+micon(m.id,1.1)+'</span>'+
       '<span class="nm">'+esc(tr(m.zh))+'</span>'+
       '<span class="ds">'+esc(tr(m.desc))+'</span>'+
@@ -8936,9 +8940,43 @@ if(window.ResizeObserver){
     clearTimeout(t); t=setTimeout(()=>renderDash(DASH_ROWS),120);
   }).observe($("#hdtrend"));
 }
+let SP_TOUCH=false;
+function spHide(){ const t=$("#hdsptip"); if(t) t.hidden=true; document.querySelectorAll("#hdmods .sp-hot").forEach(c=>c.setAttribute("visibility","hidden")); }
+function spShow(svg, clientX){
+  let pts=[]; try{ pts=JSON.parse(svg.dataset.sp||"[]"); }catch(e){}
+  const ctm=svg.getScreenCTM(); if(!pts.length || !ctm) return spHide();
+  const pt=svg.createSVGPoint(); pt.x=clientX; pt.y=0;
+  const x=pt.matrixTransform(ctm.inverse()).x;
+  const p=pts.reduce((b,q)=>Math.abs(q[0]-x)<Math.abs(b[0]-x)?q:b, pts[0]);
+  const hot=svg.querySelector(".sp-hot");
+  hot.setAttribute("cx",p[0]); hot.setAttribute("cy",p[1]); hot.setAttribute("visibility","visible");
+  const tip=$("#hdsptip"); if(!tip) return;
+  const day = LANG==="id" ? "Tgl "+p[2] : p[2]+"日";
+  const rate=(p[3]-p[4])/p[3]*100;
+  tip.innerHTML='<b>'+esc(day)+' · '+esc(tr("合格率"))+' '+(Math.round(rate*10)/10).toFixed(1)+'%</b><br>'+
+    esc(tr("不合格"))+' '+p[4]+' / '+esc(tr("已提交"))+' '+p[3];
+  tip.hidden=false;
+  const sp=svg.createSVGPoint(); sp.x=p[0]; sp.y=p[1];
+  const at=sp.matrixTransform(ctm);
+  const half=tip.offsetWidth/2, vw=document.documentElement.clientWidth;
+  tip.style.left=Math.max(half+8, Math.min(vw-half-8, at.x))+"px";
+  tip.style.top=(at.y-10)+"px";
+}
+$("#hdmods").addEventListener("pointerdown",e=>{ SP_TOUCH = e.pointerType!=="mouse"; });
+$("#hdmods").addEventListener("pointermove",e=>{
+  if(e.pointerType!=="mouse") return;
+  const svg=e.target.closest(".spark");
+  if(svg) spShow(svg, e.clientX); else spHide();
+});
+$("#hdmods").addEventListener("pointerleave",spHide);
+window.addEventListener("scroll",spHide,{passive:true});
 $("#hdmods").addEventListener("click",e=>{
+  const svg=e.target.closest(".spark");
+  if(svg && SP_TOUCH){ e.preventDefault(); spShow(svg, e.clientX); return; }
+  spHide();
   const b=e.target.closest("[data-mod]"); if(b) location.hash="#/"+b.dataset.mod;
 });
+document.addEventListener("pointerdown",e=>{ if(!e.target.closest("#hdmods .spark")) spHide(); });
 
 const SYNC = { enabled:true, probed:false, busy:false, err:null, at:0, pending:0, stuck:0 };
 const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -10223,7 +10261,6 @@ const I18N_ID={
   "系统": "Sistem",
   "首页看板": "Dasbor",
   "本月质检概况": "Ringkasan QC bulan ini",
-  "本月每天合格率": "Persen OK harian bulan ini",
   "退出登录": "Keluar",
   "已登录": "Sudah masuk",
   "只读": "Hanya lihat",
