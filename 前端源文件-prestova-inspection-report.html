@@ -6120,7 +6120,10 @@ async function fqcDashAgg(range,item,mattress){
   /* 品名按**包含**匹配，不是全等 —— 这是个筛选框，打 "K01" 应该把
      所有 K01 开头/含 K01 的型号都算进来 */
   const q=String(item||"").trim().toLowerCase();
-  let rows=(await metaAll()).filter(m=>m.type==="fqc");
+  /* 只算已提交（锁定）的 —— 跟首页看板、不合格日历、装柜数据分析同一个口径（用户 2026-10-08
+     要求全部统一）。原来草稿也算：当天的记录次日才审核提交，没审的草稿判定还会改，
+     成品新建时判定默认「接受」，草稿一多合格率就虚高。草稿照旧在记录表里（置灰）。 */
+  let rows=(await metaAll()).filter(m=>m.type==="fqc" && m.locked);
   /* 床垫类型和品名本来就在筛选栏里，但那只能回答"我盯着的这一类怎么样"，
      回答不了"哪一类问题最多" —— 得先猜一个再选一个，猜错了就看不见。
      所以另外按这两个维度各出一张排行表，跟来料的「按类别 / 按供应商」、
@@ -6179,8 +6182,8 @@ async function fqcDashRender(){
     '<div class="fd-kpi'+(a.badN?" bad":"")+'"><div class="n">'+a.badN+'</div><div class="t">不合格数量</div></div>'+
     '<div class="fd-kpi'+(a.badN?"":" good")+'"><div class="n">'+(a.n?pct(pass,a.n)+"%":"—")+'</div><div class="t">合格率</div></div>';
   $("#fd-scope").textContent = a.n
-    ? tr("区间内")+" "+a.n+" "+tr("份，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
-    : "这个区间没有数据。";
+    ? tr("区间内")+" "+a.n+" "+tr("份已提交的报告，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
+    : tr("这个区间没有已提交锁定的记录。");
   const maxN=Math.max(1,...a.months.map(m=>m.n));
   $("#fd-months").innerHTML=a.months.map(m=>{
     const j=m.n, w=m.n/maxN*100, okN=j-m.bad;
@@ -6874,7 +6877,8 @@ $("#irec-table").addEventListener("click",async e=>{
 async function iqcDashAgg(){
   const from=$("#id-from").value, to=$("#id-to").value;
   const cat=$("#id-cat").value, supplier=$("#id-supplier").value.trim().toLowerCase();
-  let rows=(await metaAll()).filter(r=>r.type==="iqc");
+  /* 只算已提交的，见 fqcDashAgg 那条 */
+  let rows=(await metaAll()).filter(r=>r.type==="iqc" && r.locked);
   if(from) rows=rows.filter(r=>toDateInput(r.date)>=from);
   if(to)   rows=rows.filter(r=>toDateInput(r.date)<=to);
   if(cat)  rows=rows.filter(r=>(r.cat||"")===cat);
@@ -6967,8 +6971,8 @@ async function idashRender(){
     iqcKpi(a.bad,"不合格批次",a.bad?"bad":"")+
     iqcKpi(a.pending,"待检查","");
   $("#id-scope").textContent = a.batches
-    ? tr("区间内")+" "+a.batches+" "+tr("批，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
-    : "这个区间没有数据。";
+    ? tr("区间内")+" "+a.batches+" "+tr("批已提交的记录，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
+    : tr("这个区间没有已提交锁定的记录。");
   /* bar 宽度 = 该项自己的不合格率，跟旁边"x/n rate%"文字同一个数——不是这项
      占全部不合格的份额，两种口径混着看会觉得对不上号，见 new-module-ui-
      conventions 里那条踩过的坑 */
@@ -8312,7 +8316,8 @@ async function ipqcDashAgg(){
   const from=$("#ipd-from").value, to=$("#ipd-to").value;
   const shift=$("#ipd-shift").value;
   const ws=$("#ipd-ws").value, proc=$("#ipd-proc").value;
-  let rows=(await metaAll()).filter(r=>r.type==="ipqc");
+  /* 只算已提交的，见 fqcDashAgg 那条 */
+  let rows=(await metaAll()).filter(r=>r.type==="ipqc" && r.locked);
   if(from) rows=rows.filter(r=>toDateInput(r.date)>=from);
   if(to)   rows=rows.filter(r=>toDateInput(r.date)<=to);
   if(shift) rows=rows.filter(r=>nShift(r.shift||"")===shift);
@@ -8369,8 +8374,8 @@ async function ipdashRender(){
     kpi(a.qty?pct(a.bad,a.qty)+"%":"—","不良率",a.bad?"bad":"")+
     kpi(a.qty?pct(a.qty-a.bad,a.qty)+"%":"—","合格率",a.bad?"":"good");
   $("#ipd-scope").textContent = a.n
-    ? tr("区间内")+" "+a.n+" "+tr("条记录，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
-    : "这个区间没有数据。";
+    ? tr("区间内")+" "+a.n+" "+tr("条已提交的记录，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
+    : tr("这个区间没有已提交锁定的记录。");
 
   /* 条的总长按当月检查数量占最大那个月的比例，绿红是这个月内部的构成 ——
      跟成品/实验室那两张一个读法，不用换脑子。 */
@@ -10046,7 +10051,8 @@ async function ftDashAgg(){
   const r=labRangeOf($("#ftd-range").value, dashAnchor("#ftd-date"));
   const pt=$("#ftd-prodtype").value;
   const sku=$("#ftd-sku").value.trim().toLowerCase();
-  let rows=(await metaAll()).filter(x=>x.type==="cfr1633");
+  /* 只算已提交的，见 fqcDashAgg 那条 */
+  let rows=(await metaAll()).filter(x=>x.type==="cfr1633" && x.locked);
   if(r.from||r.to) rows=rows.filter(x=>{
     const d=parseDMY(x.testDate); if(!d) return false;
     if(r.from && d<r.from) return false;
@@ -10127,9 +10133,9 @@ async function ftdashRender(){
     kpi(ftNum(ftAvg(a.thr)),"THR 平均 (MJ)","")+
     kpi(ftNum(ftAvg(a.burn)),"燃烧时间平均 (min)","");
   $("#ftd-scope").textContent = a.n
-    ? tr("区间内")+" "+a.n+" "+tr("条记录，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
+    ? tr("区间内")+" "+a.n+" "+tr("条已提交的记录，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
         + (a.unrated?"　·　"+a.unrated+" "+tr("条未判定（PHRR / THR 没填全）"):"")
-    : tr("这个区间没有数据。");
+    : tr("这个区间没有已提交锁定的记录。");
 
   /* 分布条：分母一律用「有这项数值的记录数」，不是最大那一档 —— 用最大档当
      分母只能看出档与档的相对高低，看不出各档占多少。 */
@@ -13140,6 +13146,9 @@ const I18N_ID={
   "份": "laporan",
   "份记录": "catatan",
   "份，实际数据在": "laporan; data sebenarnya dari",
+  "份已提交的报告，实际数据在": "laporan terkirim; data sebenarnya dari",
+  "批已提交的记录，实际数据在": "batch terkirim; data sebenarnya dari",
+  "条已提交的记录，实际数据在": "catatan terkirim; data sebenarnya dari",
   "供应商": "Supplier",
   "供应商名称": "Nama Supplier",
   "偏移 = 实测均值相对公差带中心，±1.0 就是压在公差边上": "Simpangan = rata-rata hasil terhadap titik tengah toleransi; ±1,0 berarti persis di batas toleransi",
@@ -14399,7 +14408,8 @@ async function labLoadAll(force){
 }
 function labRenderDash(){
   rangeToday("#ld-date");
-  const recs=LAB_CACHE||[];
+  /* 只算已提交的，见 fqcDashAgg 那条。LAB_CACHE 记录表也在用（草稿要显示），只在这里筛 */
+  const recs=(LAB_CACHE||[]).filter(r=>r.locked);
   const range=$("#ld-range").value, model=$("#ld-model").value;
   const want=labRangeOf(range).months;
   const a=labAgg(recs,range,model);
@@ -14418,7 +14428,7 @@ function labRenderDash(){
      「区间 D ~ D　N 个月有记录」—— 语序和内容都自成一套，而且整句没过 tr()，
      印尼语下这一行一直是中文。「几个月有记录」那层信息没丢，挪到后面的补充里。 */
   $("#ld-scope").textContent = a.batches
-    ? tr("区间内")+" "+a.batches+" "+tr("批，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
+    ? tr("区间内")+" "+a.batches+" "+tr("批已提交的记录，实际数据在")+" "+fmtD(a.from)+" ~ "+fmtD(a.to)
       +(want && a.months.length<want
           ? "（"+tr("选的是近")+" "+want+" "+tr("个月，其中")+" "+a.months.length+" "+tr("个月有记录")+"）"
           : "")
