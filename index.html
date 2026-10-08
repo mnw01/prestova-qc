@@ -420,9 +420,8 @@ input,textarea,button,select{font:inherit;color:inherit}
 @media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .bar .miss{color:#e88b81}}
 
 .wrap{padding:18px 14px 64px;display:flex;flex-direction:column;align-items:center;gap:18px}
-#mod .fe-bar{width:210mm;max-width:100%;display:flex;justify-content:flex-end;margin-bottom:-14px}
-#mod .fe-bar .plx{padding:3px 7px}
-@media print{ #mod .fe-bar{display:none!important} }
+@media screen{ #mod #s1{position:relative} #mod #s1 > .fe-x{position:absolute;top:6px;right:6px;padding:3px 7px} }
+@media print{ #mod .fe-x{display:none!important} }
 .sheet{
   width:210mm;max-width:100%;background:var(--paper);color:var(--ink);
   padding:10mm;box-shadow:var(--shadow);
@@ -2343,9 +2342,9 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 
 <div class="wrap">
 <div id="lockbar" hidden></div>
-<div class="fe-bar"><button type="button" class="plx" id="fe-close" title="关闭" data-lockok>✕</button></div>
 
 <section class="sheet" id="s1">
+  <button type="button" class="plx fe-x" id="fe-close" title="关闭" data-lockok>✕</button>
   <div class="head">
     <h1>PT. Prestova Home Living Indonesia <span class="cn">印尼荣升家居生活有限公司</span></h1>
     <h2>INSPECTION REPORT<span class="cn">/ 成品检查报告</span></h2>
@@ -2452,7 +2451,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
       <div data-sig="qa"></div>
     </div>
     <div class="cell">
-      <div class="sigcap">总经理</div>
+      <div class="sigcap">总经理/执行经理</div>
       <div data-sig="gm"></div>
     </div>
   </div>
@@ -3543,7 +3542,7 @@ const tr = zh => {
 const I18N_SKIP_TAG={SCRIPT:1,STYLE:1,TEXTAREA:1,NOSCRIPT:1};
 const I18N_SKIP_SEL=".sheet,.oqsheet,.lsheet,.labsheet,.lrsheet,.hhead .cn,.hsub .cn";
 const i18nSkip = el => !!(el && el.closest &&
-  el.closest(I18N_SKIP_SEL) && !el.closest(".prtfoot"));
+  el.closest(I18N_SKIP_SEL) && !el.closest(".prtfoot,.fe-x"));
 const I18N_ATTRS=["placeholder","title","aria-label"];
 let I18N_BUSY=false;
 function i18nEl(el){

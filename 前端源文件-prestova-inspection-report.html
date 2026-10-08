@@ -516,10 +516,10 @@ input,textarea,button,select{font:inherit;color:inherit}
 
 /* ── sheet ────────────────────────────────────────────────────────── */
 .wrap{padding:18px 14px 64px;display:flex;flex-direction:column;align-items:center;gap:18px}
-/* 成品录入页的 ✕（回记录表）：在 A4 纸右上角外面，跟纸同宽、靠右 */
-#mod .fe-bar{width:210mm;max-width:100%;display:flex;justify-content:flex-end;margin-bottom:-14px}
-#mod .fe-bar .plx{padding:3px 7px}
-@media print{ #mod .fe-bar{display:none!important} }
+/* 成品录入页的 ✕（回记录表）：贴在 A4 纸右上角（用户 2026-10-08：放纸外面怪怪的）。
+   定位容器只在屏幕上设 —— 打印时 #s1 不加 position，✕ 也整个藏掉，纸面一个像素不动 */
+@media screen{ #mod #s1{position:relative} #mod #s1 > .fe-x{position:absolute;top:6px;right:6px;padding:3px 7px} }
+@media print{ #mod .fe-x{display:none!important} }
 .sheet{
   width:210mm;max-width:100%;background:var(--paper);color:var(--ink);
   padding:10mm;box-shadow:var(--shadow);
@@ -3445,10 +3445,11 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 
 <div class="wrap">
 <div id="lockbar" hidden></div>
-<div class="fe-bar"><button type="button" class="plx" id="fe-close" title="关闭" data-lockok>✕</button></div>
 
 <!-- ══ SHEET 1 ═══════════════════════════════════════════════════════ -->
 <section class="sheet" id="s1">
+  <!-- 录入页的 ✕（回记录表）。界面元素、不是单据内容：只在屏幕上显示，打印时藏掉 -->
+  <button type="button" class="plx fe-x" id="fe-close" title="关闭" data-lockok>✕</button>
   <div class="head">
     <h1>PT. Prestova Home Living Indonesia <span class="cn">印尼荣升家居生活有限公司</span></h1>
     <h2>INSPECTION REPORT<span class="cn">/ 成品检查报告</span></h2>
@@ -3559,7 +3560,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
       <div data-sig="qa"></div>
     </div>
     <div class="cell">
-      <div class="sigcap">总经理</div>
+      <div class="sigcap">总经理/执行经理</div>
       <div data-sig="gm"></div>
     </div>
   </div>
@@ -4769,11 +4770,11 @@ const tr = zh => {
    把中文那半换成印尼语会破坏他们盖章存档的格式。要翻再单独说。 */
 const I18N_SKIP_TAG={SCRIPT:1,STYLE:1,TEXTAREA:1,NOSCRIPT:1};
 const I18N_SKIP_SEL=".sheet,.oqsheet,.lsheet,.labsheet,.lrsheet,.hhead .cn,.hsub .cn";
-/* .prtfoot 是唯一的例外：打印按钮虽然长在 .sheet 那张纸上，但它是界面元素、
-   不是单据内容（打印时 display:none），所以照常翻。不开这个口子，印尼语下
-   它会一直显示「打印 / 存 PDF」。 */
+/* .prtfoot 和 .fe-x 是例外：打印按钮、右上角的 ✕ 虽然长在 .sheet 那张纸上，但它们
+   是界面元素、不是单据内容（打印时 display:none），所以照常翻。不开这个口子，印尼语下
+   它们会一直显示「打印 / 存 PDF」「关闭」。 */
 const i18nSkip = el => !!(el && el.closest &&
-  el.closest(I18N_SKIP_SEL) && !el.closest(".prtfoot"));
+  el.closest(I18N_SKIP_SEL) && !el.closest(".prtfoot,.fe-x"));
 const I18N_ATTRS=["placeholder","title","aria-label"];
 let I18N_BUSY=false;
 function i18nEl(el){
@@ -5157,7 +5158,7 @@ mount($("#grid2"),PHOTOS_2);
     img.src=setURL(k,blob,true);
   },true);
 });
-/* 品质部 / 总经理 are signed by hand on the printout — no upload here. */
+/* 品质部 / 总经理/执行经理 are signed by hand on the printout — no upload here. */
 
 function paintSlot(key){
   const s=document.querySelector('.slot[data-slot="'+key+'"]'); if(!s) return;
