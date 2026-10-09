@@ -314,18 +314,18 @@ input,textarea,button,select{font:inherit;color:inherit}
   display:flex;align-items:center;justify-content:center;padding:16px}
 .ntcbox{
   background:var(--paper);color:var(--ink);border:1px solid var(--hairline);
-  border-radius:8px;width:min(520px,100%);max-height:min(78vh,620px);
+  border-radius:10px;width:min(860px,100%);max-height:min(86vh,860px);max-height:min(86dvh,860px);
   display:flex;flex-direction:column;overflow:hidden;
   box-shadow:0 18px 48px -14px rgba(20,26,36,.5);
 }
-.ntchead{display:flex;align-items:center;gap:8px;padding:11px 12px;flex:0 0 auto;
+.ntchead{display:flex;align-items:center;gap:8px;padding:13px 16px 13px 22px;flex:0 0 auto;
   border-bottom:1px solid var(--hairline);font-size:11.5px;letter-spacing:.13em;
   text-transform:uppercase;color:var(--ink-3)}
 .ntchead .ntct{flex:1 1 auto}
-.ntcbody{flex:1 1 auto;min-height:0;overflow:auto;padding:10px 12px}
-.ntcitem{padding:10px 0;border-bottom:1px solid var(--rule-2)}
+.ntcbody{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 22px}
+.ntcitem{padding:14px 0;border-bottom:1px solid var(--rule-2)}
 .ntcitem:last-child{border-bottom:0}
-.ntcitem .ntcmsg{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13.5px;line-height:1.6}
+.ntcitem .ntcmsg{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14.5px;line-height:1.7}
 .ntcitem .ntcmeta{margin-top:5px;font-size:11.5px;color:var(--ink-3);
   font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
 .ntcitem.unread .ntcmsg{font-weight:600}
@@ -335,7 +335,20 @@ input,textarea,button,select{font:inherit;color:inherit}
   font-size:11.5px;padding:1px 5px;border-radius:4px}
 .ntcdel:hover{background:color-mix(in srgb,var(--fail) 14%,transparent);color:var(--fail)}
 .ntcempty{color:var(--ink-3);font-size:12.5px;padding:16px 2px;text-align:center}
-.ntcnew{flex:0 0 auto;border-top:1px solid var(--hairline);padding:10px 12px}
+.ntcnew{flex:0 0 auto;border-top:1px solid var(--hairline);padding:12px 22px 14px}
+@media (min-width:1800px){
+  .ntcbox{width:min(50vw,1100px);max-height:min(86vh,1100px);max-height:min(86dvh,1100px)}
+  .ntcitem .ntcmsg{font-size:16px}
+  .ntcnew textarea{font-size:14.5px}
+}
+@media (max-width:560px){
+  #ntcwrap{padding:8px}
+  .ntcbox{max-height:92vh;max-height:92dvh}
+  .ntchead{padding:11px 10px 11px 14px}
+  .ntcbody{padding:8px 14px}
+  .ntcnew{padding:10px 14px 12px}
+  .ntcitem .ntcmsg{font-size:14px}
+}
 .ntcnew textarea{width:100%;box-sizing:border-box;font:inherit;font-size:13px;
   padding:8px 9px;border:1px solid var(--hairline);border-radius:5px;
   background:var(--paper);color:var(--ink);resize:vertical}
