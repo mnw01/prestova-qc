@@ -1410,6 +1410,10 @@ table.frec-table tbody tr.draft .lockdot,
 #fdash .fd-dist-item{display:grid;grid-template-columns:minmax(90px,140px) 1fr 150px;gap:10px;align-items:center;font-size:12.5px}
 #fdash .fd-dist-item .track{height:13px;background:var(--rule-2);border-radius:3px;overflow:hidden}
 #fdash .fd-dist-item .fill{display:block;height:100%;background:var(--accent)}
+#fdash .fd-dist-item .fill.ng{background:#c9483c}   /* 不合格项：跟装柜那页同一个红 */
+/* 标签列加宽（检查项短名比软硬度档位长）。只在电脑宽度 —— 窄屏有自己那套两行排法，
+   这条特异性更高，不圈起来会把手机上的排法顶掉，条子冲出卡片 */
+@media (min-width:561px){ #fdash .fd-items .fd-dist-item{grid-template-columns:minmax(150px,260px) 1fr 150px} }
 #fdash .fd-dist-item .num{text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
 @media(prefers-color-scheme:dark){
   :where(:root:not([data-theme="light"])) .fd-kpi.bad .n{color:#e88b81}
@@ -3237,6 +3241,13 @@ body.sn-on #oback,body.sn-on #ftback,body.sn-on #lback{display:none}
 #home .hhcard .hh-mod.off{opacity:.5}
 /* 说明跟在标题后面同一行（用户 2026-10-07：不用另起一行），放不下才折行 */
 #home .hd-lede{margin:0;font-size:14px;color:var(--ink-3)}
+/* 看的不是本月时，标题后面的「回到本月」 */
+#home .hd-back{align-self:center;font:inherit;font-size:12.5px;font-weight:500;color:var(--accent);cursor:pointer;
+  background:transparent;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:999px;padding:2px 10px}
+#home .hd-back:hover{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+#home .hd-back[hidden]{display:none}
+/* 近一年走势图里，当前看的那个月的月份标签 */
+#home .hd-trend .mo.sel{fill:var(--accent);font-weight:700}
 /* 原来的居中抬头不再显示（品牌串留在 DOM 里，构建要查它） */
 body.sn-on #home .hhead{display:none}
 
@@ -3412,13 +3423,13 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
     <div class="hd-crumb">质检管理系统 / <b>首页看板</b></div>
     <span class="hd-date" id="hddate"></span>
   </div>
-  <div class="hd-title"><span class="ic" id="hdtic"></span><h1>首页看板</h1><p class="hd-lede">本月质检概况</p><span class="hd-scope" id="hdscope" hidden></span></div>
+  <div class="hd-title"><span class="ic" id="hdtic"></span><h1>首页看板</h1><p class="hd-lede" id="hdlede">本月质检概况</p><button type="button" class="hd-back" id="hdback" hidden>回到本月</button><span class="hd-scope" id="hdscope" hidden></span></div>
   <!-- 进入卡片撤掉了（进板块走侧边栏 / 手机抽屉），renderCards 还往这里写，留着不显示 -->
   <div class="hgrid" id="modcards" hidden></div>
   <!-- 数据看板：本月概况 / 各板块本月 / 近 6 个月走势（renderDash） -->
   <div class="hd-kpis" id="hdkpis"></div>
   <section class="recent">
-    <h2>各板块本月</h2>
+    <h2 id="hdmodsh">各板块本月</h2>
     <div class="hd-mods" id="hdmods"></div>
     <div class="hd-tip hd-sptip" id="hdsptip" hidden></div>
   </section>
@@ -3677,6 +3688,11 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
 <section class="frec-card">
   <h2>月度合格率</h2>
   <div class="qc-bars" id="fd-months"></div>
+</section>
+
+<section class="frec-card">
+  <h2>不合格项分析 <span class="note">只列出现过的项，悬停看完整检查项</span></h2>
+  <div class="fd-dist fd-items" id="fd-items"></div>
 </section>
 
 <section class="frec-card">
@@ -4674,6 +4690,13 @@ const CAP_DEFAULT = {};
 PHOTOS_1.concat(PHOTOS_1B,PHOTOS_2).forEach(([k,c])=>{ CAP_DEFAULT[k]=c; });
 const capFor = (r,k) => (r.caps && r.caps[k]!=null) ? r.caps[k] : (CAP_DEFAULT[k]||"");
 
+/* 「不合格项分析」里用的短名，跟 CHECKS 里的 key 一一对应 */
+const FQC_ITEM_SHORT = {
+  pk1:"唛头/标签不正确", pk2:"条码扫不出", pk3:"包装方式与工艺单不符", pk4:"包装材料与工艺单不符",
+  pk5:"箱内漏放/错放标签说明书", pk6:"标签/说明书/防火布内容错误",
+  fa1:"严重异味", fa2:"脏污/异物", fa3:"漏放/错放标签", fa4:"湿度不达标", fa5:"线头/跳线",
+  fa6:"拉链不顺", fa7:"布套起皱/撕裂", fa8:"内外布套太松太大", fa9:"回弹不良"
+};
 const CHECKS = [
   ["包装","Packing/ 包装",[
     ["pk1","Are shipping mark and labels on carton correct?","纸箱上唛头和标签是否正确？"],
@@ -4972,6 +4995,8 @@ function metaOf(r){
     m.desc=(f.desc||"").trim();
     m.mattress=(f.mattress||"").trim();
     m.hard=(f.hard||"").trim();    /* 软硬度：数据分析的「软硬度分布」要它 */
+    /* 判了拒收的检查项（pk1…fa9）：数据分析的「不合格项分析」要它 */
+    m.ngItems=FQC_ITEM_KEYS.filter(k=>(r.checks||{})[k]==="reject");
   }
   /* #irec (来料检验记录表) needs the same list-without-opening-every-report
      shape as #frec — date/inspector/verdict live on the meta row */
@@ -5042,7 +5067,7 @@ const dbDelete = id => tx([STORE,META],"readwrite", t=>{
    **以后改 metaOf 里任何一处推导，就把 META_VER 加 1。** 开机对不上就整表
    重算一遍，不用再写一次性回填。重算只写索引、不碰记录本身，也不动
    updatedAt/syncedAt，所以不会引起任何同步。 */
-const META_VER = 5;   /* 5: 成品的 meta 加了 hard（软硬度）／4: 制程检验的 meta 加了 shift（班次）／3: meta 加了 locked（提交锁定） */
+const META_VER = 6;   /* 6: 成品的 meta 加了 ngItems（判拒收的检查项）／5: 成品的 meta 加了 hard（软硬度）／4: 制程检验的 meta 加了 shift（班次）／3: meta 加了 locked（提交锁定） */
 const META_VER_KEY = "qc-meta-ver";
 
 /* 只重写索引行，不重写记录 —— 记录里带着照片 Blob，1400 条全 put 一遍又慢
@@ -5085,6 +5110,7 @@ async function ensureMeta(){
 /* ── state ────────────────────────────────────────────────────────── */
 /* Most items pass, so every row — including the overall Inspection Result —
    starts at Accepted and the inspector only flips what fails. */
+const FQC_ITEM_KEYS = CHECKS.flatMap(c=>c[2].map(r=>r[0]));
 function defaultChecks(){
   const o={ verdict:"accept" };
   CHECKS.forEach(c=>c[2].forEach(row=>{ o[row[0]]="accept"; }));
@@ -6165,7 +6191,7 @@ async function fqcDashAgg(range,item,mattress){
      "筛了海绵床垫，下面的表还把弹簧的排进来"会让人以为筛选坏了。 */
   const out={ n:0, badN:0, months:new Map(), byMattress:new Map(), byDesc:new Map(),
               hard:FQC_HARD_BINS.map(b=>({k:b.k,n:0,bad:0})), hardNone:0, hardOut:0,
-              from:null, to:null };
+              items:new Map(), from:null, to:null };
   const bump=(map,key,bad)=>{
     let e=map.get(key); if(!e) map.set(key,e={k:key,n:0,bad:0});
     e.n++; if(bad) e.bad++;
@@ -6186,6 +6212,7 @@ async function fqcDashAgg(range,item,mattress){
     mo.n++; if(bad) mo.bad++;
     bump(out.byMattress,(m.mattress||"").trim()||"（未填）",bad);
     bump(out.byDesc,(m.desc||"").trim()||"（未填）",bad);
+    (m.ngItems||[]).forEach(k=>out.items.set(k,(out.items.get(k)||0)+1));
     const hb=fqcHardBin(m.hard);
     if(hb===null) out.hardNone++;
     else if(hb<0) out.hardOut++;
@@ -6198,6 +6225,8 @@ async function fqcDashAgg(range,item,mattress){
   const rank=(map)=>[...map.values()].sort((a,b)=>(b.bad-a.bad)||(b.n-a.n)||a.k.localeCompare(b.k,"zh"));
   out.byMattress=[...out.byMattress.values()].sort((a,b)=>(b.n-a.n)||a.k.localeCompare(b.k,"zh"));
   out.byDesc=rank(out.byDesc).slice(0,15);
+  /* 不合格项：出现次数多的在前，同次数按检查表里的顺序 */
+  out.items=[...out.items.entries()].sort((a,b)=>(b[1]-a[1])||(FQC_ITEM_KEYS.indexOf(a[0])-FQC_ITEM_KEYS.indexOf(b[0])));
   return out;
 }
 async function fqcDashRender(){
@@ -6246,6 +6275,19 @@ async function fqcDashRender(){
      条长 = 这一档占**填了软硬度**的份数的比例（没填的不进分母，单独在下面报）。
      右边是份数和占比，数字后面不带「份」字（跟燃烧时间一样，用户 2026-10-05 要求）。六档全列，0 份的也留着，分布图缺档会看错形状。 */
   const hardN=a.hard.reduce((s,x)=>s+x.n,0);
+  /* 不合格项分析：只列出现过的项（跟装柜那页一样）。数字 = 判了这一项拒收的报告份数，
+     百分比 = 占区间内全部已提交报告的比例；条长按最多的那项比。一份报告可以有好几项，
+     所以各项加起来会超过「不合格数量」，而且整体判接受的报告里也可能有个别项拒收 */
+  const maxI=a.items.length?a.items[0][1]:1;
+  const grp=k=>tr(k.startsWith("pk")?"包装":"外观");
+  const full=k=>{ for(const c of CHECKS) for(const r of c[2]) if(r[0]===k) return LANG==="id"?r[1]:r[2]; return k; };
+  $("#fd-items").innerHTML = !a.items.length
+    ? '<div class="frec-empty">'+esc(tr("没有不合格项。"))+'</div>'
+    : a.items.map(([k,n])=>
+        '<div class="fd-dist-item" title="'+esc(full(k))+'"><span>'+esc(grp(k)+" · "+tr(FQC_ITEM_SHORT[k]||k))+'</span>'+
+          '<span class="track"><span class="fill ng" style="width:'+Math.round(n/maxI*100)+'%"></span></span>'+
+          '<span class="num">'+n+' '+esc(tr("份"))+'　'+(a.n?pct(n,a.n)+"%":"—")+'</span></div>'
+      ).join("");
   $("#fd-hard").innerHTML = !hardN
     ? '<div class="frec-empty">'+esc(tr("没有数据。"))+'</div>'
     : a.hard.map(x=>
@@ -10895,6 +10937,8 @@ window.addEventListener("resize",heatWidthChanged);
 if($("#hheat")) $("#hheat").addEventListener("click",e=>{
   const b=e.target.closest(".hh-grid [data-ym]"); if(!b || !HEAT_LAST_ROWS) return;
   HEAT_SEL=b.dataset.ym; renderHeat(HEAT_LAST_ROWS);
+  /* 点的是月份标签（"YYYY-M" 两段）才让看板跟着走；点某一天看板不动 */
+  if(b.dataset.ym.split("-").length===2 && DASH_ROWS){ DASH_YM=b.dataset.ym; renderDash(DASH_ROWS).catch(e=>console.error("renderDash", e)); }
 });
 function renderRecent(rows){
   const host=$("#recentlist"); host.innerHTML="";
@@ -11057,6 +11101,7 @@ async function showHome(){
   try{ rows=await metaAll(); }
   catch(e){ toast(tr("无法使用本地存储（隐私模式？）—— 记录不会被保存")); }
   HEAT_SEL=null;   /* 每次进首页都从当月看起，见 HEAT_SEL 那条注释 */
+  DASH_YM=null;    /* 看板同理 */
   renderCards(rows); renderRecent(rows); renderDash(rows).catch(e=>console.error("renderDash", e));
   if(SIDE_TO_CAL && SIDE_NG_DAY) HEAT_SEL=SIDE_NG_DAY;
   renderHeat(rows).then(()=>{ if(SIDE_TO_CAL){ SIDE_TO_CAL=false; $("#hheat").scrollIntoView({block:"center"}); } });
@@ -11306,6 +11351,9 @@ function segInit(){
    判定沿用各板块自己的（metaIsNg，实验室走 labNgOf —— 同一份缓存，不会多读）。
    范围固定近一年（DASH_MONTHS，含本月），跟日历的窗口宽度无关。 */
 let DASH_SEQ=0, DASH_ROWS=null, DASH_TREND_W=0, DASH_DREW=false;
+/* 看板看哪个月："YYYY-M"；null = 本月。点「不合格日历」上方的月份标签时设（用户 2026-10-16：
+   点了月份，上面的看板也要跟着那个月走）；点某一天不动它；进首页、点「回到本月」清掉 */
+let DASH_YM=null;
 const DASH_MONTHS=12;   /* 看板统计近几个月（含本月） */
 async function renderDash(rows){
   DASH_ROWS=rows;
@@ -11317,7 +11365,22 @@ async function renderDash(rows){
   /* 近一年（含本月）。原来是近 6 个月，用户 2026-10-07 改成一年 */
   const N=DASH_MONTHS, LAST=N-1;
   for(let i=LAST;i>=0;i--){ const d=new Date(today.getFullYear(), today.getMonth()-i, 1); months.push({ym:ymOf(d), d}); }
-  const start=months[0].d, curYm=months[LAST].ym, prevYm=months[LAST-1].ym;
+  /* 选中的月（不在近一年里、或就是本月 = 看本月）。读数据的起点多往前一个月 —— 选的是最早
+     那个月时，「较上月」要用到它的上一个月 */
+  const selIdx = DASH_YM ? months.findIndex(x=>x.ym===DASH_YM) : -1;
+  const isNow = selIdx<0 || selIdx===LAST;
+  const selD = isNow ? months[LAST].d : months[selIdx].d;
+  const curYm = ymOf(selD), prevYm = ymOf(new Date(selD.getFullYear(), selD.getMonth()-1, 1));
+  const start = new Date(months[0].d.getFullYear(), months[0].d.getMonth()-1, 1);
+  const selDays = new Date(selD.getFullYear(), selD.getMonth()+1, 0).getDate();
+  const monName = d => LANG==="id" ? ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][d.getMonth()] : (d.getMonth()+1)+"月";
+  /* 标题、回到本月 */
+  const lede=$("#hdlede"), back=$("#hdback");
+  if(lede) lede.textContent = isNow ? tr("本月质检概况")
+    : LANG==="id" ? "Ringkasan QC "+monName(selD)+" "+selD.getFullYear() : selD.getFullYear()+"年"+(selD.getMonth()+1)+"月质检概况";
+  if(back) back.hidden = isNow;
+  const modh=$("#hdmodsh");
+  if(modh) modh.textContent = isNow ? tr("各板块本月") : LANG==="id" ? "Per modul "+monName(selD) : "各板块"+(selD.getMonth()+1)+"月";
   const pick=[], st=statTypes();
   const scope=$("#hdscope");
   if(scope){
@@ -11341,18 +11404,18 @@ async function renderDash(rows){
      用户 2026-10-07：当天的记录大部分要第二天才审核提交，今天的份数总是不全，
      算进去等于拿半天跟整天比。上面三个大数字照旧是本月全部已提交的（含今天已交的），
      只有「较上月同期」这一行换口径。每月 1 号还没有完整的一天，就不比。 */
-  const dom=today.getDate(), upto=dom-1;
+  const dom=today.getDate(), upto = isNow ? dom-1 : selDays, pCut = isNow ? upto : 31;
   const prevTD={n:0,ng:0}, curTD={n:0,ng:0};
   /* 本月按天、按板块：daily[type][日] = {n, ng}，画卡片上的小折线 */
   const daily={};
   pick.forEach(({m,d})=>{
-    const a=agg[ymOf(d)]; if(!a) return;
-    const t=m.type||"fqc", ng = t==="lab" ? labNg.has(m.id) : metaIsNg(m);
+    const t=m.type||"fqc", ng = t==="lab" ? labNg.has(m.id) : metaIsNg(m), ym=ymOf(d);
+    if(ym===prevYm && d.getDate()<=pCut){ prevTD.n++; if(ng) prevTD.ng++; }
+    if(ym===curYm && d.getDate()<=upto){ curTD.n++; if(ng) curTD.ng++; }
+    if(ym===curYm){ const dd=(daily[t]||(daily[t]={}))[d.getDate()]||(daily[t][d.getDate()]={n:0,ng:0}); dd.n++; if(ng) dd.ng++; }
+    const a=agg[ym]; if(!a) return;
     const b=a.by[t]||(a.by[t]={n:0,ng:0});
     a.n++; b.n++; if(ng){ a.ng++; b.ng++; }
-    if(ymOf(d)===prevYm && d.getDate()<=upto){ prevTD.n++; if(ng) prevTD.ng++; }
-    if(ymOf(d)===curYm && d.getDate()<=upto){ curTD.n++; if(ng) curTD.ng++; }
-    if(ymOf(d)===curYm){ const dd=(daily[t]||(daily[t]={}))[d.getDate()]||(daily[t][d.getDate()]={n:0,ng:0}); dd.n++; if(ng) dd.ng++; }
   });
   const rate=x=>x&&x.n ? (x.n-x.ng)/x.n*100 : null;
   const monLab=d=> LANG==="id" ? ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][d.getMonth()] : (d.getMonth()+1)+"月";
@@ -11363,30 +11426,34 @@ async function renderDash(rows){
   /* goodUp：true 升是好事、false 降是好事、null 不分好坏（检验份数多少不是好坏） */
   const diff=(a,b,unit,goodUp)=>{
     if(upto<1) return esc(tr("明天开始对比上月"));
-    if(a==null||b==null||!prev.n) return esc(tr("上月同期无数据"));
+    if(a==null||b==null||!prev.n) return esc(tr(isNow?"上月同期无数据":"上月无数据"));
     const d=Math.round((a-b)*10)/10;
-    if(!d) return esc(tr("与上月同期持平"));
+    if(!d) return esc(tr(isNow?"与上月同期持平":"与上月持平"));
     const txt=(d>0?"▲ +":"▼ ")+(unit==="pt" ? d.toFixed(1)+"%" : Math.abs(d)+" "+tr("份"));
     const cls = goodUp==null ? "" : ((goodUp ? d>0 : d<0) ? "up" : "dn");
-    return esc(tr("较上月同期"))+' <span class="'+cls+'">'+esc(txt)+'</span>';
+    return esc(tr(isNow?"较上月同期":"较上月"))+' <span class="'+cls+'">'+esc(txt)+'</span>';
   };
   /* 悬停写明比的是哪几天（上月比本月短时，上月那边截到月底） */
   const prevDays=new Date(today.getFullYear(), today.getMonth(), 0).getDate(), pUpto=Math.min(upto, prevDays);
-  const cmpTip = upto<1 ? "" : (LANG==="id"
+  const prevD=new Date(selD.getFullYear(), selD.getMonth()-1, 1);
+  const cmpTip = !isNow ? (LANG==="id" ? "Bulan "+monName(selD)+" penuh vs bulan "+monName(prevD)+" penuh"
+                                       : (selD.getMonth()+1)+"月整月 对比 "+(prevD.getMonth()+1)+"月整月")
+    : upto<1 ? "" : (LANG==="id"
     ? "Tgl 1–"+upto+" bulan ini vs tgl 1–"+pUpto+" bulan lalu (laporan hari ini belum dihitung, biasanya baru diserahkan besok)"
     : "本月 1–"+upto+" 日 对比 上月 1–"+pUpto+" 日（今天的报告多数次日才提交，不计入对比）");
   const cmpAttr = cmpTip ? ' title="'+esc(cmpTip)+'"' : '';
+  const kT=x=> isNow ? tr("本月"+x) : LANG==="id" ? ({"已提交":"Terkirim ","不合格":"NG ","合格率":"Persen OK "})[x]+monName(selD) : (selD.getMonth()+1)+"月"+x;
   kh.innerHTML=
-    '<div class="hd-kpi k-sub"><span class="mwm">'+sideSvgThin("clip")+'</span><div class="kb"><div class="t">'+esc(tr("本月已提交"))+'</div><div class="n">'+cur.n+'<small> '+esc(tr("份"))+'</small></div><div class="d"'+cmpAttr+'>'+diff(curTD.n,prev.n,"n",null)+'</div></div></div>'+
-    '<div class="hd-kpi k-ng"><span class="mwm">'+sideSvgThin("tri")+'</span><div class="kb"><div class="t">'+esc(tr("本月不合格"))+'</div><div class="n">'+cur.ng+'<small> '+esc(tr("份"))+'</small></div><div class="d"'+cmpAttr+'>'+diff(curTD.ng,prev.ng,"n",false)+'</div></div></div>'+
-    '<div class="hd-kpi k-ok"><span class="mwm">'+sideSvgThin("gauge")+'</span><div class="kb"><div class="t">'+esc(tr("本月合格率"))+'</div><div class="n">'+f1(rc)+(rc==null?'':'<small>%</small>')+'</div><div class="d"'+cmpAttr+'>'+diff(rcTD,rp,"pt",true)+'</div></div></div>';
+    '<div class="hd-kpi k-sub"><span class="mwm">'+sideSvgThin("clip")+'</span><div class="kb"><div class="t">'+esc(kT("已提交"))+'</div><div class="n">'+cur.n+'<small> '+esc(tr("份"))+'</small></div><div class="d"'+cmpAttr+'>'+diff(curTD.n,prev.n,"n",null)+'</div></div></div>'+
+    '<div class="hd-kpi k-ng"><span class="mwm">'+sideSvgThin("tri")+'</span><div class="kb"><div class="t">'+esc(kT("不合格"))+'</div><div class="n">'+cur.ng+'<small> '+esc(tr("份"))+'</small></div><div class="d"'+cmpAttr+'>'+diff(curTD.ng,prev.ng,"n",false)+'</div></div></div>'+
+    '<div class="hd-kpi k-ok"><span class="mwm">'+sideSvgThin("gauge")+'</span><div class="kb"><div class="t">'+esc(kT("合格率"))+'</div><div class="n">'+f1(rc)+(rc==null?'':'<small>%</small>')+'</div><div class="d"'+cmpAttr+'>'+diff(rcTD,rp,"pt",true)+'</div></div></div>';
 
   /* 2) 各板块本月：大数字合格率 + 份数 + 近一年小折线 */
   /* 小折线：本月每一天的合格率（用户 2026-10-07 要的，原来是按月）。横轴是本月
      1 号到今天（不到月底：月初才几天的时候线会全挤在左边），没检验的日子不画点、
      前后有数的直接连起来；最后一个有数的点加粗。
      纵轴 0~100%，一个月里一天全合格、一天一半不合格，起伏一眼看得出。 */
-  const daysIn=Math.max(2, dom);
+  const daysIn = isNow ? Math.max(2, dom) : selDays;
   const sparkOf=dd=>{
     const pts=[];
     for(let d=1; d<=daysIn; d++){ const a=dd[d]; if(!a||!a.n) continue;
@@ -11513,7 +11580,7 @@ async function renderDash(rows){
       line+
       '<line class="base" x1="'+L+'" x2="'+(W-R)+'" y1="'+B2+'" y2="'+B2+'"/>'+
       bars+
-      months.map((m,i)=>'<text class="mo" x="'+cx(i).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(i===LAST?tr("本月"):(narrow&&i%2!==LAST%2?"":monLab(m.d)))+'</text>').join("")+
+      months.map((m,i)=>'<text class="mo'+(!isNow&&i===selIdx?' sel':'')+'" x="'+cx(i).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(i===LAST?tr("本月"):(narrow&&i%2!==LAST%2?"":monLab(m.d)))+'</text>').join("")+
     '</svg>'+
     '<div class="hd-tip" id="hdtip" hidden></div>';
   /* 折线画出来：先量路径长度，用 dash 偏移做描线 */
@@ -11570,6 +11637,12 @@ function spShow(svg, clientX){
   tip.style.left=Math.max(half+8, Math.min(vw-half-8, at.x))+"px";
   tip.style.top=(at.y-10)+"px";
 }
+/* 「回到本月」：看板和日历都回到本月 */
+$("#hdback").addEventListener("click",()=>{
+  DASH_YM=null; HEAT_SEL=null;
+  if(HEAT_LAST_ROWS) renderHeat(HEAT_LAST_ROWS);
+  if(DASH_ROWS) renderDash(DASH_ROWS).catch(e=>console.error("renderDash", e));
+});
 /* 板块卡片和「本月合格率」卡片的小折线都走这一套 */
 ["#hdmods","#hdkpis"].forEach(sel=>{
   const box=$(sel); if(!box) return;
@@ -13292,6 +13365,23 @@ const I18N_ID={
   "压缩后的回弹尺寸？": "Ukuran setelah mengembang dari kompresi?",
   "厚度": "Ketebalan",
   "外观": "Penampilan",
+  "包装": "Kemasan",
+  "只列出现过的项，悬停看完整检查项": "Hanya item yang pernah muncul; arahkan kursor untuk item lengkap",
+  "唛头/标签不正确": "Shipping mark/label salah",
+  "条码扫不出": "Barcode tidak bisa dipindai",
+  "包装方式与工艺单不符": "Cara kemas tidak sesuai dokumen",
+  "包装材料与工艺单不符": "Bahan kemas tidak sesuai dokumen",
+  "箱内漏放/错放标签说明书": "Label/manual di karton kurang/salah",
+  "标签/说明书/防火布内容错误": "Isi label/manual/kain tahan api salah",
+  "严重异味": "Bau menyengat",
+  "脏污/异物": "Kotor/benda asing",
+  "漏放/错放标签": "Label kurang/salah tempat",
+  "湿度不达标": "Kelembapan tidak standar",
+  "线头/跳线": "Benang lepas/loncat",
+  "拉链不顺": "Ritsleting tidak lancar",
+  "布套起皱/撕裂": "Cover kusut/sobek",
+  "内外布套太松太大": "Cover dalam/luar terlalu longgar",
+  "回弹不良": "Daya pantul kurang",
   "气味": "Bau",
   "湿度": "Kelembapan",
   "厚度减少 %": "Penurunan Ketebalan %",
@@ -13491,6 +13581,10 @@ const I18N_ID={
   "较上月同期": "vs periode sama bulan lalu",
   "上月同期无数据": "Bulan lalu belum ada data",
   "与上月同期持平": "Sama dengan bulan lalu",
+  "较上月": "vs bulan lalu",
+  "上月无数据": "Bulan lalu tidak ada data",
+  "与上月持平": "Sama dengan bulan lalu",
+  "回到本月": "Kembali ke bulan ini",
   "明天开始对比上月": "Perbandingan mulai besok",
   "仅统计本机在同步的板块": "Hanya modul yang disinkronkan di perangkat ini",
   "本机还没有同步任何板块，进入板块后开始统计": "Belum ada modul yang disinkronkan di perangkat ini; buka modul untuk mulai",
