@@ -11792,7 +11792,9 @@ async function api(path, opts={}){
      .length 是 UTF-16 码元数：中文一个字算 1，UTF-8 里却占 3 字节，所以对中文多
      的 payload 会低估 —— 偏的方向是「更容易被判成小的」，阈值因此取低一档。 */
   const bytes = opts.body ? (opts.body.size || opts.body.length || 0) : 0;
-  const budget = bytes > BIG_BODY ? API_TIMEOUT_UPLOAD : API_TIMEOUT;
+  /* bigReply：要**收**的很大（首次同步一批 50 条记录），送的字节数量不出来，
+     由调用方说一声。只影响超时档位，fetch 不认这个键、会忽略。 */
+  const budget = (opts.bigReply || bytes > BIG_BODY) ? API_TIMEOUT_UPLOAD : API_TIMEOUT;
   /* 一个截止时间戳管到底：响应头和 body 共用同一份额度，不是各排一份。原来 body
      那段重排一个完整 budget，实际上限是常量的两倍（普通 60 秒、上传 360 秒）——
      而这个数就是「同步最长能冻多久」，写在常量上的数字得算数。 */
@@ -11883,6 +11885,13 @@ async function withPool(items, limit, fn){
    只影响**首次同步**：日常一次就拉几条，Math.min(limit, items.length) 决定
    实际只开几个 worker，6 和 10 没区别。 */
 const SYNC_CONCURRENCY = 10;
+/* 首次同步的批量拉取：一批几条、同时几批。
+   50 跟服务端 REPORTS_BATCH 对齐（D1 一条查询最多 100 个绑定参数，留一半余量），
+   别单改一边 —— 客户端调大了服务端会回 400，整批退回逐条，等于白改。
+   同时 3 批：一批的回包比单条大几十倍，并排太多在车间 wifi 上容易一起超时；
+   3 批 = 150 条在路上，已经是原来逐条 10 并发的 15 倍。 */
+const SYNC_BATCH = 50, SYNC_BATCH_CONC = 3;
+let SYNC_BATCH_OFF = false;   /* 服务端没有批量接口（老版本）时置上，本会话不再试 */
 
 /* `lab` carries a batch's readings, `std` the shared 品号标准表 — both are plain
    JSON and the server stores the payload opaquely, so they ride along as-is.
@@ -12191,37 +12200,99 @@ async function pullAll(){
   }
 
   let labChanged=false, iqcChanged=false, oqcChanged=false, ipqcChanged=false, fqcChanged=false, ftChanged=false;
-  await withPool(toFetch, SYNC_CONCURRENCY, async row=>{
-    const full = await (await api("/api/report/"+encodeURIComponent(row.id))).json();
-    const rec = adoptServer(full, (await dbGet(row.id)) || {}, row.id);
-    await persistQuiet(rec);
-    if(R && R.id===row.id){ R=rec; paintAll(); }
+  /* 拉回一条之后对屏幕的交代：正开着的那条要重画、记录表要不要重画。逐条和
+     批量两条路共用，别各写一份。 */
+  const shown = async (rec, rowId)=>{
+    if(R && R.id===rowId){ R=rec; relabel(); paintAll(); }
     /* 成品原来没有这个标记，记录表（=落地屏）在同步后不会重画 */
     if((rec.type||"fqc")==="fqc") fqcChanged=true;
     if(!$("#lab").hidden){
       if(rec.id===LAB_STD_ID && Array.isArray(rec.std)){ LAB_STD=rec.std; labPaintAll(); }
-      else if(LR && LR.id===row.id){ await labLoad(row.id); labChanged=true; }
+      else if(LR && LR.id===rowId){ await labLoad(rowId); labChanged=true; }
       else if(rec.type==="lab"){ labChanged=true; }
     }
     if(!$("#iqc").hidden){
       if(rec.id===IQC_MAT_ID && Array.isArray(rec.mat)){ IQC_MAT=rec.mat; iqcMatReindex(); iqcFillCatFilter(); }
-      else if(IR && IR.id===row.id){ await iqcLoad(row.id); }
+      else if(IR && IR.id===rowId){ await iqcLoad(rowId); }
       else if(rec.type==="iqc"){ iqcChanged=true; }
     }
     if(!$("#oqc").hidden){
-      if(OR && OR.id===row.id){ await oqcLoad(row.id); }
+      if(OR && OR.id===rowId){ await oqcLoad(rowId); }
       else if(rec.type==="oqc"){ oqcChanged=true; }
     }
     if(!$("#ipqc").hidden){
       if(rec.id===PM_ID && Array.isArray(rec.mat)){ PMAT=rec.mat; pmReindex(); }
-      else if(PR && PR.id===row.id){ await ipqcLoad(row.id); }
+      else if(PR && PR.id===rowId){ await ipqcLoad(rowId); }
       else if(rec.type==="ipqc"){ ipqcChanged=true; }
     }
     if(!$("#cfr1633").hidden){
-      if(FT && FT.id===row.id){ await ftLoad(row.id); }
+      if(FT && FT.id===rowId){ await ftLoad(rowId); }
       else if(rec.type==="cfr1633"){ ftChanged=true; }
     }
-  });
+  };
+  /* 逐条拉：原来的做法，一条一个请求。现在是**后备**：只有一条要拉时直接走它
+     （平时 60 秒一轮多半就 0~几条，行为跟以前一模一样），批量那条路失败时也退回它。 */
+  const pullOne = async row=>{
+    const full = await (await api("/api/report/"+encodeURIComponent(row.id))).json();
+    const rec = adoptServer(full, (await dbGet(row.id)) || {}, row.id);
+    await persistQuiet(rec);
+    await shown(rec, row.id);
+  };
+  /* 批量拉：/api/reports?ids= 一次 SYNC_BATCH 条。首次同步要拉上千条，原来一条
+     一个请求，时间几乎全耗在往返上（实验室 1,500 条 = 1,500 次往返）。
+
+     写本地也是**一批一个事务**：读旧记录、合并、写回都在同一个 readwrite 事务里，
+     原子的。顺带堵了逐条那条路上的一个小窗口：拉的这几秒里人要是改了这条
+     （本地 updatedAt≠syncedAt），就**不覆盖**，留给下一轮推上去 —— 跟 toFetch 那条
+     「手上有没推的改动就别拿服务端的」是同一个判据，只是在写入那一刻再验一遍。
+
+     任何一批出错（老版本服务端没有这个接口、超时、半路断网）就整批退回逐条拉，
+     最差跟以前一样慢，不会拉不下来。401 例外：那是登录过期，逐条也一样过不去 ——
+     api() 已经把 SYNC.err 置成 "auth"，跟逐条那条路一样交给它去报，这里直接收手。 */
+  const pullBatch = async batch=>{
+    /* 前面几批已经确认服务端没有批量接口了，后面的别再白问一次 */
+    if(SYNC_BATCH_OFF){ await withPool(batch, SYNC_CONCURRENCY, pullOne); return; }
+    let body;
+    try{
+      body = await (await api("/api/reports?ids="+batch.map(r=>encodeURIComponent(r.id)).join(","),
+                              {bigReply:true})).json();
+      if(!body || !Array.isArray(body.reports)) throw new Error("bad batch reply");
+    }catch(e){
+      if(e && e.status===401) return;
+      /* 404/405/400 = 服务端还是老版本（没有这个路由），这个会话里别再试了 */
+      if(e && (e.status===404 || e.status===405 || e.status===400)) SYNC_BATCH_OFF=true;
+      await withPool(batch, SYNC_CONCURRENCY, pullOne);
+      return;
+    }
+    const done=[];
+    await tx([STORE,META],"readwrite", t=>{
+      const st=t.objectStore(STORE), mt=t.objectStore(META);
+      body.reports.forEach(full=>{
+        if(!full || !full.id) return;
+        const g=st.get(full.id);
+        g.onsuccess=()=>{
+          const base=g.result||{};
+          if(g.result && (base.updatedAt||0)!==(base.syncedAt||0)) return;   /* 期间被人改了 */
+          /* ⚠ try 不能省：IDB 回调里抛异常会让整个事务 abort，而 tx() 只听
+             complete / error —— abort 时 promise 可能永远不落地，syncInflight
+             不清，整个会话的同步就冻住了。一条坏了只跳过这一条，下一轮再来。 */
+          try{
+            const rec=adoptServer(full, base, full.id);
+            st.put(rec); mt.put(metaOf(rec));
+            done.push(rec);
+          }catch(err){}
+        };
+      });
+    });
+    for(const rec of done) await shown(rec, rec.id);
+  };
+  if(toFetch.length<=1 || SYNC_BATCH_OFF){
+    await withPool(toFetch, SYNC_CONCURRENCY, pullOne);
+  }else{
+    const batches=[];
+    for(let i=0;i<toFetch.length;i+=SYNC_BATCH) batches.push(toFetch.slice(i,i+SYNC_BATCH));
+    await withPool(batches, SYNC_BATCH_CONC, pullBatch);
+  }
   if(labChanged){
     await labRefreshList();
     /* 测试表读的是 LAB_CACHE，那份缓存只在打开记录表时装一次 —— 不作废

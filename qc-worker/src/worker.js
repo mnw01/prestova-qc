@@ -259,6 +259,17 @@ async function apiIndex(env, types, wantPhotos) {
   return json({ reports: reports.results || [], photos: photos.results || [] });
 }
 
+/* 单条和批量共用这一个出口 —— 两边返回的形状必须一字不差，客户端拿到哪种都
+   走同一个 adoptServer()。别在批量那边另拼一份。 */
+function reportBody(row, photos) {
+  let payload = {};
+  try { payload = JSON.parse(row.payload); } catch (_) {}
+  return {
+    id: row.id, type: row.type, updatedAt: row.updated_at,
+    deleted: !!row.deleted, payload, photos: photos || [],
+  };
+}
+
 async function apiGetReport(env, id) {
   const row = await env.DB.prepare(
     "SELECT id,type,item_no,po,updated_at,deleted,payload FROM reports WHERE id=?"
@@ -267,11 +278,43 @@ async function apiGetReport(env, id) {
   const ph = await env.DB.prepare(
     "SELECT slot,updated_at,size,deleted FROM photos WHERE report_id=?"
   ).bind(id).all();
-  let payload = {};
-  try { payload = JSON.parse(row.payload); } catch (_) {}
+  return json(reportBody(row, ph.results));
+}
+
+/* GET /api/reports?ids=a,b,c —— 一次拿多条完整记录，给首次同步用。
+   原来首次同步是一条一个请求（实验室 1,500 条 = 1,500 次往返），时间几乎全耗在
+   往返上。这里一次最多 REPORTS_BATCH 条，两条查询拿完（记录 + 照片行）。
+   读的行数跟逐条拿完全一样，D1 读行数不增加。
+
+   ⚠ 上限 50 不是随手定的：D1 一条查询最多 100 个绑定参数，IN (?,?,…) 一个 id
+   占一个，留一半余量。客户端那边的分批大小（SYNC_BATCH）跟这里对齐。
+
+   权限跟单条 GET 一样：任何登录角色都能读（观察者也是 GET，不受那道写闸影响）。
+   不存在的 id 不报错，放进 missing 里 —— 单条接口回 404，客户端按「这条没了」
+   处理；批量里一条没了不该拖垮整批。 */
+const REPORTS_BATCH = 50;
+async function apiGetReports(env, raw) {
+  const ids = [...new Set(String(raw || "").split(",").map((s) => s.trim()).filter(Boolean))];
+  if (!ids.length) return json({ error: "no_ids" }, 400);
+  if (ids.length > REPORTS_BATCH) return json({ error: "too_many", max: REPORTS_BATCH }, 400);
+  if (!ids.every((id) => ID_RE.test(id))) return json({ error: "bad_id" }, 400);
+  const q = ids.map(() => "?").join(",");
+  const rows = (await env.DB.prepare(
+    `SELECT id,type,item_no,po,updated_at,deleted,payload FROM reports WHERE id IN (${q})`
+  ).bind(...ids).all()).results || [];
+  const phs = (await env.DB.prepare(
+    `SELECT report_id,slot,updated_at,size,deleted FROM photos WHERE report_id IN (${q})`
+  ).bind(...ids).all()).results || [];
+  const byReport = new Map();
+  for (const r of phs) {
+    const { report_id, ...rest } = r;
+    if (!byReport.has(report_id)) byReport.set(report_id, []);
+    byReport.get(report_id).push(rest);
+  }
+  const found = new Set(rows.map((r) => r.id));
   return json({
-    id: row.id, type: row.type, updatedAt: row.updated_at,
-    deleted: !!row.deleted, payload, photos: ph.results || [],
+    reports: rows.map((r) => reportBody(r, byReport.get(r.id))),
+    missing: ids.filter((id) => !found.has(id)),
   });
 }
 
@@ -597,6 +640,11 @@ export default {
 
       if (seg[1] === "index" && m === "GET")
         return apiIndex(env, parseTypes(url), url.searchParams.get("v") !== "2");
+
+      if (seg[1] === "reports" && !seg[2]) {
+        if (m === "GET") return apiGetReports(env, url.searchParams.get("ids"));
+        return json({ error: "method" }, 405);
+      }
 
       if (seg[1] === "report" && seg[2]) {
         const id = decodeURIComponent(seg[2]);

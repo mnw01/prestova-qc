@@ -381,6 +381,51 @@ console.log("\n— 提交锁定：只有管理员能改已锁的记录 —");
      (await photo(qcC, "PUT", "__labstd", "shot1")).status === 403);
 }
 
+console.log("\n— 批量拉取 /api/reports?ids= —");
+{
+  const put = (id, body) => hit("/api/report/" + id, {
+    method: "PUT", ...auth({ "content-type": "application/json" }), body: JSON.stringify(body) });
+  await put("bat-1", { type: "lab", updatedAt: 9100, payload: { fields: { itemNo: "M1", po: "L1" }, lab: { v: { den: ["30"] } } } });
+  await put("bat-2", { type: "iqc", updatedAt: 9200, payload: { fields: { itemNo: "C2", po: "S2" } } });
+  await hit("/api/photo/bat-1/front", { method: "PUT", ...auth({ "content-type": "image/jpeg", "x-updated-at": "9150" }), body: Buffer.from("img") });
+
+  const r = await hit("/api/reports?ids=bat-1,bat-2,nope-9", auth());
+  const b = await r.json();
+  ok("200 + 两条都回来", r.status === 200 && b.reports.length === 2);
+  ok("不存在的 id 进 missing，不拖垮整批", JSON.stringify(b.missing) === JSON.stringify(["nope-9"]));
+
+  /* 跟单条接口逐字段一致 —— 客户端两种都走同一个 adoptServer() */
+  for (const id of ["bat-1", "bat-2"]) {
+    const single = await (await hit("/api/report/" + id, auth())).json();
+    const inBatch = b.reports.find((x) => x.id === id);
+    ok(`${id}：批量和单条返回完全一致`, JSON.stringify(inBatch) === JSON.stringify(single),
+       JSON.stringify(inBatch) + " vs " + JSON.stringify(single));
+  }
+  ok("照片行跟着自己那条，没串到别的记录",
+     b.reports.find((x) => x.id === "bat-1").photos.length === 1 &&
+     b.reports.find((x) => x.id === "bat-2").photos.length === 0);
+
+  const dup = await (await hit("/api/reports?ids=bat-1,bat-1", auth())).json();
+  ok("重复 id 只回一条", dup.reports.length === 1);
+
+  const many = Array.from({ length: 51 }, (_, i) => "x" + i).join(",");
+  ok("超过 50 条 → 400", (await hit("/api/reports?ids=" + many, auth())).status === 400);
+  ok("正好 50 条 → 200", (await hit("/api/reports?ids=" + Array.from({ length: 50 }, (_, i) => "x" + i).join(","), auth())).status === 200);
+  ok("没给 ids → 400", (await hit("/api/reports", auth())).status === 400);
+  ok("坏 id → 400", (await hit("/api/reports?ids=bat-1,a%20b", auth())).status === 400);
+  ok("没登录 → 401", (await hit("/api/reports?ids=bat-1")).status === 401);
+  ok("POST → 405", (await hit("/api/reports?ids=bat-1", { method: "POST", ...auth() })).status === 405);
+
+  /* 观察者只读，批量拉取也是 GET，得能用 */
+  const envV = { ...env, QC_VIEWER_PASSCODE: "look1111" };
+  const lv = await worker.fetch(new Request("https://qc.example.com/api/login", { method: "POST",
+    body: JSON.stringify({ passcode: "look1111", role: "viewer" }), headers: { "content-type": "application/json" } }), envV);
+  const vck = (lv.headers.getSetCookie ? lv.headers.getSetCookie() : [lv.headers.get("set-cookie")])
+    .map((c) => c.split(";")[0]).join("; ");
+  const vr = await worker.fetch(new Request("https://qc.example.com/api/reports?ids=bat-1", { headers: { cookie: vck } }), envV);
+  ok("观察者能批量拉", vr.status === 200 && (await vr.json()).reports.length === 1);
+}
+
 console.log("\n— input validation —");
 {
   ok("bad report id rejected", (await hit("/api/report/..%2Fetc", auth())).status === 400);

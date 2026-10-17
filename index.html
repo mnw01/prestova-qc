@@ -9110,7 +9110,7 @@ const BIG_BODY = 128 * 1024;
 async function api(path, opts={}){
   const ac = new AbortController();
   const bytes = opts.body ? (opts.body.size || opts.body.length || 0) : 0;
-  const budget = bytes > BIG_BODY ? API_TIMEOUT_UPLOAD : API_TIMEOUT;
+  const budget = (opts.bigReply || bytes > BIG_BODY) ? API_TIMEOUT_UPLOAD : API_TIMEOUT;
   const deadline = Date.now() + budget;
   const asTimeout = e => (e && e.name==="AbortError") ? new Error("timeout") : e;
   const arm = () => setTimeout(()=>ac.abort(), Math.max(0, deadline - Date.now()));
@@ -9150,6 +9150,8 @@ async function withPool(items, limit, fn){
   return results;
 }
 const SYNC_CONCURRENCY = 10;
+const SYNC_BATCH = 50, SYNC_BATCH_CONC = 3;
+let SYNC_BATCH_OFF = false; 
 
 const PAYLOAD_KEYS=["lab","std","iqc","mat","oqc","ipqc","cfr1633","notice"];
 
@@ -9295,36 +9297,78 @@ async function pullAll(){
   }
 
   let labChanged=false, iqcChanged=false, oqcChanged=false, ipqcChanged=false, fqcChanged=false, ftChanged=false;
-  await withPool(toFetch, SYNC_CONCURRENCY, async row=>{
-    const full = await (await api("/api/report/"+encodeURIComponent(row.id))).json();
-    const rec = adoptServer(full, (await dbGet(row.id)) || {}, row.id);
-    await persistQuiet(rec);
-    if(R && R.id===row.id){ R=rec; paintAll(); }
+  const shown = async (rec, rowId)=>{
+    if(R && R.id===rowId){ R=rec; relabel(); paintAll(); }
     if((rec.type||"fqc")==="fqc") fqcChanged=true;
     if(!$("#lab").hidden){
       if(rec.id===LAB_STD_ID && Array.isArray(rec.std)){ LAB_STD=rec.std; labPaintAll(); }
-      else if(LR && LR.id===row.id){ await labLoad(row.id); labChanged=true; }
+      else if(LR && LR.id===rowId){ await labLoad(rowId); labChanged=true; }
       else if(rec.type==="lab"){ labChanged=true; }
     }
     if(!$("#iqc").hidden){
       if(rec.id===IQC_MAT_ID && Array.isArray(rec.mat)){ IQC_MAT=rec.mat; iqcMatReindex(); iqcFillCatFilter(); }
-      else if(IR && IR.id===row.id){ await iqcLoad(row.id); }
+      else if(IR && IR.id===rowId){ await iqcLoad(rowId); }
       else if(rec.type==="iqc"){ iqcChanged=true; }
     }
     if(!$("#oqc").hidden){
-      if(OR && OR.id===row.id){ await oqcLoad(row.id); }
+      if(OR && OR.id===rowId){ await oqcLoad(rowId); }
       else if(rec.type==="oqc"){ oqcChanged=true; }
     }
     if(!$("#ipqc").hidden){
       if(rec.id===PM_ID && Array.isArray(rec.mat)){ PMAT=rec.mat; pmReindex(); }
-      else if(PR && PR.id===row.id){ await ipqcLoad(row.id); }
+      else if(PR && PR.id===rowId){ await ipqcLoad(rowId); }
       else if(rec.type==="ipqc"){ ipqcChanged=true; }
     }
     if(!$("#cfr1633").hidden){
-      if(FT && FT.id===row.id){ await ftLoad(row.id); }
+      if(FT && FT.id===rowId){ await ftLoad(rowId); }
       else if(rec.type==="cfr1633"){ ftChanged=true; }
     }
-  });
+  };
+  const pullOne = async row=>{
+    const full = await (await api("/api/report/"+encodeURIComponent(row.id))).json();
+    const rec = adoptServer(full, (await dbGet(row.id)) || {}, row.id);
+    await persistQuiet(rec);
+    await shown(rec, row.id);
+  };
+  const pullBatch = async batch=>{
+    if(SYNC_BATCH_OFF){ await withPool(batch, SYNC_CONCURRENCY, pullOne); return; }
+    let body;
+    try{
+      body = await (await api("/api/reports?ids="+batch.map(r=>encodeURIComponent(r.id)).join(","),
+                              {bigReply:true})).json();
+      if(!body || !Array.isArray(body.reports)) throw new Error("bad batch reply");
+    }catch(e){
+      if(e && e.status===401) return;
+      if(e && (e.status===404 || e.status===405 || e.status===400)) SYNC_BATCH_OFF=true;
+      await withPool(batch, SYNC_CONCURRENCY, pullOne);
+      return;
+    }
+    const done=[];
+    await tx([STORE,META],"readwrite", t=>{
+      const st=t.objectStore(STORE), mt=t.objectStore(META);
+      body.reports.forEach(full=>{
+        if(!full || !full.id) return;
+        const g=st.get(full.id);
+        g.onsuccess=()=>{
+          const base=g.result||{};
+          if(g.result && (base.updatedAt||0)!==(base.syncedAt||0)) return; 
+          try{
+            const rec=adoptServer(full, base, full.id);
+            st.put(rec); mt.put(metaOf(rec));
+            done.push(rec);
+          }catch(err){}
+        };
+      });
+    });
+    for(const rec of done) await shown(rec, rec.id);
+  };
+  if(toFetch.length<=1 || SYNC_BATCH_OFF){
+    await withPool(toFetch, SYNC_CONCURRENCY, pullOne);
+  }else{
+    const batches=[];
+    for(let i=0;i<toFetch.length;i+=SYNC_BATCH) batches.push(toFetch.slice(i,i+SYNC_BATCH));
+    await withPool(batches, SYNC_BATCH_CONC, pullBatch);
+  }
   if(labChanged){
     await labRefreshList();
     if(!$("#lsheetv").hidden){ await labLoadAll(true); labFillRecModels(); labRenderRec(); }
