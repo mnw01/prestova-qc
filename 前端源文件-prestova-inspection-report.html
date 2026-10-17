@@ -508,10 +508,16 @@ input,textarea,button,select{font:inherit;color:inherit}
   padding:3px 8px;cursor:pointer;font-variant-numeric:tabular-nums;background:transparent;
 }
 /* 它一直都是 <button>、一直能点一下立即同步，但写着「已同步 14:30」的时候
-   看着就是个状态标签，现场没人知道能点。加个 ⟳ 和 hover 底色把这件事说出来。
+   看着就是个状态标签，现场没人知道能点。加个同步图标和 hover 底色把这件事说出来。
    用 ::before 而不是拼进 textContent —— paintSyncInto 每次同步都会重写文字，
    拼进去要在四个分支里各写一遍，还会跟 i18n 的词典键打架。 */
-.bar .sync::before{content:"⟳";margin-right:4px;opacity:.7;display:inline-block}
+/* 图标是「同步」双箭头（两段弧、两个箭头首尾相追），画成 SVG 当遮罩、底色取 currentColor ——
+   原来是字符「⟳」，长相跟着字体走，Windows 上又细又小、偏在一边（用户 2026-10-17 嫌怪）。
+   大小用 em 跟着按钮字号走，颜色跟着按钮的状态色走。 */
+.bar .sync::before{content:"";width:1.15em;height:1.15em;margin-right:5px;display:inline-block;vertical-align:-.2em;
+  background:currentColor;opacity:.85;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.6 10.5A7.5 7.5 0 0 1 17.8 7.3l1.7 1.6'/%3E%3Cpath d='M19.5 4.6v4.3h-4.3'/%3E%3Cpath d='M19.4 13.5a7.5 7.5 0 0 1-13.2 3.2l-1.7-1.6'/%3E%3Cpath d='M4.5 19.4v-4.3h4.3'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.6 10.5A7.5 7.5 0 0 1 17.8 7.3l1.7 1.6'/%3E%3Cpath d='M19.5 4.6v4.3h-4.3'/%3E%3Cpath d='M19.4 13.5a7.5 7.5 0 0 1-13.2 3.2l-1.7-1.6'/%3E%3Cpath d='M4.5 19.4v-4.3h4.3'/%3E%3C/svg%3E") center/contain no-repeat}
 /* 真正在跑的那一轮（SYNC.busy）⟳ 转起来。只认 .spin，不认 .busy —— .busy 同时
    用在「N 条待同步」上，那是在排队、不是在跑，转起来会让人以为一直卡在同步中。
    inline-block 是 transform 生效的前提；系统开了「减少动态效果」时，全局那条
