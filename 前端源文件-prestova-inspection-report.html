@@ -511,7 +511,13 @@ input,textarea,button,select{font:inherit;color:inherit}
    看着就是个状态标签，现场没人知道能点。加个 ⟳ 和 hover 底色把这件事说出来。
    用 ::before 而不是拼进 textContent —— paintSyncInto 每次同步都会重写文字，
    拼进去要在四个分支里各写一遍，还会跟 i18n 的词典键打架。 */
-.bar .sync::before{content:"⟳";margin-right:4px;opacity:.7}
+.bar .sync::before{content:"⟳";margin-right:4px;opacity:.7;display:inline-block}
+/* 真正在跑的那一轮（SYNC.busy）⟳ 转起来。只认 .spin，不认 .busy —— .busy 同时
+   用在「N 条待同步」上，那是在排队、不是在跑，转起来会让人以为一直卡在同步中。
+   inline-block 是 transform 生效的前提；系统开了「减少动态效果」时，全局那条
+   prefers-reduced-motion 会把动画关掉，⟳ 静止不动，文字照样写「同步中…」。 */
+.bar .sync.spin::before{opacity:1;animation:syncspin .9s linear infinite}
+@keyframes syncspin{to{transform:rotate(360deg)}}
 .bar .sync:hover{background:color-mix(in srgb,var(--ink) 9%,transparent)}
 .bar .sync.ok{color:var(--pass);border-color:color-mix(in srgb,var(--pass) 32%,transparent)}
 .bar .sync.busy{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 32%,transparent)}
@@ -12690,7 +12696,7 @@ function paintSyncInto(el){
     el.classList.add("off");
     el.textContent = tr("离线") + (SYNC.pending ? " · "+SYNC.pending+" "+tr("条待同步") : "");
   }else if(SYNC.busy){
-    el.classList.add("busy"); el.textContent=tr("同步中…");
+    el.classList.add("busy","spin"); el.textContent=tr("同步中…");
   }else if(SYNC.err==="net"){
     el.classList.add("bad"); el.textContent=tr("同步失败 · 点一下重试");
   }else if(SYNC.pending){

@@ -414,7 +414,9 @@ input,textarea,button,select{font:inherit;color:inherit}
   font-size:11.5px;white-space:nowrap;border:1px solid transparent;border-radius:3px;
   padding:3px 8px;cursor:pointer;font-variant-numeric:tabular-nums;background:transparent;
 }
-.bar .sync::before{content:"⟳";margin-right:4px;opacity:.7}
+.bar .sync::before{content:"⟳";margin-right:4px;opacity:.7;display:inline-block}
+.bar .sync.spin::before{opacity:1;animation:syncspin .9s linear infinite}
+@keyframes syncspin{to{transform:rotate(360deg)}}
 .bar .sync:hover{background:color-mix(in srgb,var(--ink) 9%,transparent)}
 .bar .sync.ok{color:var(--pass);border-color:color-mix(in srgb,var(--pass) 32%,transparent)}
 .bar .sync.busy{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 32%,transparent)}
@@ -9619,7 +9621,7 @@ function paintSyncInto(el){
     el.classList.add("off");
     el.textContent = tr("离线") + (SYNC.pending ? " · "+SYNC.pending+" "+tr("条待同步") : "");
   }else if(SYNC.busy){
-    el.classList.add("busy"); el.textContent=tr("同步中…");
+    el.classList.add("busy","spin"); el.textContent=tr("同步中…");
   }else if(SYNC.err==="net"){
     el.classList.add("bad"); el.textContent=tr("同步失败 · 点一下重试");
   }else if(SYNC.pending){

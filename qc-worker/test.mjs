@@ -424,6 +424,15 @@ console.log("\n— 批量拉取 /api/reports?ids= —");
     .map((c) => c.split(";")[0]).join("; ");
   const vr = await worker.fetch(new Request("https://qc.example.com/api/reports?ids=bat-1", { headers: { cookie: vck } }), envV);
   ok("观察者能批量拉", vr.status === 200 && (await vr.json()).reports.length === 1);
+
+  /* 管理员同样能拉（上面默认 cookie 是 QC） */
+  const envA = { ...env, QC_ADMIN_PASSCODE: "boss2222" };
+  const la = await worker.fetch(new Request("https://qc.example.com/api/login", { method: "POST",
+    body: JSON.stringify({ passcode: "boss2222", role: "admin" }), headers: { "content-type": "application/json" } }), envA);
+  const ack = (la.headers.getSetCookie ? la.headers.getSetCookie() : [la.headers.get("set-cookie")])
+    .map((c) => c.split(";")[0]).join("; ");
+  const ar = await worker.fetch(new Request("https://qc.example.com/api/reports?ids=bat-1,bat-2", { headers: { cookie: ack } }), envA);
+  ok("管理员能批量拉", ar.status === 200 && (await ar.json()).reports.length === 2);
 }
 
 console.log("\n— input validation —");

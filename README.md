@@ -26,7 +26,7 @@ QC 用手机在车间录入，**断网照常干活，有网自动同步**；管�
 
 ```bash
 node build-standalone.js        # 改完前端：构建（含四道检查）
-node qc-worker/test.mjs         # 服务端测试（160 项）
+node qc-worker/test.mjs         # 服务端测试（161 项）
 ```
 
 **改前端只改 `前端源文件-prestova-inspection-report.html` 这一个文件。**
