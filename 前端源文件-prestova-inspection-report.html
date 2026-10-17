@@ -3236,6 +3236,24 @@ body.sn-on #oback,body.sn-on #ftback,body.sn-on #lback{display:none}
 #home .hd-crumb{flex:1 1 auto;min-width:0;font-size:13px;font-weight:500;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #home .hd-crumb b{color:var(--ink);font-weight:500}
 #home .hd-date{font-size:13px;font-weight:500;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* 同步状态点（用户 2026-10-17 定的五态）：绿 = 已同步，黄闪 = 同步中，黄 = 有待同步，
+   红 = 失败 / 推不上去，灰 = 离线。文字在悬停提示里（手机长按），点一下 = 立即同步 */
+#home .hd-sync{flex:0 0 auto;width:28px;height:28px;padding:0;border:0;border-radius:50%;background:transparent;
+  cursor:pointer;display:grid;place-items:center;-webkit-touch-callout:none;user-select:none}
+#home .hd-sync:hover{background:var(--sunk)}
+#home .hd-sync[hidden]{display:none}
+#home .hd-sync i{width:9px;height:9px;border-radius:50%;background:var(--ink-3);
+  box-shadow:0 0 0 3px color-mix(in srgb,currentColor 18%,transparent)}
+#home .hd-sync.ok{color:#2f9e63}   #home .hd-sync.ok i{background:#2f9e63}
+#home .hd-sync.busy,#home .hd-sync.wait{color:#e0a100} #home .hd-sync.busy i,#home .hd-sync.wait i{background:#e0a100}
+#home .hd-sync.bad{color:#d1453b}  #home .hd-sync.bad i{background:#d1453b}
+#home .hd-sync.off{color:var(--ink-3)} #home .hd-sync.off i{background:var(--ink-3)}
+#home .hd-sync.busy i{animation:hdSyncBlink 1s ease-in-out infinite}
+@keyframes hdSyncBlink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){ #home .hd-sync.busy i{animation:none} }
+/* 手机长按出来的那句说明 */
+/* 两个类叠起来：要压过后面 .hd-tip 那条 translate(-50%,-100%)（同特异性、它写在后面） */
+#home .hd-tip.hd-synctip{position:fixed;z-index:60;transform:translate(-100%,0)}
 #home .hd-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin-top:32px}
 #home .hd-title .ic{display:none}
 #home .hd-title h1{font-family:var(--sans);font-size:20px;font-weight:600;color:var(--ink);letter-spacing:-.01em;line-height:1.25}
@@ -3427,6 +3445,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   <div class="hd-top">
     <button type="button" class="hmenu" data-snmenu title="菜单" aria-label="菜单"></button>
     <div class="hd-crumb">质检管理系统 / <b>首页看板</b></div>
+    <button type="button" class="hd-sync" id="hdsync" hidden aria-label="同步状态"><i></i></button>
     <span class="hd-date" id="hddate"></span>
   </div>
   <div class="hd-title"><span class="ic" id="hdtic"></span><h1>首页看板</h1><p class="hd-lede" id="hdlede">本月质检概况</p><button type="button" class="hd-back" id="hdback" hidden>回到本月</button><span class="hd-scope" id="hdscope" hidden></span></div>
@@ -3438,6 +3457,7 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
     <h2 id="hdmodsh">各板块本月</h2>
     <div class="hd-mods" id="hdmods"></div>
     <div class="hd-tip hd-sptip" id="hdsptip" hidden></div>
+    <div class="hd-tip hd-synctip" id="hdsynctip" hidden></div>
   </section>
   <!-- 不合格日历放在最近的报告上面，两块都整行。都挂 .recent：小标题同一条规则，
        上下间距也是 .recent 自带的 margin-top。 -->
@@ -5785,6 +5805,26 @@ $("#back").addEventListener("click",()=>{
   else location.hash="#/";                 /* 已经在记录表了，才回首页 */
 });
 $("#sync").addEventListener("click",()=>{ SYNC.err=null; syncNow(); });
+(()=>{
+  const b=$("#hdsync"), tip=$("#hdsynctip"); if(!b||!tip) return;
+  let timer=0, longed=false, hideT=0;
+  const showTip=()=>{
+    tip.textContent=b.title; tip.hidden=false;
+    const r=b.getBoundingClientRect();
+    tip.style.left=r.right+"px"; tip.style.top=(r.bottom+6)+"px";
+    clearTimeout(hideT); hideT=setTimeout(()=>{ tip.hidden=true; },2500);
+  };
+  b.addEventListener("pointerdown",e=>{
+    longed=false; if(e.pointerType==="mouse") return;
+    timer=setTimeout(()=>{ longed=true; showTip(); },450);
+  });
+  ["pointerup","pointercancel","pointerleave"].forEach(t=>b.addEventListener(t,()=>clearTimeout(timer)));
+  b.addEventListener("contextmenu",e=>e.preventDefault());   /* 长按别弹系统菜单 */
+  b.addEventListener("click",e=>{
+    if(longed){ e.preventDefault(); longed=false; return; }
+    SYNC.err=null; syncNow();
+  });
+})();
 $("#prt").addEventListener("click",()=>window.print());
 
 /* ── 记录表：合格/不合格总览 ──────────────────────────────────────
@@ -12686,6 +12726,25 @@ async function refreshPending(){
 
 function paintSync(){
   [$("#sync"),$("#lsync"),$("#isync"),$("#osync"),$("#psync"),$("#ftsync")].forEach(n=>n&&paintSyncInto(n));
+  paintHomeSync();
+}
+/* 首页顶栏那颗点：判断跟 paintSyncInto 一模一样（含先后顺序），只是把文字收进提示里、
+   颜色按五态分：已同步绿、同步中黄闪、有待同步黄、失败 / 推不上去红、离线灰 */
+function paintHomeSync(){
+  const el=$("#hdsync"); if(!el) return;
+  if(!SYNC.enabled){ el.hidden=true; return; }
+  el.hidden=false;
+  const p=n=>String(n).padStart(2,"0");
+  let cls, txt;
+  if(!navigator.onLine){ cls="off"; txt=tr("离线")+(SYNC.pending ? " · "+SYNC.pending+" "+tr("条待同步") : ""); }
+  else if(SYNC.busy){ cls="busy"; txt=tr("同步中…"); }
+  else if(SYNC.err==="net"){ cls="bad"; txt=tr("同步失败 · 点一下重试"); }
+  else if(SYNC.pending){ cls="wait"; txt=SYNC.pending+" "+tr("条待同步"); }
+  else if(SYNC.stuck){ cls="bad"; txt=SYNC.stuck+" "+tr("条推不上去"); }
+  else{ const d=new Date(SYNC.at||Date.now()); cls="ok"; txt=tr("已同步")+" "+p(d.getHours())+":"+p(d.getMinutes()); }
+  el.className="hd-sync "+cls;
+  el.title=txt; el.setAttribute("aria-label",txt);
+  const tip=$("#hdsynctip"); if(tip && !tip.hidden) tip.textContent=txt;
 }
 function paintSyncInto(el){
   if(!SYNC.enabled){ el.hidden=true; return; }
@@ -13477,6 +13536,7 @@ const I18N_ID={
   "合计": "Total",
   "同一支可能同时超几项": "Satu sampel bisa NG di beberapa item sekaligus",
   "同步中…": "Sinkronisasi…",
+  "同步状态": "Status sinkron",
   "同步失败 · 点一下重试": "Sinkron gagal · klik untuk coba lagi",
   "同步状态 — 点一下立即同步": "Status sinkron — klik untuk sinkron sekarang",
   "品号": "Kode Barang",
