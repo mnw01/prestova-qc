@@ -6999,8 +6999,10 @@ async function iqcDashAgg(){
               byCat:new Map(), bySupplier:new Map(), items:new Map() };
   IQC_ITEMS.forEach(it=>out.items.set(it.k,{k:it.k,zh:it.zh,n:0,bad:0}));
 
-  for(const m of rows){
-    let rec; try{ rec=await dbGet(m.id); }catch(e){ continue; }
+  /* 一次读完（dbGetMany），不逐条 await */
+  const full=await dbGetMany(rows.map(m=>m.id)).catch(()=>[]);
+  for(const [i,m] of rows.entries()){
+    const rec=full[i];
     if(!rec || isBlankReport(rec)) continue;     /* skip untouched "+ 新批次" leftovers */
     out.batches++;
     const d=parseDMY(m.date);
@@ -8340,8 +8342,8 @@ const ipqcCsvDate = d => toDateInput(d) || (d||"");
 async function ipqcCsv(metas){
   const out=[IPQC_CSV_HEAD];
   let lines=0, used=0;
-  for(const m of metas){
-    let rec; try{ rec=await dbGet(m.id); }catch(e){ continue; }
+  const full=await dbGetMany(metas.map(m=>m.id)).catch(()=>[]);
+  for(const rec of full){
     if(!rec) continue;
     ipqcNorm(rec);
     const f=rec.fields||{}, qty=lnum(f.qty)||0, ds=rec.ipqc.defects;
@@ -8431,8 +8433,10 @@ async function ipqcDashAgg(){
 
   const out={ n:0, qty:0, bad:0, from:null, to:null, months:new Map(),
               byProc:new Map(), byDesc:new Map(), byModel:new Map() };
-  for(const m of rows){
-    let rec; try{ rec=await dbGet(m.id); }catch(e){ continue; }
+  /* 一次读完（dbGetMany），不逐条 await */
+  const full=await dbGetMany(rows.map(m=>m.id)).catch(()=>[]);
+  for(const [i,m] of rows.entries()){
+    const rec=full[i];
     if(!rec) continue;
     ipqcNorm(rec);
     const q=lnum(rec.fields.qty)||0, b=ipqcBad(rec);
