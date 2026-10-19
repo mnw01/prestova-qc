@@ -13,7 +13,7 @@
 
 /* 有意复用的公共外壳（工具栏、批次选择器弹层）—— 这些就是要共用的，不算撞名 */
 const SHARED = new Set([
-  'bar', 'brand', 'caret', 'sp', 'sync', 'stat', 'key', 'off',
+  'bar', 'brand', 'caret', 'sp', 'sync', 'key', 'off',
   'plbox', 'plhead', 'plt', 'pln', 'plx', 'plbody', 'plrow', 'plnm', 'pltm', 'plday',
   'plarrow', 'pldate', 'pltime', 'cur',
   /* 记录表上那排操作按钮（清除筛选 / 导出 / 导入）—— 五个板块有意共用一个样子 */

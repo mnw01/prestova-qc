@@ -536,14 +536,10 @@ input,textarea,button,select{font:inherit;color:inherit}
 /* 手动切到深色（系统是浅色）时也要这几个色 —— 原来只写了跟系统走的那份 */
 :where(:root[data-theme="dark"]) .bar .sync.ok{color:#5fbf8d} :where(:root[data-theme="dark"]) .bar .sync.busy{color:#8fb6f0}
 :where(:root[data-theme="dark"]) .bar .sync.bad{color:#e88b81} :where(:root[data-theme="dark"]) .bar .sync.off{color:#d9b45e}
-.bar .stat{font-size:13px;color:var(--ink-3);white-space:nowrap;font-variant-numeric:tabular-nums}
 /* 下拉弹窗必须显式配色。不写的话 Chrome 用系统默认的浅底画弹窗，字色却从
    <select> 继承过去 —— 深色下就是 #e8ecf3 压白底，选项基本看不见。
    弹窗不参与打印；打印时 --paper/--ink 本来就是白纸黑字，这条照样成立。 */
 .sheet select,.sheet option{background-color:var(--paper);color:var(--ink)}
-@media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .bar .stat{color:#8e8c85}}
-.bar .miss{color:var(--fail)}   /* 只染色不加粗：同一行里「还差…」600、「· 已存」400，粗细切一刀很扎眼 */
-@media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .bar .miss{color:#e88b81}}
 
 /* ── sheet ────────────────────────────────────────────────────────── */
 .wrap{padding:18px 14px 64px;display:flex;flex-direction:column;align-items:center;gap:18px}
@@ -2584,8 +2580,7 @@ table.frec-table tbody tr.draft .lockdot,
   .bar button.danger:hover{background:var(--no);border-color:var(--no);color:#fff}
   /* 跟工具栏里的按钮同档 13px。原来是 12.5px，跟紧挨着的按钮差半像素 ——
      既不算对齐又不像刻意做小，成品那条状态串最长所以最先露出来。 */
-  .bar .stat{font-size:13px;color:var(--ink-3)}
-  .bar .sync{border-radius:var(--r-ctl);font-size:13px}   /* 跟 .stat 和按钮同档，工具栏只留 13/15 两个字号 */
+  .bar .sync{border-radius:var(--r-ctl);font-size:13px}   /* 跟按钮同档，工具栏只留 13/15 两个字号 */
 
   /* 屏幕切换做成分段控件：一整块底 + 当前那格是浮起来的卡。
      不用实心蓝 —— 那是"主操作"的语气，导航不该抢这个位置。 */
@@ -3256,11 +3251,6 @@ body.sn-on #oback,body.sn-on #ftback,body.sn-on #lback{display:none}
 #home .hd-sync.off{color:var(--ink-3)} #home .hd-sync.off i{background:var(--ink-3)}
 #home .hd-sync.busy i{animation:hdSyncBlink 1s ease-in-out infinite}
 @keyframes hdSyncBlink{50%{opacity:.25}}
-/* 板块顶栏不再显示状态说明（还差几项 · 已存 · 15/15 项…），手机电脑都不显示（用户 2026-10-19）：
-   表单上看得到、同步按钮管同步，只占地方。元素留着不删 —— 提交时 lockAsk 从它的
-   textContent 读「还差几项」写进确认框，display:none 不影响读。
-   !important：各板块按 statFor() 设 hidden，别的规则不能再把它露出来 */
-:is(#mod,#iqc,#ipqc,#oqc,#cfr1633,#lab) .bar .stat{display:none!important}
 @media (prefers-reduced-motion:reduce){ #home .hd-sync.busy i{animation:none} }
 /* 手机长按出来的那句说明 */
 /* 两个类叠起来：要压过后面 .hd-tip 那条 translate(-50%,-100%)（同特异性、它写在后面） */
@@ -3515,7 +3505,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   </span>
   <span class="grp">
     <button type="button" class="sync" id="sync" hidden title="同步状态 — 点一下立即同步"></button>
-    <span class="stat" id="stat">—</span>
     <span class="segnav">
       <button type="button" id="frecbtn">记录表</button>
       <button type="button" id="fdashbtn">数据分析</button>
@@ -3763,7 +3752,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   </span>
   <span class="grp">
     <button type="button" class="sync" id="isync" hidden title="同步状态 — 点一下立即同步"></button>
-    <span class="stat" id="istat">—</span>
     <span class="segnav">
       <button type="button" id="irecbtn">记录表</button>
       <button type="button" id="idashbtn">数据分析</button>
@@ -3913,7 +3901,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   </span>
   <span class="grp">
     <button type="button" class="sync" id="psync" hidden title="同步状态 — 点一下立即同步"></button>
-    <span class="stat" id="pstat">—</span>
     <!-- 记录表 / 数据分析做成一组分段控件。**录入屏没有自己的格子** ——
          进录入是点记录表里的行（或「+ 新记录」），回记录表是左边那个「← 返回」，
          跟改版前完全一致，这次只换皮不动导航。
@@ -4039,7 +4026,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   </span>
   <span class="grp">
     <button type="button" class="sync" id="osync" hidden title="同步状态 — 点一下立即同步"></button>
-    <span class="stat" id="ostat">—</span>
     <span class="segnav">
       <button type="button" id="orecbtn">记录表</button>
       <button type="button" id="odashbtn">数据分析</button>
@@ -4211,7 +4197,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   </span>
   <span class="grp">
     <button type="button" class="sync" id="ftsync" hidden title="同步状态 — 点一下立即同步"></button>
-    <span class="stat" id="ftstat">—</span>
     <span class="segnav">
       <button type="button" id="ftrecbtn">记录表</button>
       <button type="button" id="ftdashbtn">数据分析</button>
@@ -4433,7 +4418,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   </span>
   <span class="grp">
     <button type="button" class="sync" id="lsync" hidden title="同步状态 — 点一下立即同步"></button>
-    <span class="stat" id="lstat">—</span>
     <!-- 标准表也是一个屏幕，所以它进分段控件（它是管理员专属，applyRole()
          会把它 hidden，那时候这一组就只剩两格，flex 布局自然收拢）。 -->
     <span class="segnav">
@@ -4888,7 +4872,7 @@ function i18nTextNode(n){
   if(!p || I18N_SKIP_TAG[p.nodeName] || i18nSkip(p)) return;
   const t=I18N.get(raw.trim());
   if(!t) return;
-  /* 前后空白照留 —— 好些地方是 '已存 ' + 时间 这样拼出来的 */
+  /* 前后空白照留 —— 好些地方是「词 + 空格 + 数字」这样拼出来的 */
   const lead=raw.length-raw.replace(/^\s+/,"").length;
   const tail=raw.length-raw.replace(/\s+$/,"").length;
   const next=raw.slice(0,lead)+t+(tail?raw.slice(raw.length-tail):"");
@@ -5510,7 +5494,7 @@ function save(){
     saveWaiters.push(res);
     saveTimer=setTimeout(async()=>{
       /* 1500 而不是默认的 1600：成品这层保存防抖是 500ms 不是 400，凑够端到端 2 秒 */
-      try{ await dbPut(R); relabel(); markSaved(); refreshPending(); scheduleSync(1500); }
+      try{ await dbPut(R); relabel(); refreshPending(); scheduleSync(1500); }
       catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
       const w=saveWaiters; saveWaiters=[]; w.forEach(f=>f());
     },500);
@@ -5522,11 +5506,8 @@ function relabel(){
   if(s) s.textContent=pickLabel(R);
   if($("#picklist") && !$("#picklist").hidden) renderPickList();
 }
-function markSaved(){
-  const d=new Date(R.updatedAt), p=n=>String(n).padStart(2,"0");
-  $("#stat").innerHTML = missingHTML() + '<span> · '+esc(tr("已存"))+' '+p(d.getHours())+":"+p(d.getMinutes())+'</span>';
-}
-function missingHTML(){
+/* 提交时确认框里那句「还差几项」。没缺东西就返回空串，确认框不加这段 */
+function missingText(){
   /* mattress（床垫类型）2026-08-12 加进来的：它现在是报告上要印的正式字段，
      不算进"还差几项"的话检验员容易漏选。存量报告因此会显示还差 1 项——是实话，
      它们确实没有床垫类型。 */
@@ -5535,10 +5516,9 @@ function missingHTML(){
   const allChecks = CHECKS.flatMap(c=>c[2].map(r=>r[0])).concat(["verdict"]);
   miss += allChecks.filter(k=>!R.checks[k]).length;
   const noPhoto = PHOTOS_1.concat(PHOTOS_2).filter(([k])=>!R.photos[k]).length;
-  if(!miss && !noPhoto) return '<span>Complete</span>';
-  return miss ? '<span class="miss">'+esc(tr("还差"))+' '+miss+' '+esc(tr("项"))+' · '+
-                    esc(tr("还差"))+' '+noPhoto+' '+esc(tr("张照片"))+'</span>'
-              : '<span>'+esc(tr("各项已填完"))+' · '+esc(tr("还差"))+' '+noPhoto+' '+esc(tr("张照片"))+'</span>';
+  if(!miss && !noPhoto) return "";
+  return miss ? tr("还差")+' '+miss+' '+tr("项")+' · '+tr("还差")+' '+noPhoto+' '+tr("张照片")
+              : tr("各项已填完")+' · '+tr("还差")+' '+noPhoto+' '+tr("张照片");
 }
 
 document.addEventListener("input",e=>{
@@ -5562,7 +5542,7 @@ document.addEventListener("input",e=>{
 });
 document.addEventListener("change",e=>{
   const t=e.target;
-  if(t.matches("[data-c]")){ R.checks[t.dataset.c]=t.value; markSaved(); save(); }
+  if(t.matches("[data-c]")){ R.checks[t.dataset.c]=t.value; save(); }
 });
 function autoGrow(t){
   if(t.tagName!=="TEXTAREA") return;
@@ -5633,7 +5613,7 @@ function computeDrift(){
 function paintLock(){ paintLockUI(R, ".wrap", "#lockbtn", "#lockbar"); }
 lockGate(".wrap", ()=>!!(R && R.locked));
 $("#lockbtn").addEventListener("click",async()=>{
-  if(!lockAsk(R, "#stat")) return;
+  if(!lockAsk(R, missingText())) return;
   await save();
   paintLock();
   if(!$("#frec").hidden) await frecRender();
@@ -5653,7 +5633,7 @@ function paintAll(){
   document.querySelectorAll("[data-cap]").forEach(i=>{ i.value=capFor(R,i.dataset.cap); });
   $("#tolv").value = R.tol||"1.5";
   PHOTOS_1.concat(PHOTOS_1B,PHOTOS_2).forEach(([k])=>paintSlot(k));
-  computeGW(); computeDrift(); syncTitle(); markSaved();
+  computeGW(); computeDrift(); syncTitle();
 }
 const ofModule = (rows,id) => rows.filter(r=>(r.type||"fqc")===id)
                                   .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
@@ -5856,12 +5836,6 @@ function backLevel(sel, atRec){
   b.textContent = tr(atRec ? "← 板块" : "← 返回");
   b.title       = tr(atRec ? "返回板块" : "返回记录表");
 }
-/* 工具栏那个小状态条说的全是**当前这条记录**的填写进度（还差几项 / N 条不良 /
-   12/15 项 / 已存几点几分）。它挂在共用的 .bar 上，所以记录表、数据分析、
-   标准表这些屏也一直挂着——那几屏上根本没有"当前这条记录"，数字看着像整屏的
-   统计，纯误导。只在录入页显示。 */
-function statFor(sel, atEntry){ const n=$(sel); if(n) n.hidden = !atEntry; }
-
 /* ── 记录表的「范围」：五个板块同一套 ──────────────────────────────────
    记录表原来有多少条画多少条。实测 3 万条时来料一张表 11,010 行、
    12.7 万个 DOM 节点，进板块 1 秒、筛选框敲一下 4~5 秒（桌面，手机乘 3~5）。
@@ -5997,12 +5971,10 @@ function paintLockUI(rec, rootSel, btnSel, barSel){
 /* 问一句再改 rec.locked，改了返回 true（外面负责 save + 重画）。
    statSel 是工具栏那条"还差…"，用来在确认框里提醒一句：
    **没填完只提示、不硬拦** —— 硬拦会逼人乱填凑数。 */
-function lockAsk(rec, statSel){
+function lockAsk(rec, missing){
   if(!rec) return false;
   if(!rec.locked){
-    const st = statSel ? (($(statSel)||{}).textContent||"") : "";
-    const warn = /还差|Kurang/.test(st)
-      ? "\n\n" + st.replace(/[·・]\s*(已存|Tersimpan).*$/,"").trim() : "";
+    const warn = missing ? "\n\n" + missing : "";
     if(!confirm(tr("提交并锁定这份报告？")+warn+"\n\n"+
                 tr("锁定后检验员不能再修改，需要管理员解除。"))) return false;
     rec.locked=Date.now();
@@ -6124,7 +6096,6 @@ function fqcShow(view){
      打印按钮不用管 —— 它已经挪进 .wrap 里，跟着 .wrap 一起显示/隐藏。 */
   $("#lockbtn").hidden = view!=="form" || isViewer();
   backLevel("#back", view==="rec");
-  statFor("#stat",  view==="form");
   if(view==="rec"){ rangeToday("#frec-date"); frecRender(); }
   if(view==="dash"){ fqcDashDefaultRange(); fqcDashRender(); }
   /* 补拉照片：记录表里点一行是 load(id,true)，跳过了照片。要是接着从这里切回
@@ -6593,20 +6564,12 @@ function iqcSave(){
   iqcSaveTimer=setTimeout(async()=>{
     try{
       await dbPut(IR);
-      iqcMarkSaved(); scheduleSync();
+      iqcRelabel(); scheduleSync();
       if(!$("#irec").hidden) await irecRender();
     }catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
   },400);
 }
-function iqcMarkSaved(){
-  const d=new Date(IR.updatedAt), p=n=>String(n).padStart(2,"0");
-  /* 检查项不是每批都要全做（布料看幅宽、海绵看克重），所以这里数的是
-     **勾了几项**，不是"还差几项"——写成"还差 5 项"会逼着人去凑不该做的检查。
-     一项都没勾说明这批还没开始，标红。 */
-  const on=IQC_ITEMS.filter(it=>((IR.iqc.items||{})[it.k]||{}).on).length;
-  $("#istat").innerHTML='<span'+(on?'':' class="miss"')+'>'+on+'/'+IQC_ITEMS.length+' '+
-    esc(tr("检查项"))+'</span><span> · '+esc(tr("已存"))+' '+
-    p(d.getHours())+":"+p(d.getMinutes())+'</span>';
+function iqcRelabel(){
   /* 工具栏上要一直看得见"现在编辑的是哪一批" —— 进板块默认停在记录表之后，
      录入页可能是从列表点进来的，不标出来就不知道自己在改哪条 */
   const lb=$("#ipicklabel"); if(lb) lb.textContent=iqcPickLabel(IR);
@@ -6700,12 +6663,12 @@ $("#iqoverride").addEventListener("change",e=>{
 });
 $("#iqwhy").addEventListener("input",e=>{ IR.iqc.why=e.target.value; iqcSave(); });
 function iqcPaintAll(){
-  iqcPaintHead(); iqcPaintItems(); iqcMarkSaved();
+  iqcPaintHead(); iqcPaintItems(); iqcRelabel();
   paintLockUI(IR, "#iqcv", "#ilockbtn", "#ilockbar");
 }
 lockGate("#iqcv", ()=>!!(IR && IR.locked));
 $("#ilockbtn").addEventListener("click",async()=>{
-  if(!lockAsk(IR, "#istat")) return;
+  if(!lockAsk(IR)) return;
   iqcSave();
   paintLockUI(IR, "#iqcv", "#ilockbtn", "#ilockbar");
 });
@@ -6924,7 +6887,6 @@ function iqcShow(view){
      iqcFillCatFilter() 会保留当前选中项，所以重建不会把筛选条件冲掉；
      不 await，晚一拍填好列表对已经渲染出来的表格没有影响。 */
   backLevel("#iback", view==="rec");
-  statFor("#istat", view==="entry");
   $("#ilockbtn").hidden = view!=="entry" || isViewer();   /* 提交的是"当前这批"，别的屏上没有 */
   if(view==="rec"){ rangeToday("#irec-date"); iqcFillCatFilter(); irecRender(); }
   if(view==="dash"){ iqcDashDefaultRange(); iqcFillCatFilter(); idashRender(); }
@@ -7980,7 +7942,7 @@ function ipqcSave(){
   ipqcSaveTimer=setTimeout(async()=>{
     try{
       await dbPut(PR);
-      ipqcMarkSaved(); scheduleSync();
+      ipqcRelabel(); scheduleSync();
       if(!$("#iprec").hidden) await iprecRender();
     }catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
   },400);
@@ -7990,11 +7952,7 @@ function ipqcPickLabel(m){
   const d=(f.date||"").trim();
   return (d?d+" ":"")+tr(f.ws||"")+" · "+tProc(f.ws,f.proc);
 }
-function ipqcMarkSaved(){
-  const d=new Date(PR.updatedAt), p=n=>String(n).padStart(2,"0");
-  const n=PR.ipqc.defects.length;
-  $("#pstat").innerHTML='<span>'+n+' '+esc(tr("条不良"))+' · '+esc(tr("已存"))+' '+
-    p(d.getHours())+":"+p(d.getMinutes())+'</span>';
+function ipqcRelabel(){
   const lb=$("#ppicklabel"); if(lb) lb.textContent=ipqcPickLabel(PR);
 }
 
@@ -8080,12 +8038,12 @@ function ipqcPaintSum(){
   $("#ip-pass").textContent = qty ? pct(qty-bad,qty)+"%" : "—";
 }
 function ipqcPaintAll(){
-  ipqcPaintHead(); ipqcPaintDefects(); ipqcMarkSaved();
+  ipqcPaintHead(); ipqcPaintDefects(); ipqcRelabel();
   paintLockUI(PR, "#ipqcv", "#plockbtn", "#plockbar");
 }
 lockGate("#ipqcv", ()=>!!(PR && PR.locked));
 $("#plockbtn").addEventListener("click",async()=>{
-  if(!lockAsk(PR, "#pstat")) return;
+  if(!lockAsk(PR)) return;
   ipqcSave();
   paintLockUI(PR, "#ipqcv", "#plockbtn", "#plockbar");
 });
@@ -8105,7 +8063,6 @@ function ipqcShow(view){
      录入屏没有对应的格子，所以那时候两格都不高亮 —— 这本身就是"你在录入页"
      的信号。 */
   backLevel("#pback", view==="rec");
-  statFor("#pstat", view==="entry");
   $("#plockbtn").hidden = view!=="entry" || isViewer();
   if(view==="rec"){ iprecDefaultRange(); iprecRender(); }
   if(view==="dash"){ ipqcDashDefaultRange(); ipdashRender(); }
@@ -8680,7 +8637,7 @@ function oqcSave(){
   oqcSaveTimer=setTimeout(async()=>{
     try{
       await dbPut(OR);
-      oqcMarkSaved(); scheduleSync();
+      oqcRelabel(); scheduleSync();
       if(!$("#orec").hidden) await orecRender();
     }catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
   },400);
@@ -8692,12 +8649,7 @@ function oqcPickLabel(m){
   const cont=(f.container||f.itemNo||"").trim()||tr("未填柜号");   /* 同上：拼接串翻不动，得在这儿过 tr() */
   return (podi?podi+" · ":"")+cont;
 }
-function oqcMarkSaved(){
-  const d=new Date(OR.updatedAt), p=n=>String(n).padStart(2,"0");
-  const n=OR.oqc.goods.length, done=OQC_CHECKS.filter(([k])=>OR.oqc.checks[k].r).length;
-  $("#ostat").innerHTML='<span>'+n+' '+esc(tr("行"))+' · '+esc(tr("检查"))+' '+
-    done+'/'+OQC_CHECKS.length+' · '+esc(tr("已存"))+' '+
-    p(d.getHours())+":"+p(d.getMinutes())+'</span>';
+function oqcRelabel(){
   const lb=$("#opicklabel"); if(lb) lb.textContent=oqcPickLabel(OR);
 }
 
@@ -8842,12 +8794,12 @@ $("#oq-override").addEventListener("change",e=>{
 });
 $("#oq-why").addEventListener("input",e=>{ OR.oqc.why=e.target.value; oqcSave(); });
 function oqcPaintAll(){
-  oqcPaintHead(); oqcPaintGoods(); oqcPaintChecks(); oqcPaintPhotos(); oqcPaintVerdict(); oqcMarkSaved();
+  oqcPaintHead(); oqcPaintGoods(); oqcPaintChecks(); oqcPaintPhotos(); oqcPaintVerdict(); oqcRelabel();
   paintLockUI(OR, "#oqcv", "#olockbtn", "#olockbar");
 }
 lockGate("#oqcv", ()=>!!(OR && OR.locked));
 $("#olockbtn").addEventListener("click",async()=>{
-  if(!lockAsk(OR, "#ostat")) return;
+  if(!lockAsk(OR)) return;
   oqcSave();
   paintLockUI(OR, "#oqcv", "#olockbtn", "#olockbar");
 });
@@ -8890,7 +8842,6 @@ function oqcShow(view){
      分析屏显示「← 板块」却跳去记录表，标签跟行为对不上。制程同款分析屏
      用的也是 view==="rec"。 */
   backLevel("#oback", view==="rec");
-  statFor("#ostat", view==="entry");
   $("#olockbtn").hidden = view!=="entry" || isViewer();
   if(view==="rec"){ rangeToday("#orec-date"); orecRender(); }
   if(view==="dash") oqdashRender();
@@ -9013,7 +8964,7 @@ $("#oq-checks").addEventListener("click",e=>{
   const k=b.dataset.oc, v=b.dataset.ov;
   const c=OR.oqc.checks[k];
   c.r = c.r===v ? "" : v;        /* 再点一下取消，填错了能改回未判 */
-  oqcPaintChecks(); oqcPaintVerdict(); oqcMarkSaved(); oqcSave();
+  oqcPaintChecks(); oqcPaintVerdict(); oqcRelabel(); oqcSave();
 });
 $("#oq-checks").addEventListener("input",e=>{
   const t=e.target; if(!t.matches("[data-onote]")) return;
@@ -9022,7 +8973,7 @@ $("#oq-checks").addEventListener("input",e=>{
 $("#oq-allok").addEventListener("click",()=>{
   /* 正常情况十项全过，一项项点太啰嗦；有问题的再单独点 × 改回来 */
   OQC_CHECKS.forEach(([k])=>{ if(!OR.oqc.checks[k].r) OR.oqc.checks[k].r="ok"; });
-  oqcPaintChecks(); oqcPaintVerdict(); oqcMarkSaved(); oqcSave();
+  oqcPaintChecks(); oqcPaintVerdict(); oqcRelabel(); oqcSave();
 });
 
 /* 照片 —— 自己一套 file input 和 slot 逻辑，不碰 fqc 的 pendingSlot/distribute，
@@ -9810,7 +9761,7 @@ function ftSave(){
   ftSaveTimer=setTimeout(async()=>{
     try{
       await dbPut(FT);
-      ftMarkSaved(); scheduleSync();
+      ftRelabel(); scheduleSync();
       /* 跟来料 / 制程 / 装柜一样：写进库之后再重画记录表（只在它开着时）。
          在记录表上点「提交并锁定」，圆点和压暗要跟着变，见 #ftlockbtn。 */
       if(!$("#ftrec").hidden) await ftrecRender();
@@ -9818,13 +9769,8 @@ function ftSave(){
   },400);
 }
 
-function ftMarkSaved(){
+function ftRelabel(){
   if(!FT) return;
-  const d=new Date(FT.updatedAt), p=n=>String(n).padStart(2,"0");
-  const v=ftVerdict(FT);
-  const txt=v?(v==="合格"?tr("合格"):tr("不合格")):"—";
-  $("#ftstat").innerHTML='<span>'+esc(txt)+' · '+esc(tr("已存"))+" "+
-    p(d.getHours())+":"+p(d.getMinutes())+'</span>';
   const lb=$("#ftpicklabel"); if(lb) lb.textContent=ftPickLabel(FT);
 }
 
@@ -9855,7 +9801,7 @@ function ftPaintAll(){
   ftPaintVerdict();
   ftPaintPhotos();
   ftPaintLock();
-  ftMarkSaved();
+  ftRelabel();
 }
 
 function ftPaintVerdict(){
@@ -10138,7 +10084,6 @@ function ftShow(view){
   $("#ftrecbtn").classList.toggle("cur", view==="rec");
   $("#ftdashbtn").classList.toggle("cur", view==="dash");
   backLevel("#ftback", view==="rec");
-  statFor("#ftstat", view==="entry");
   $("#ftlockbtn").hidden = view!=="entry" || isViewer();
   if(view==="rec"){ ftrecDefaultRange(); ftrecRender(); }
   if(view==="dash"){ ftDashDefaultRange(); ftdashRender(); }
@@ -10396,7 +10341,7 @@ $("#ftdel").addEventListener("click",async()=>{
   toast(tr("已删除"));
 });
 $("#ftlockbtn").addEventListener("click",async()=>{
-  if(!lockAsk(FT, "#ftstat")) return;
+  if(!lockAsk(FT)) return;
   ftSave();
   ftPaintLock();
   /* 记录表的圆点和压暗由 ftSave 写库之后重画。原来在这里直接 ftrecRender()，
@@ -12441,7 +12386,6 @@ async function hydratePhotos(id){
         cur.photos[s]=got[s]; cur.photoAt[s]=svAt(s);
       });
     });
-    if(R && R.id===id) markSaved();
   }
 }
 
@@ -12450,8 +12394,7 @@ async function hydratePhotos(id){
    次网络往返 —— 装柜一条记录最多 30 张照片，仓库那种网速下几十秒很正常。而且它
    在四个调用点全都没有 await，跟 pullAll、pushOne、以及用户自己的 save() 自由
    重叠。把开头那份老快照整条写回去，等于把这段时间里所有人的改动一起抹掉：
-   用户刚填的字段没了，同步刚拉下来的服务端新版本也没了，而 markSaved() 还会亮
-   一句「已保存」，人根本看不出改动被吞了。
+   用户刚填的字段没了，同步刚拉下来的服务端新版本也没了，人根本看不出改动被吞了。
    这么改之后读到写的窗口从几十秒缩到一次 IndexedDB 事务，够用了。 */
 async function patchRec(id, fn){
   const cur = await dbGet(id); if(!cur) return null;
@@ -13046,16 +12989,12 @@ function labSave(){
   labSaveTimer=setTimeout(async()=>{
     try{
       await dbPut(LR);
-      labMarkSaved(); scheduleSync();
+      labRelabel(); scheduleSync();
       await labRefreshList();
     }catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
   },400);
 }
-function labMarkSaved(){
-  const d=new Date(LR.updatedAt), p=n=>String(n).padStart(2,"0");
-  const done=LAB_ITEMS.reduce((n,it)=>n+LR.lab.v[it.k].filter(x=>lnum(x)!=null).length,0);
-  $("#lstat").innerHTML='<span>'+done+'/15 '+esc(tr("项"))+' · '+esc(tr("已存"))+' '+
-    p(d.getHours())+":"+p(d.getMinutes())+'</span>';
+function labRelabel(){
   const lb=$("#lpicklabel"); if(lb) lb.textContent=labLabel(LR);
 }
 function labLabel(r){
@@ -13207,12 +13146,12 @@ function labPaintHead(){
   ["lfat-at","lfat-h","lfat-i"].forEach(id=>{ $("#"+id).disabled=!f.on; });
 }
 function labPaintAll(){
-  labPaintHead(); labPaintGrid(); labMarkSaved();
+  labPaintHead(); labPaintGrid(); labRelabel();
   paintLockUI(LR, "#labv", "#llockbtn", "#llockbar");
 }
 lockGate("#labv", ()=>!!(LR && LR.locked));
 $("#llockbtn").addEventListener("click",async()=>{
-  if(!lockAsk(LR, "#lstat")) return;
+  if(!lockAsk(LR)) return;
   labSave();
   paintLockUI(LR, "#labv", "#llockbtn", "#llockbar");
   /* 在记录表上点的：表上的圆点 / 压暗 / 「查看」实心空心要当场变。
@@ -13617,7 +13556,6 @@ const I18N_ID={
   "提交并锁定这份报告？": "Kirim dan kunci laporan ini?",
   "锁定后检验员不能再修改，需要管理员解除。": "Setelah dikunci, QC tidak bisa mengubah lagi; perlu admin membuka kunci.",
   "解除锁定？解除后检验员可以继续修改这份报告。": "Buka kunci? Setelah dibuka, QC bisa mengubah laporan ini lagi.",
-  "已存": "Tersimpan",
   "已填": "Terisi",
   "，均相符": ", semua sesuai",
   "布套是否起皱或被撕裂？": "Apakah sarung berkerut atau sobek?",
@@ -13773,7 +13711,6 @@ const I18N_ID={
   "机台 / 线别代号": "Kode Mesin / Line",
   "共": "dari total",
   "条": "baris",
-  "条不良": "NG",
   "条待同步": "belum terkirim",
   "条推不上去": "catatan gagal terkirim",
   "条码是否能扫描？": "Apakah barcode bisa discan?",
@@ -14385,7 +14322,6 @@ function labShow(view){
   $(".lwrap",$("#lab")).hidden = (view!=="entry");
   /* 实验室的"记录表"是 sheet 这一屏（海绵物性测试表），不叫 rec */
   backLevel("#lback", view==="sheet");
-  statFor("#lstat", view==="entry");
   $("#llockbtn").hidden = view!=="entry" || isViewer();
   window.scrollTo(0,0);
 }

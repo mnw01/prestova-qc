@@ -431,11 +431,7 @@ input,textarea,button,select{font:inherit;color:inherit}
 }
 :where(:root[data-theme="dark"]) .bar .sync.ok{color:#5fbf8d} :where(:root[data-theme="dark"]) .bar .sync.busy{color:#8fb6f0}
 :where(:root[data-theme="dark"]) .bar .sync.bad{color:#e88b81} :where(:root[data-theme="dark"]) .bar .sync.off{color:#d9b45e}
-.bar .stat{font-size:13px;color:var(--ink-3);white-space:nowrap;font-variant-numeric:tabular-nums}
 .sheet select,.sheet option{background-color:var(--paper);color:var(--ink)}
-@media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .bar .stat{color:#8e8c85}}
-.bar .miss{color:var(--fail)} 
-@media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .bar .miss{color:#e88b81}}
 
 .wrap{padding:18px 14px 64px;display:flex;flex-direction:column;align-items:center;gap:18px}
 @media screen{ #mod #s1{position:relative} #mod #s1 > .fe-x{position:absolute;top:6px;right:6px;padding:3px 7px} }
@@ -1759,7 +1755,6 @@ table.frec-table tbody tr.draft .lockdot,
   .bar button:hover{background:var(--seg-bg);color:var(--ink)}
   .bar button.danger{color:var(--no);border-color:color-mix(in srgb,var(--no) 34%,transparent);background:transparent}
   .bar button.danger:hover{background:var(--no);border-color:var(--no);color:#fff}
-  .bar .stat{font-size:13px;color:var(--ink-3)}
   .bar .sync{border-radius:var(--r-ctl);font-size:13px} 
 
   .segnav{display:inline-flex;gap:2px;background:var(--seg-bg);padding:3px;border-radius:var(--r-seg)}
@@ -2168,7 +2163,6 @@ body.sn-on #oback,body.sn-on #ftback,body.sn-on #lback{display:none}
 #home .hd-sync.off{color:var(--ink-3)} #home .hd-sync.off i{background:var(--ink-3)}
 #home .hd-sync.busy i{animation:hdSyncBlink 1s ease-in-out infinite}
 @keyframes hdSyncBlink{50%{opacity:.25}}
-:is(#mod,#iqc,#ipqc,#oqc,#cfr1633,#lab) .bar .stat{display:none!important}
 @media (prefers-reduced-motion:reduce){ #home .hd-sync.busy i{animation:none} }
 #home .hd-tip.hd-synctip{position:fixed;z-index:60;transform:translate(-100%,0)}
 #home .hd-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin-top:32px}
@@ -2382,7 +2376,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   </span>
   <span class="grp">
     <button type="button" class="sync" id="sync" hidden title="同步状态 — 点一下立即同步"></button>
-    <span class="stat" id="stat">—</span>
     <span class="segnav">
       <button type="button" id="frecbtn">记录表</button>
       <button type="button" id="fdashbtn">数据分析</button>
@@ -2614,7 +2607,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   </span>
   <span class="grp">
     <button type="button" class="sync" id="isync" hidden title="同步状态 — 点一下立即同步"></button>
-    <span class="stat" id="istat">—</span>
     <span class="segnav">
       <button type="button" id="irecbtn">记录表</button>
       <button type="button" id="idashbtn">数据分析</button>
@@ -2761,7 +2753,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   </span>
   <span class="grp">
     <button type="button" class="sync" id="psync" hidden title="同步状态 — 点一下立即同步"></button>
-    <span class="stat" id="pstat">—</span>
     <span class="segnav">
       <button type="button" id="precbtn">记录表</button>
       <button type="button" id="pdashbtn">数据分析</button>
@@ -2880,7 +2871,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   </span>
   <span class="grp">
     <button type="button" class="sync" id="osync" hidden title="同步状态 — 点一下立即同步"></button>
-    <span class="stat" id="ostat">—</span>
     <span class="segnav">
       <button type="button" id="orecbtn">记录表</button>
       <button type="button" id="odashbtn">数据分析</button>
@@ -3043,7 +3033,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   </span>
   <span class="grp">
     <button type="button" class="sync" id="ftsync" hidden title="同步状态 — 点一下立即同步"></button>
-    <span class="stat" id="ftstat">—</span>
     <span class="segnav">
       <button type="button" id="ftrecbtn">记录表</button>
       <button type="button" id="ftdashbtn">数据分析</button>
@@ -3251,7 +3240,6 @@ body.sn-on #home :is(.hd-kpi,.hd-mod,.hd-trend,.hhcard,.rrow):hover{
   </span>
   <span class="grp">
     <button type="button" class="sync" id="lsync" hidden title="同步状态 — 点一下立即同步"></button>
-    <span class="stat" id="lstat">—</span>
     <span class="segnav">
       <button type="button" id="lsheetbtn">记录表</button>
       <button type="button" id="ldashbtn">数据分析</button>
@@ -4130,7 +4118,7 @@ function save(){
   return new Promise(res=>{
     saveWaiters.push(res);
     saveTimer=setTimeout(async()=>{
-      try{ await dbPut(R); relabel(); markSaved(); refreshPending(); scheduleSync(1500); }
+      try{ await dbPut(R); relabel(); refreshPending(); scheduleSync(1500); }
       catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
       const w=saveWaiters; saveWaiters=[]; w.forEach(f=>f());
     },500);
@@ -4141,20 +4129,15 @@ function relabel(){
   if(s) s.textContent=pickLabel(R);
   if($("#picklist") && !$("#picklist").hidden) renderPickList();
 }
-function markSaved(){
-  const d=new Date(R.updatedAt), p=n=>String(n).padStart(2,"0");
-  $("#stat").innerHTML = missingHTML() + '<span> · '+esc(tr("已存"))+' '+p(d.getHours())+":"+p(d.getMinutes())+'</span>';
-}
-function missingHTML(){
+function missingText(){
   const need = ["po","itemNo","inspector","inspDate","desc","mattress","orderQty","inspQty","sizeL","sizeW","sizeH","nw","gw"];
   let miss = need.filter(k=>!(R.fields[k]||"").trim()).length;
   const allChecks = CHECKS.flatMap(c=>c[2].map(r=>r[0])).concat(["verdict"]);
   miss += allChecks.filter(k=>!R.checks[k]).length;
   const noPhoto = PHOTOS_1.concat(PHOTOS_2).filter(([k])=>!R.photos[k]).length;
-  if(!miss && !noPhoto) return '<span>Complete</span>';
-  return miss ? '<span class="miss">'+esc(tr("还差"))+' '+miss+' '+esc(tr("项"))+' · '+
-                    esc(tr("还差"))+' '+noPhoto+' '+esc(tr("张照片"))+'</span>'
-              : '<span>'+esc(tr("各项已填完"))+' · '+esc(tr("还差"))+' '+noPhoto+' '+esc(tr("张照片"))+'</span>';
+  if(!miss && !noPhoto) return "";
+  return miss ? tr("还差")+' '+miss+' '+tr("项")+' · '+tr("还差")+' '+noPhoto+' '+tr("张照片")
+              : tr("各项已填完")+' · '+tr("还差")+' '+noPhoto+' '+tr("张照片");
 }
 
 document.addEventListener("input",e=>{
@@ -4175,7 +4158,7 @@ document.addEventListener("input",e=>{
 });
 document.addEventListener("change",e=>{
   const t=e.target;
-  if(t.matches("[data-c]")){ R.checks[t.dataset.c]=t.value; markSaved(); save(); }
+  if(t.matches("[data-c]")){ R.checks[t.dataset.c]=t.value; save(); }
 });
 function autoGrow(t){
   if(t.tagName!=="TEXTAREA") return;
@@ -4233,7 +4216,7 @@ function computeDrift(){
 function paintLock(){ paintLockUI(R, ".wrap", "#lockbtn", "#lockbar"); }
 lockGate(".wrap", ()=>!!(R && R.locked));
 $("#lockbtn").addEventListener("click",async()=>{
-  if(!lockAsk(R, "#stat")) return;
+  if(!lockAsk(R, missingText())) return;
   await save();
   paintLock();
   if(!$("#frec").hidden) await frecRender();
@@ -4251,7 +4234,7 @@ function paintAll(){
   document.querySelectorAll("[data-cap]").forEach(i=>{ i.value=capFor(R,i.dataset.cap); });
   $("#tolv").value = R.tol||"1.5";
   PHOTOS_1.concat(PHOTOS_1B,PHOTOS_2).forEach(([k])=>paintSlot(k));
-  computeGW(); computeDrift(); syncTitle(); markSaved();
+  computeGW(); computeDrift(); syncTitle();
 }
 const ofModule = (rows,id) => rows.filter(r=>(r.type||"fqc")===id)
                                   .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
@@ -4404,8 +4387,6 @@ function backLevel(sel, atRec){
   b.textContent = tr(atRec ? "← 板块" : "← 返回");
   b.title       = tr(atRec ? "返回板块" : "返回记录表");
 }
-function statFor(sel, atEntry){ const n=$(sel); if(n) n.hidden = !atEntry; }
-
 const RANGE_CAP = 200; 
 
 function recSort(rows, getDate){
@@ -4485,12 +4466,10 @@ function paintLockUI(rec, rootSel, btnSel, barSel){
     else if(ro) bar.textContent = tr("只读账号：可以查看和打印，不能新增或修改。");
   }
 }
-function lockAsk(rec, statSel){
+function lockAsk(rec, missing){
   if(!rec) return false;
   if(!rec.locked){
-    const st = statSel ? (($(statSel)||{}).textContent||"") : "";
-    const warn = /还差|Kurang/.test(st)
-      ? "\n\n" + st.replace(/[·・]\s*(已存|Tersimpan).*$/,"").trim() : "";
+    const warn = missing ? "\n\n" + missing : "";
     if(!confirm(tr("提交并锁定这份报告？")+warn+"\n\n"+
                 tr("锁定后检验员不能再修改，需要管理员解除。"))) return false;
     rec.locked=Date.now();
@@ -4572,7 +4551,6 @@ function fqcShow(view){
   $("#fdashbtn").classList.toggle("cur", view==="dash");
   $("#lockbtn").hidden = view!=="form" || isViewer();
   backLevel("#back", view==="rec");
-  statFor("#stat",  view==="form");
   if(view==="rec"){ rangeToday("#frec-date"); frecRender(); }
   if(view==="dash"){ fqcDashDefaultRange(); fqcDashRender(); }
   if(view==="form" && R && R.id) hydratePhotos(R.id);
@@ -4923,17 +4901,12 @@ function iqcSave(){
   iqcSaveTimer=setTimeout(async()=>{
     try{
       await dbPut(IR);
-      iqcMarkSaved(); scheduleSync();
+      iqcRelabel(); scheduleSync();
       if(!$("#irec").hidden) await irecRender();
     }catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
   },400);
 }
-function iqcMarkSaved(){
-  const d=new Date(IR.updatedAt), p=n=>String(n).padStart(2,"0");
-  const on=IQC_ITEMS.filter(it=>((IR.iqc.items||{})[it.k]||{}).on).length;
-  $("#istat").innerHTML='<span'+(on?'':' class="miss"')+'>'+on+'/'+IQC_ITEMS.length+' '+
-    esc(tr("检查项"))+'</span><span> · '+esc(tr("已存"))+' '+
-    p(d.getHours())+":"+p(d.getMinutes())+'</span>';
+function iqcRelabel(){
   const lb=$("#ipicklabel"); if(lb) lb.textContent=iqcPickLabel(IR);
 }
 function iqcBuildItems(){
@@ -5012,12 +4985,12 @@ $("#iqoverride").addEventListener("change",e=>{
 });
 $("#iqwhy").addEventListener("input",e=>{ IR.iqc.why=e.target.value; iqcSave(); });
 function iqcPaintAll(){
-  iqcPaintHead(); iqcPaintItems(); iqcMarkSaved();
+  iqcPaintHead(); iqcPaintItems(); iqcRelabel();
   paintLockUI(IR, "#iqcv", "#ilockbtn", "#ilockbar");
 }
 lockGate("#iqcv", ()=>!!(IR && IR.locked));
 $("#ilockbtn").addEventListener("click",async()=>{
-  if(!lockAsk(IR, "#istat")) return;
+  if(!lockAsk(IR)) return;
   iqcSave();
   paintLockUI(IR, "#iqcv", "#ilockbtn", "#ilockbar");
 });
@@ -5196,7 +5169,6 @@ function iqcShow(view){
   $("#irecbtn").classList.toggle("cur", view==="rec");
   $("#idashbtn").classList.toggle("cur", view==="dash");
   backLevel("#iback", view==="rec");
-  statFor("#istat", view==="entry");
   $("#ilockbtn").hidden = view!=="entry" || isViewer(); 
   if(view==="rec"){ rangeToday("#irec-date"); iqcFillCatFilter(); irecRender(); }
   if(view==="dash"){ iqcDashDefaultRange(); iqcFillCatFilter(); idashRender(); }
@@ -6092,7 +6064,7 @@ function ipqcSave(){
   ipqcSaveTimer=setTimeout(async()=>{
     try{
       await dbPut(PR);
-      ipqcMarkSaved(); scheduleSync();
+      ipqcRelabel(); scheduleSync();
       if(!$("#iprec").hidden) await iprecRender();
     }catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
   },400);
@@ -6102,11 +6074,7 @@ function ipqcPickLabel(m){
   const d=(f.date||"").trim();
   return (d?d+" ":"")+tr(f.ws||"")+" · "+tProc(f.ws,f.proc);
 }
-function ipqcMarkSaved(){
-  const d=new Date(PR.updatedAt), p=n=>String(n).padStart(2,"0");
-  const n=PR.ipqc.defects.length;
-  $("#pstat").innerHTML='<span>'+n+' '+esc(tr("条不良"))+' · '+esc(tr("已存"))+' '+
-    p(d.getHours())+":"+p(d.getMinutes())+'</span>';
+function ipqcRelabel(){
   const lb=$("#ppicklabel"); if(lb) lb.textContent=ipqcPickLabel(PR);
 }
 
@@ -6177,12 +6145,12 @@ function ipqcPaintSum(){
   $("#ip-pass").textContent = qty ? pct(qty-bad,qty)+"%" : "—";
 }
 function ipqcPaintAll(){
-  ipqcPaintHead(); ipqcPaintDefects(); ipqcMarkSaved();
+  ipqcPaintHead(); ipqcPaintDefects(); ipqcRelabel();
   paintLockUI(PR, "#ipqcv", "#plockbtn", "#plockbar");
 }
 lockGate("#ipqcv", ()=>!!(PR && PR.locked));
 $("#plockbtn").addEventListener("click",async()=>{
-  if(!lockAsk(PR, "#pstat")) return;
+  if(!lockAsk(PR)) return;
   ipqcSave();
   paintLockUI(PR, "#ipqcv", "#plockbtn", "#plockbar");
 });
@@ -6199,7 +6167,6 @@ function ipqcShow(view){
   $("#precbtn").classList.toggle("cur", view==="rec");
   $("#pdashbtn").classList.toggle("cur", view==="dash");
   backLevel("#pback", view==="rec");
-  statFor("#pstat", view==="entry");
   $("#plockbtn").hidden = view!=="entry" || isViewer();
   if(view==="rec"){ iprecDefaultRange(); iprecRender(); }
   if(view==="dash"){ ipqcDashDefaultRange(); ipdashRender(); }
@@ -6695,7 +6662,7 @@ function oqcSave(){
   oqcSaveTimer=setTimeout(async()=>{
     try{
       await dbPut(OR);
-      oqcMarkSaved(); scheduleSync();
+      oqcRelabel(); scheduleSync();
       if(!$("#orec").hidden) await orecRender();
     }catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
   },400);
@@ -6706,12 +6673,7 @@ function oqcPickLabel(m){
   const cont=(f.container||f.itemNo||"").trim()||tr("未填柜号"); 
   return (podi?podi+" · ":"")+cont;
 }
-function oqcMarkSaved(){
-  const d=new Date(OR.updatedAt), p=n=>String(n).padStart(2,"0");
-  const n=OR.oqc.goods.length, done=OQC_CHECKS.filter(([k])=>OR.oqc.checks[k].r).length;
-  $("#ostat").innerHTML='<span>'+n+' '+esc(tr("行"))+' · '+esc(tr("检查"))+' '+
-    done+'/'+OQC_CHECKS.length+' · '+esc(tr("已存"))+' '+
-    p(d.getHours())+":"+p(d.getMinutes())+'</span>';
+function oqcRelabel(){
   const lb=$("#opicklabel"); if(lb) lb.textContent=oqcPickLabel(OR);
 }
 
@@ -6835,12 +6797,12 @@ $("#oq-override").addEventListener("change",e=>{
 });
 $("#oq-why").addEventListener("input",e=>{ OR.oqc.why=e.target.value; oqcSave(); });
 function oqcPaintAll(){
-  oqcPaintHead(); oqcPaintGoods(); oqcPaintChecks(); oqcPaintPhotos(); oqcPaintVerdict(); oqcMarkSaved();
+  oqcPaintHead(); oqcPaintGoods(); oqcPaintChecks(); oqcPaintPhotos(); oqcPaintVerdict(); oqcRelabel();
   paintLockUI(OR, "#oqcv", "#olockbtn", "#olockbar");
 }
 lockGate("#oqcv", ()=>!!(OR && OR.locked));
 $("#olockbtn").addEventListener("click",async()=>{
-  if(!lockAsk(OR, "#ostat")) return;
+  if(!lockAsk(OR)) return;
   oqcSave();
   paintLockUI(OR, "#oqcv", "#olockbtn", "#olockbar");
 });
@@ -6863,7 +6825,6 @@ function oqcShow(view){
   $("#orecbtn").classList.toggle("cur", view==="rec");
   $("#odashbtn").classList.toggle("cur", view==="dash");
   backLevel("#oback", view==="rec");
-  statFor("#ostat", view==="entry");
   $("#olockbtn").hidden = view!=="entry" || isViewer();
   if(view==="rec"){ rangeToday("#orec-date"); orecRender(); }
   if(view==="dash") oqdashRender();
@@ -6971,7 +6932,7 @@ $("#oq-checks").addEventListener("click",e=>{
   const k=b.dataset.oc, v=b.dataset.ov;
   const c=OR.oqc.checks[k];
   c.r = c.r===v ? "" : v; 
-  oqcPaintChecks(); oqcPaintVerdict(); oqcMarkSaved(); oqcSave();
+  oqcPaintChecks(); oqcPaintVerdict(); oqcRelabel(); oqcSave();
 });
 $("#oq-checks").addEventListener("input",e=>{
   const t=e.target; if(!t.matches("[data-onote]")) return;
@@ -6979,7 +6940,7 @@ $("#oq-checks").addEventListener("input",e=>{
 });
 $("#oq-allok").addEventListener("click",()=>{
   OQC_CHECKS.forEach(([k])=>{ if(!OR.oqc.checks[k].r) OR.oqc.checks[k].r="ok"; });
-  oqcPaintChecks(); oqcPaintVerdict(); oqcMarkSaved(); oqcSave();
+  oqcPaintChecks(); oqcPaintVerdict(); oqcRelabel(); oqcSave();
 });
 
 let oqPendingSlot=null;
@@ -7590,19 +7551,14 @@ function ftSave(){
   ftSaveTimer=setTimeout(async()=>{
     try{
       await dbPut(FT);
-      ftMarkSaved(); scheduleSync();
+      ftRelabel(); scheduleSync();
       if(!$("#ftrec").hidden) await ftrecRender();
     }catch(e){ toast(tr("保存失败")); }
   },400);
 }
 
-function ftMarkSaved(){
+function ftRelabel(){
   if(!FT) return;
-  const d=new Date(FT.updatedAt), p=n=>String(n).padStart(2,"0");
-  const v=ftVerdict(FT);
-  const txt=v?(v==="合格"?tr("合格"):tr("不合格")):"—";
-  $("#ftstat").innerHTML='<span>'+esc(txt)+' · '+esc(tr("已存"))+" "+
-    p(d.getHours())+":"+p(d.getMinutes())+'</span>';
   const lb=$("#ftpicklabel"); if(lb) lb.textContent=ftPickLabel(FT);
 }
 
@@ -7630,7 +7586,7 @@ function ftPaintAll(){
   ftPaintVerdict();
   ftPaintPhotos();
   ftPaintLock();
-  ftMarkSaved();
+  ftRelabel();
 }
 
 function ftPaintVerdict(){
@@ -7841,7 +7797,6 @@ function ftShow(view){
   $("#ftrecbtn").classList.toggle("cur", view==="rec");
   $("#ftdashbtn").classList.toggle("cur", view==="dash");
   backLevel("#ftback", view==="rec");
-  statFor("#ftstat", view==="entry");
   $("#ftlockbtn").hidden = view!=="entry" || isViewer();
   if(view==="rec"){ ftrecDefaultRange(); ftrecRender(); }
   if(view==="dash"){ ftDashDefaultRange(); ftdashRender(); }
@@ -8065,7 +8020,7 @@ $("#ftdel").addEventListener("click",async()=>{
   toast(tr("已删除"));
 });
 $("#ftlockbtn").addEventListener("click",async()=>{
-  if(!lockAsk(FT, "#ftstat")) return;
+  if(!lockAsk(FT)) return;
   ftSave();
   ftPaintLock();
 });
@@ -9465,7 +9420,6 @@ async function hydratePhotos(id){
         cur.photos[s]=got[s]; cur.photoAt[s]=svAt(s);
       });
     });
-    if(R && R.id===id) markSaved();
   }
 }
 
@@ -9872,16 +9826,12 @@ function labSave(){
   labSaveTimer=setTimeout(async()=>{
     try{
       await dbPut(LR);
-      labMarkSaved(); scheduleSync();
+      labRelabel(); scheduleSync();
       await labRefreshList();
     }catch(e){ toast(tr("保存失败 — 存储空间可能已满")); }
   },400);
 }
-function labMarkSaved(){
-  const d=new Date(LR.updatedAt), p=n=>String(n).padStart(2,"0");
-  const done=LAB_ITEMS.reduce((n,it)=>n+LR.lab.v[it.k].filter(x=>lnum(x)!=null).length,0);
-  $("#lstat").innerHTML='<span>'+done+'/15 '+esc(tr("项"))+' · '+esc(tr("已存"))+' '+
-    p(d.getHours())+":"+p(d.getMinutes())+'</span>';
+function labRelabel(){
   const lb=$("#lpicklabel"); if(lb) lb.textContent=labLabel(LR);
 }
 function labLabel(r){
@@ -10015,12 +9965,12 @@ function labPaintHead(){
   ["lfat-at","lfat-h","lfat-i"].forEach(id=>{ $("#"+id).disabled=!f.on; });
 }
 function labPaintAll(){
-  labPaintHead(); labPaintGrid(); labMarkSaved();
+  labPaintHead(); labPaintGrid(); labRelabel();
   paintLockUI(LR, "#labv", "#llockbtn", "#llockbar");
 }
 lockGate("#labv", ()=>!!(LR && LR.locked));
 $("#llockbtn").addEventListener("click",async()=>{
-  if(!lockAsk(LR, "#lstat")) return;
+  if(!lockAsk(LR)) return;
   labSave();
   paintLockUI(LR, "#labv", "#llockbtn", "#llockbar");
   if(LAB_VIEW==="sheet" && LAB_CACHE){
@@ -10379,7 +10329,6 @@ const I18N_ID={
   "提交并锁定这份报告？": "Kirim dan kunci laporan ini?",
   "锁定后检验员不能再修改，需要管理员解除。": "Setelah dikunci, QC tidak bisa mengubah lagi; perlu admin membuka kunci.",
   "解除锁定？解除后检验员可以继续修改这份报告。": "Buka kunci? Setelah dibuka, QC bisa mengubah laporan ini lagi.",
-  "已存": "Tersimpan",
   "已填": "Terisi",
   "，均相符": ", semua sesuai",
   "布套是否起皱或被撕裂？": "Apakah sarung berkerut atau sobek?",
@@ -10534,7 +10483,6 @@ const I18N_ID={
   "机台 / 线别代号": "Kode Mesin / Line",
   "共": "dari total",
   "条": "baris",
-  "条不良": "NG",
   "条待同步": "belum terkirim",
   "条推不上去": "catatan gagal terkirim",
   "条码是否能扫描？": "Apakah barcode bisa discan?",
@@ -11062,7 +11010,6 @@ function labShow(view){
   });
   $(".lwrap",$("#lab")).hidden = (view!=="entry");
   backLevel("#lback", view==="sheet");
-  statFor("#lstat", view==="entry");
   $("#llockbtn").hidden = view!=="entry" || isViewer();
   window.scrollTo(0,0);
 }
