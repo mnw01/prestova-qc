@@ -3698,6 +3698,11 @@ async function tx(stores,mode,fn){
   });
 }
 const dbGet   = id => tx(STORE,"readonly", t=>t.objectStore(STORE).get(id));
+const dbGetMany = ids => ids.length ? tx(STORE,"readonly", t=>{
+  const st=t.objectStore(STORE), out=new Array(ids.length);
+  ids.forEach((id,i)=>{ st.get(id).onsuccess=e=>{ out[i]=e.target.result; }; });
+  return out;
+}) : Promise.resolve([]);
 const dbAll   = () => tx(STORE,"readonly", t=>t.objectStore(STORE).getAll());
 const metaAll = () => tx(META,"readonly", t=>t.objectStore(META).getAll());
 function metaOf(r){
@@ -3717,6 +3722,10 @@ function metaOf(r){
     m.mattress=(f.mattress||"").trim();
     m.hard=(f.hard||"").trim(); 
     m.ngItems=FQC_ITEM_KEYS.filter(k=>(r.checks||{})[k]==="reject");
+  }
+  if(type==="lab"){
+    m.ymd=String((r.lab||{}).ymd||"");
+    m.model=(r.lab||{}).model||"";
   }
   if(type==="iqc"){
     m.date=(f.date||"").trim();
@@ -3765,7 +3774,7 @@ const dbPut = r => tx([STORE,META],"readwrite", t=>{
 const dbDelete = id => tx([STORE,META],"readwrite", t=>{
   t.objectStore(STORE).delete(id); t.objectStore(META).delete(id);
 });
-const META_VER = 6; 
+const META_VER = 7; 
 const META_VER_KEY = "qc-meta-ver";
 
 function rebuildMeta(){
@@ -9368,7 +9377,7 @@ async function pullAll(){
   }
   if(labChanged){
     await labRefreshList();
-    if(!$("#lsheetv").hidden){ await labLoadAll(true); labFillRecModels(); labRenderRec(); }
+    if(!$("#lsheetv").hidden) await labSheetLoad();
   }
   if(iqcChanged && !$("#irec").hidden) await irecRender();
   if(oqcChanged && !$("#orec").hidden) await orecRender();
@@ -9973,9 +9982,9 @@ $("#llockbtn").addEventListener("click",async()=>{
   if(!lockAsk(LR)) return;
   labSave();
   paintLockUI(LR, "#labv", "#llockbtn", "#llockbar");
-  if(LAB_VIEW==="sheet" && LAB_CACHE){
-    const i=LAB_CACHE.findIndex(r=>r.id===LR.id);
-    if(i>=0){ LAB_CACHE[i]=LR; labRenderRec(); }
+  if(LAB_VIEW==="sheet" && LAB_SHEET){
+    const i=LAB_SHEET.findIndex(r=>r.id===LR.id);
+    if(i>=0){ LAB_SHEET[i]=LR; labRenderRec(); }
   }
 });
 
@@ -10783,7 +10792,7 @@ $("#ldel").addEventListener("click",async()=>{
   if(mine.length) await labLoad(mine[0].id);
   else { LR=labBlank(); labPaintAll(); await dbPut(LR); }
   await labRefreshList();
-  if(!$("#lsheetv").hidden){ await labLoadAll(true); labFillRecModels(); labRenderRec(); }
+  if(!$("#lsheetv").hidden) await labSheetLoad();
   else labShow("entry");
   toast(tr("已删除"));
 });
@@ -10977,7 +10986,7 @@ function labCSV(recs,month){
   return "﻿"+csv; 
 }
 $("#lcsv").addEventListener("click",async()=>{
-  if(!LAB_CACHE) await labLoadAll(true);
+  if(!LAB_SHEET) await labSheetLoad();
   const recs=labRecRecords(true);
   if(!recs.length){ toast(tr("当前筛选下没有记录")); return; }
   const sel=$("#lrec-range").selectedOptions[0];
@@ -11020,10 +11029,7 @@ function labToggle(view,open){
 async function labOpenSheet(){
   labShow("sheet");
   rangeToday("#lrec-date");
-  $("#lrec-table").innerHTML='<tbody><tr><td>读取中…</td></tr></tbody>';
-  await labLoadAll(true);
-  labFillRecModels();
-  labRenderRec();
+  await labSheetLoad();
   labRecScrollToCur();
 }
 function labRecScrollToCur(){
@@ -11032,8 +11038,9 @@ function labRecScrollToCur(){
   const off=cur.getBoundingClientRect().top - wrap.getBoundingClientRect().top;
   wrap.scrollTop += off - Math.max(0,(wrap.clientHeight - cur.offsetHeight)/2);
 }
-function labFillRecModels(){
-  const models=[...new Set((LAB_CACHE||[]).map(r=>(r.lab||{}).model).filter(Boolean))].sort();
+function labFillRecModels(metas){
+  const models=[...new Set((metas||[]).map(m=>m.model).concat((LAB_SHEET||[]).map(r=>(r.lab||{}).model))
+    .filter(Boolean))].sort();
   const cur=$("#lrec-model").value;
   $("#lrec-model").innerHTML='<option value="">全部品号</option>'+
     models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join("");
@@ -11043,24 +11050,37 @@ function labBatchDate(r){
   const m=/^(\d{2})(\d{2})(\d{2})$/.exec(String((r.lab||{}).ymd||""));
   return m ? new Date(2000+ +m[1], +m[2]-1, +m[3]) : parseDMY((r.fields||{}).testDate);
 }
-function labRecRecords(full){
-  const range=$("#lrec-range").value, model=$("#lrec-model").value;
-  const verdict=$("#lrec-verdict").value;
+function labInWindow(t){
+  const range=$("#lrec-range").value;
   const d=parseDMY(fromDateInput($("#lrec-date").value));
-  let recs=(LAB_CACHE||[]).filter(r=>r.type==="lab"&&r.lab);
+  if(range==="all") return true;
+  if(!t) return false;
+  if(range==="day"&&d) return t.getTime()===d.getTime();
+  if(range==="month"&&d) return t.getMonth()===d.getMonth()&&t.getFullYear()===d.getFullYear();
+  const w=labRangeOf(range, d);
+  const from=w.from?w.from.getTime():0, to=w.to?w.to.getTime():Infinity;
+  return t.getTime()>=from&&t.getTime()<to;
+}
+let LAB_SHEET=null, LAB_SHEET_SEQ=0;
+async function labSheetLoad(){
+  const seq=++LAB_SHEET_SEQ;
+  if(!LAB_SHEET) $("#lrec-table").innerHTML='<tbody><tr><td>读取中…</td></tr></tbody>';
+  let metas=[]; try{ metas=(await metaAll()).filter(m=>m.type==="lab"); }catch(e){}
+  const want=metas.filter(m=>m.ymd===undefined ||
+    labInWindow(labBatchDate({lab:{ymd:m.ymd}, fields:{testDate:m.testDate}})));
+  let recs=[]; try{ recs=(await dbGetMany(want.map(m=>m.id))).filter(Boolean); }catch(e){}
+  if(seq!==LAB_SHEET_SEQ) return;
+  LAB_SHEET=recs;
+  labFillRecModels(metas);
+  labRenderRec();
+}
+function labRecRecords(full){
+  const model=$("#lrec-model").value;
+  const verdict=$("#lrec-verdict").value;
+  let recs=(LAB_SHEET||[]).filter(r=>r.type==="lab"&&r.lab);
   if(model) recs=recs.filter(r=>r.lab.model===model);
   if(verdict) recs=recs.filter(r=>labVerdict(r)===verdict);
-  if(range==="day"&&d)
-    recs=recs.filter(r=>{ const t=labBatchDate(r); return t&&t.getTime()===d.getTime(); });
-  else if(range==="month"&&d)
-    recs=recs.filter(r=>{ const t=labBatchDate(r);
-                          return t&&t.getMonth()===d.getMonth()&&t.getFullYear()===d.getFullYear(); });
-  else if(range!=="all"){
-    const w=labRangeOf(range, d); 
-    const from=w.from?w.from.getTime():0, to=w.to?w.to.getTime():Infinity;
-    recs=recs.filter(r=>{ const t=labBatchDate(r);
-                          return t&&t.getTime()>=from&&t.getTime()<to; });
-  }
+  recs=recs.filter(r=>labInWindow(labBatchDate(r)));
   recs.sort((a,b)=>{
     const ta=labBatchDate(a), tb=labBatchDate(b);
     if(ta&&tb&&ta-tb) return tb-ta;
@@ -11135,14 +11155,15 @@ function labRenderRec(){
 }
 $("#lsheetbtn").addEventListener("click",labToggle("sheet",labOpenSheet));
 $("#le-close").addEventListener("click",()=>labOpenSheet());
-["lrec-range","lrec-model","lrec-verdict"].forEach(id=>$("#"+id).addEventListener("change",labRenderRec));
-$("#lrec-date").addEventListener("change",()=>{ RANGE_TOUCHED["#lrec-date"]=true; labRenderRec(); });
+["lrec-model","lrec-verdict"].forEach(id=>$("#"+id).addEventListener("change",labRenderRec));
+$("#lrec-range").addEventListener("change",labSheetLoad);
+$("#lrec-date").addEventListener("change",()=>{ RANGE_TOUCHED["#lrec-date"]=true; labSheetLoad(); });
 $("#lrec-clear").addEventListener("click",()=>{
   $("#lrec-model").value="";
   $("#lrec-verdict").value="";
   $("#lrec-range").value="month";
   rangeToday("#lrec-date", true);
-  labRenderRec();
+  labSheetLoad();
 });
 $("#lrec-table").addEventListener("click",async e=>{
   const b=e.target.closest("[data-rpt]"); if(!b) return;
@@ -11251,12 +11272,8 @@ const pct = (a,b) => b ? Math.round(a/b*1000)/10 : 0;
 
 async function labLoadAll(force){
   if(LAB_CACHE && !force) return LAB_CACHE;
-  const out=[];
   let rows=[]; try{ rows=await metaAll(); }catch(e){}
-  for(const m of rows){
-    if(m.type!=="lab") continue;
-    try{ const r=await dbGet(m.id); if(r) out.push(r); }catch(e){}
-  }
+  let out=[]; try{ out=(await dbGetMany(rows.filter(m=>m.type==="lab").map(m=>m.id))).filter(Boolean); }catch(e){}
   return (LAB_CACHE=out);
 }
 function labRenderDash(){
@@ -11567,7 +11584,7 @@ $("#histpick").addEventListener("change",async e=>{
     rec.lab.xlsVerdict=c.xls||null; 
     try{ await dbPut(rec); n++; }catch(err){ break; }
   }
-  LAB_CACHE=null;
+  LAB_CACHE=null; LAB_SHEET=null;
   toast(n+" "+tr("批已导入"));
   await labRefreshList();
   scheduleSync(500);

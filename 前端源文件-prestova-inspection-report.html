@@ -4988,6 +4988,14 @@ async function tx(stores,mode,fn){
   });
 }
 const dbGet   = id => tx(STORE,"readonly", t=>t.objectStore(STORE).get(id));
+/* 一批 id 在**一个事务里一次发完**、一起等。逐条 await dbGet 每条都单开一个
+   事务排队：实验室 1800 条要 1.1 秒多，这样 0.2 秒（CPU 降速 4 倍实测）。
+   不存在的 id 那一格是 undefined，调用方自己滤。 */
+const dbGetMany = ids => ids.length ? tx(STORE,"readonly", t=>{
+  const st=t.objectStore(STORE), out=new Array(ids.length);
+  ids.forEach((id,i)=>{ st.get(id).onsuccess=e=>{ out[i]=e.target.result; }; });
+  return out;
+}) : Promise.resolve([]);
 const dbAll   = () => tx(STORE,"readonly", t=>t.objectStore(STORE).getAll());
 /* Index rows: id/type/编号/时间 only. The home screen and the report picker
    read these, so listing never has to pull megabytes of photo blobs. */
@@ -5019,6 +5027,12 @@ function metaOf(r){
     m.hard=(f.hard||"").trim();    /* 软硬度：数据分析的「软硬度分布」要它 */
     /* 判了拒收的检查项（pk1…fa9）：数据分析的「不合格项分析」要它 */
     m.ngItems=FQC_ITEM_KEYS.filter(k=>(r.checks||{})[k]==="reject");
+  }
+  /* 实验室记录表按**批号里的日期**归月、品号下拉要列全部品号 —— 这两样进索引，
+     打开记录表就只用读日期范围里的那几批，不用把一千多批全读一遍 */
+  if(type==="lab"){
+    m.ymd=String((r.lab||{}).ymd||"");
+    m.model=(r.lab||{}).model||"";
   }
   /* #irec (来料检验记录表) needs the same list-without-opening-every-report
      shape as #frec — date/inspector/verdict live on the meta row */
@@ -5089,7 +5103,7 @@ const dbDelete = id => tx([STORE,META],"readwrite", t=>{
    **以后改 metaOf 里任何一处推导，就把 META_VER 加 1。** 开机对不上就整表
    重算一遍，不用再写一次性回填。重算只写索引、不碰记录本身，也不动
    updatedAt/syncedAt，所以不会引起任何同步。 */
-const META_VER = 6;   /* 6: 成品的 meta 加了 ngItems（判拒收的检查项）／5: 成品的 meta 加了 hard（软硬度）／4: 制程检验的 meta 加了 shift（班次）／3: meta 加了 locked（提交锁定） */
+const META_VER = 7;   /* 7: 实验室的 meta 加了 ymd（批号日期）、model（品号）／6: 成品的 meta 加了 ngItems（判拒收的检查项）／5: 成品的 meta 加了 hard（软硬度）／4: 制程检验的 meta 加了 shift（班次）／3: meta 加了 locked（提交锁定） */
 const META_VER_KEY = "qc-meta-ver";
 
 /* 只重写索引行，不重写记录 —— 记录里带着照片 Blob，1400 条全 put 一遍又慢
@@ -12297,9 +12311,9 @@ async function pullAll(){
   }
   if(labChanged){
     await labRefreshList();
-    /* 测试表读的是 LAB_CACHE，那份缓存只在打开记录表时装一次 —— 不作废
-       就还是旧数据。品号下拉一并重建，新品号才选得到。 */
-    if(!$("#lsheetv").hidden){ await labLoadAll(true); labFillRecModels(); labRenderRec(); }
+    /* 测试表画的是 LAB_SHEET，打开时读一次 —— 不重读就还是旧数据。品号下拉
+       一并重建（labSheetLoad 里），新品号才选得到。 */
+    if(!$("#lsheetv").hidden) await labSheetLoad();
   }
   if(iqcChanged && !$("#irec").hidden) await irecRender();
   if(oqcChanged && !$("#orec").hidden) await orecRender();
@@ -13155,12 +13169,12 @@ $("#llockbtn").addEventListener("click",async()=>{
   labSave();
   paintLockUI(LR, "#labv", "#llockbtn", "#llockbar");
   /* 在记录表上点的：表上的圆点 / 压暗 / 「查看」实心空心要当场变。
-     这张表画的是 LAB_CACHE（打开记录表时整批读出来的完整记录），跟 LR 是两份
+     这张表画的是 LAB_SHEET（打开记录表时读出来的完整记录），跟 LR 是两份
      对象，labSave 写库也不会回填它 —— 所以原来点了提交，表上什么都不动，
      得退出去再进来才看得到。把缓存里那一条换成 LR 再重画，不用等写库。 */
-  if(LAB_VIEW==="sheet" && LAB_CACHE){
-    const i=LAB_CACHE.findIndex(r=>r.id===LR.id);
-    if(i>=0){ LAB_CACHE[i]=LR; labRenderRec(); }
+  if(LAB_VIEW==="sheet" && LAB_SHEET){
+    const i=LAB_SHEET.findIndex(r=>r.id===LR.id);
+    if(i>=0){ LAB_SHEET[i]=LR; labRenderRec(); }
   }
 });
 
@@ -14048,10 +14062,10 @@ $("#ldel").addEventListener("click",async()=>{
   await labRefreshList();
   /* 在哪删就留在哪 —— 原来无条件 labShow("entry")，从记录表点删除会被踢进
      录入页，跟另外四个板块都不一样。
-     记录表**不能只重画** —— labRecRecords() 读的是 LAB_CACHE，那份全量缓存
-     只在打开记录表时装一次，不 labLoadAll(true) 作废掉，画出来的还是含被删
-     那条的旧数据。品号下拉一并重建。跟同步里 labChanged 那段是同一套动作。 */
-  if(!$("#lsheetv").hidden){ await labLoadAll(true); labFillRecModels(); labRenderRec(); }
+     记录表**不能只重画** —— labRecRecords() 读的是 LAB_SHEET，打开时读一次，
+     不重读画出来的还是含被删那条的旧数据。品号下拉一并重建。跟同步里
+     labChanged 那段是同一套动作。 */
+  if(!$("#lsheetv").hidden) await labSheetLoad();
   else labShow("entry");
   toast(tr("已删除"));
 });
@@ -14275,7 +14289,7 @@ function labCSV(recs,month){
    模型 filter above the table are the export's options, so there is nothing extra
    to configure and no doubt about what lands in the file. */
 $("#lcsv").addEventListener("click",async()=>{
-  if(!LAB_CACHE) await labLoadAll(true);
+  if(!LAB_SHEET) await labSheetLoad();
   const recs=labRecRecords(true);
   if(!recs.length){ toast(tr("当前筛选下没有记录")); return; }
   const sel=$("#lrec-range").selectedOptions[0];
@@ -14340,17 +14354,13 @@ async function labOpenSheet(){
      记录表，原来会把窗口锚在七月，看起来像"这个月一条都没有"。
      用户自己在框里改过日期就不再覆盖。 */
   rangeToday("#lrec-date");
-  $("#lrec-table").innerHTML='<tbody><tr><td>读取中…</td></tr></tbody>';
-  await labLoadAll(true);
-  labFillRecModels();
-  labRenderRec();
+  await labSheetLoad();
   labRecScrollToCur();
 }
 /* 回到记录表时把"当前这批"重新滚回视野。
-   只有这一屏需要 —— 另外四张记录表是从内存索引**一次性** innerHTML，只有一次
-   布局，浏览器把滚动偏移留住了。这一屏不一样：先把表清成「读取中…」（容器当场
-   变矮，scrollTop 被夹到 0），再 await 一次全量重读（1400+ 条逐条从 IndexedDB
-   取），等行回来位置早没了，所以每次返回都从第一条开始。
+   另外四张记录表是从内存索引**一次性** innerHTML，浏览器把滚动偏移留住了。
+   这一屏要先 await 读一次库再重画（labSheetLoad），中间可能刚同步进来几条，
+   行数变了偏移就不准 —— 所以还是认当前这批滚回去。
 
    锚点用 .cur（= 当前载入的那批）而不是记 scrollTop：这中间可能刚同步进来几条
    记录，行数一变像素偏移就对不上，而"我刚看的那批"永远是对的。
@@ -14368,8 +14378,10 @@ function labRecScrollToCur(){
 }
 /* 品号下拉：打开记录表时建一次，同步拉到新数据后再建一次（新品号要选得到）。
    保留当前选中项，重建不会把筛选条件冲掉。 */
-function labFillRecModels(){
-  const models=[...new Set((LAB_CACHE||[]).map(r=>(r.lab||{}).model).filter(Boolean))].sort();
+function labFillRecModels(metas){
+  /* 列的是**全部**批次出现过的品号，不只日期范围里的 —— 跟原来一样，换个月不用重选 */
+  const models=[...new Set((metas||[]).map(m=>m.model).concat((LAB_SHEET||[]).map(r=>(r.lab||{}).model))
+    .filter(Boolean))].sort();
   const cur=$("#lrec-model").value;
   $("#lrec-model").innerHTML='<option value="">全部品号</option>'+
     models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join("");
@@ -14382,13 +14394,47 @@ function labBatchDate(r){
   const m=/^(\d{2})(\d{2})(\d{2})$/.exec(String((r.lab||{}).ymd||""));
   return m ? new Date(2000+ +m[1], +m[2]-1, +m[3]) : parseDMY((r.fields||{}).testDate);
 }
+/* 记录表上方「范围 + 日期」选中的那一段里有没有这一天。t 为空（日期认不出）
+   只在「全部」里出现，跟原来一样 */
+function labInWindow(t){
+  const range=$("#lrec-range").value;
+  const d=parseDMY(fromDateInput($("#lrec-date").value));
+  if(range==="all") return true;
+  if(!t) return false;
+  if(range==="day"&&d) return t.getTime()===d.getTime();
+  /* 当天 / 当月 跟着上面选的那个日期走，可以翻回任意一个月 */
+  if(range==="month"&&d) return t.getMonth()===d.getMonth()&&t.getFullYear()===d.getFullYear();
+  /* 近 N 个月：和数据分析同一套完整自然月窗口，从日期框那天往回算 */
+  const w=labRangeOf(range, d);
+  const from=w.from?w.from.getTime():0, to=w.to?w.to.getTime():Infinity;
+  return t.getTime()>=from&&t.getTime()<to;
+}
+/* 记录表画的那几批完整记录（只含日期范围里的）。看板另读全量，在 LAB_CACHE */
+let LAB_SHEET=null, LAB_SHEET_SEQ=0;
+/* 按索引挑出日期范围里的批，只读这些（一个事务读完），再画。范围 / 日期一变就
+   重来一次 —— 当月一百多批，几十毫秒。
+   不先把表清成「读取中…」：上一次画的留着直到新的画好，退回记录表不会闪、
+   位置也不会被夹回顶上。只有表还是空的（第一次打开）才写一句。
+   连着改两次范围时，先发的那次后回来不能盖掉后发的 —— 用序号认最后一次。 */
+async function labSheetLoad(){
+  const seq=++LAB_SHEET_SEQ;
+  if(!LAB_SHEET) $("#lrec-table").innerHTML='<tbody><tr><td>读取中…</td></tr></tbody>';
+  let metas=[]; try{ metas=(await metaAll()).filter(m=>m.type==="lab"); }catch(e){}
+  /* 老索引（META_VER 7 之前建的）没有 ymd，一律读进来，交给 labRecRecords 按完整记录筛 */
+  const want=metas.filter(m=>m.ymd===undefined ||
+    labInWindow(labBatchDate({lab:{ymd:m.ymd}, fields:{testDate:m.testDate}})));
+  let recs=[]; try{ recs=(await dbGetMany(want.map(m=>m.id))).filter(Boolean); }catch(e){}
+  if(seq!==LAB_SHEET_SEQ) return;
+  LAB_SHEET=recs;
+  labFillRecModels(metas);
+  labRenderRec();
+}
 /* `full` skips the 200-batch cap: that cap exists so the table stays quick to
    draw, but an export asked for 全部 should hand over 全部. */
 function labRecRecords(full){
-  const range=$("#lrec-range").value, model=$("#lrec-model").value;
+  const model=$("#lrec-model").value;
   const verdict=$("#lrec-verdict").value;
-  const d=parseDMY(fromDateInput($("#lrec-date").value));
-  let recs=(LAB_CACHE||[]).filter(r=>r.type==="lab"&&r.lab);
+  let recs=(LAB_SHEET||[]).filter(r=>r.type==="lab"&&r.lab);
   if(model) recs=recs.filter(r=>r.lab.model===model);
   /* **按批筛，不是按支。** 一批三支，判定可以不一样，而这张表的行是支、单元格
      带着 rowspan=3 —— 抽掉其中一行会把 rowspan 撕开。用的是已有的 labVerdict()，
@@ -14399,19 +14445,7 @@ function labRecRecords(full){
      removed: two date pickers side by side read as alternatives but AND together,
      so a batch cut on the 30th and tested on the 1st vanishes from both. The
      测试日期 column carries the information without the trap. */
-  if(range==="day"&&d)
-    recs=recs.filter(r=>{ const t=labBatchDate(r); return t&&t.getTime()===d.getTime(); });
-  else if(range==="month"&&d)
-    /* 当天 / 当月 跟着上面选的那个日期走，可以翻回任意一个月 */
-    recs=recs.filter(r=>{ const t=labBatchDate(r);
-                          return t&&t.getMonth()===d.getMonth()&&t.getFullYear()===d.getFullYear(); });
-  else if(range!=="all"){
-    /* 近 N 个月：和数据分析同一套完整自然月窗口 */
-    const w=labRangeOf(range, d);      /* 跟另外四张表一样，从日期框那天往回算 */
-    const from=w.from?w.from.getTime():0, to=w.to?w.to.getTime():Infinity;
-    recs=recs.filter(r=>{ const t=labBatchDate(r);
-                          return t&&t.getTime()>=from&&t.getTime()<to; });
-  }
+  recs=recs.filter(r=>labInWindow(labBatchDate(r)));
   /* newest day on top, matching fqc's record table — was oldest-first (and the
      "all" cap below took the tail end to stay on the newest 200) until a user
      pointed out fqc already reads newest-first and lab didn't match */
@@ -14511,8 +14545,9 @@ function labRenderRec(){
    already does, with no JS and nothing to feel janky. */
 $("#lsheetbtn").addEventListener("click",labToggle("sheet",labOpenSheet));
 $("#le-close").addEventListener("click",()=>labOpenSheet());
-["lrec-range","lrec-model","lrec-verdict"].forEach(id=>$("#"+id).addEventListener("change",labRenderRec));
-$("#lrec-date").addEventListener("change",()=>{ RANGE_TOUCHED["#lrec-date"]=true; labRenderRec(); });
+["lrec-model","lrec-verdict"].forEach(id=>$("#"+id).addEventListener("change",labRenderRec));
+$("#lrec-range").addEventListener("change",labSheetLoad);
+$("#lrec-date").addEventListener("change",()=>{ RANGE_TOUCHED["#lrec-date"]=true; labSheetLoad(); });
 /* 清除筛选：回到打开记录表时的默认窗口（当月 + 今天 + 全部品号），不是清空 ——
    跟另外四张记录表一个口径。rangeToday 的第二个参数是 force：用户手改过日期
    之后 RANGE_TOUCHED 会一直挡着自动回今天，点了这个按钮就该连那个也一起复位。 */
@@ -14521,7 +14556,7 @@ $("#lrec-clear").addEventListener("click",()=>{
   $("#lrec-verdict").value="";
   $("#lrec-range").value="month";
   rangeToday("#lrec-date", true);
-  labRenderRec();
+  labSheetLoad();
 });
 /* 查看：载入这一批 → 回录入页。跟成品检验/来料检验记录表的「查看」保持一致，
    点进去看到的是这一批的录入内容，不再直接跳到打印报告表单——要出报告在录入页
@@ -14663,22 +14698,18 @@ function labAgg(recs,range,onlyModel){
 }
 
 /* ── 看板：渲染 ───────────────────────────────────────────────────── */
-let LAB_CACHE=null;              /* full records, loaded once per dashboard open */
+let LAB_CACHE=null;              /* 看板用的全量完整记录，每次打开看板读一次 */
 const pct = (a,b) => b ? Math.round(a/b*1000)/10 : 0;
 
 async function labLoadAll(force){
   if(LAB_CACHE && !force) return LAB_CACHE;
-  const out=[];
   let rows=[]; try{ rows=await metaAll(); }catch(e){}
-  for(const m of rows){
-    if(m.type!=="lab") continue;
-    try{ const r=await dbGet(m.id); if(r) out.push(r); }catch(e){}
-  }
+  let out=[]; try{ out=(await dbGetMany(rows.filter(m=>m.type==="lab").map(m=>m.id))).filter(Boolean); }catch(e){}
   return (LAB_CACHE=out);
 }
 function labRenderDash(){
   rangeToday("#ld-date");
-  /* 只算已提交的，见 fqcDashAgg 那条。LAB_CACHE 记录表也在用（草稿要显示），只在这里筛 */
+  /* 只算已提交的，见 fqcDashAgg 那条 */
   const recs=(LAB_CACHE||[]).filter(r=>r.locked);
   const range=$("#ld-range").value, model=$("#ld-model").value;
   const want=labRangeOf(range).months;
@@ -15044,7 +15075,7 @@ $("#histpick").addEventListener("change",async e=>{
     rec.lab.xlsVerdict=c.xls||null;    /* what the spreadsheet said — reference only */
     try{ await dbPut(rec); n++; }catch(err){ break; }
   }
-  LAB_CACHE=null;
+  LAB_CACHE=null; LAB_SHEET=null;
   toast(n+" "+tr("批已导入"));
   await labRefreshList();
   scheduleSync(500);
