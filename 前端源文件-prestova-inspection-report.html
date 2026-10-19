@@ -3256,6 +3256,11 @@ body.sn-on #oback,body.sn-on #ftback,body.sn-on #lback{display:none}
 #home .hd-sync.off{color:var(--ink-3)} #home .hd-sync.off i{background:var(--ink-3)}
 #home .hd-sync.busy i{animation:hdSyncBlink 1s ease-in-out infinite}
 @keyframes hdSyncBlink{50%{opacity:.25}}
+/* 板块顶栏不再显示状态说明（还差几项 · 已存 · 15/15 项…），手机电脑都不显示（用户 2026-10-19）：
+   表单上看得到、同步按钮管同步，只占地方。元素留着不删 —— 提交时 lockAsk 从它的
+   textContent 读「还差几项」写进确认框，display:none 不影响读。
+   !important：各板块按 statFor() 设 hidden，别的规则不能再把它露出来 */
+:is(#mod,#iqc,#ipqc,#oqc,#cfr1633,#lab) .bar .stat{display:none!important}
 @media (prefers-reduced-motion:reduce){ #home .hd-sync.busy i{animation:none} }
 /* 手机长按出来的那句说明 */
 /* 两个类叠起来：要压过后面 .hd-tip 那条 translate(-50%,-100%)（同特异性、它写在后面） */

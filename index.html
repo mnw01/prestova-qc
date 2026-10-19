@@ -2168,6 +2168,7 @@ body.sn-on #oback,body.sn-on #ftback,body.sn-on #lback{display:none}
 #home .hd-sync.off{color:var(--ink-3)} #home .hd-sync.off i{background:var(--ink-3)}
 #home .hd-sync.busy i{animation:hdSyncBlink 1s ease-in-out infinite}
 @keyframes hdSyncBlink{50%{opacity:.25}}
+:is(#mod,#iqc,#ipqc,#oqc,#cfr1633,#lab) .bar .stat{display:none!important}
 @media (prefers-reduced-motion:reduce){ #home .hd-sync.busy i{animation:none} }
 #home .hd-tip.hd-synctip{position:fixed;z-index:60;transform:translate(-100%,0)}
 #home .hd-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin-top:32px}
