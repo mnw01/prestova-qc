@@ -11272,11 +11272,24 @@ function labAgg(recs,range,onlyModel){
 let LAB_CACHE=null; 
 const pct = (a,b) => b ? Math.round(a/b*1000)/10 : 0;
 
-async function labLoadAll(force){
-  if(LAB_CACHE && !force) return LAB_CACHE;
-  let rows=[]; try{ rows=await metaAll(); }catch(e){}
-  let out=[]; try{ out=(await dbGetMany(rows.filter(m=>m.type==="lab").map(m=>m.id))).filter(Boolean); }catch(e){}
-  return (LAB_CACHE=out);
+let LAB_DASH_SEQ=0;
+async function labDashLoad(){
+  const seq=++LAB_DASH_SEQ;
+  rangeToday("#ld-date"); 
+  if(!LAB_CACHE) $("#ld-kpis").innerHTML='<div class="lkpi"><div class="n">…</div><div class="t">读取中</div></div>';
+  let metas=[]; try{ metas=(await metaAll()).filter(m=>m.type==="lab" && m.locked); }catch(e){}
+  const w=labRangeOf($("#ld-range").value, dashAnchor("#ld-date"));
+  const lo=w.from?w.from.getTime():0, hi=w.to?w.to.getTime():Infinity;
+  const want=metas.filter(m=>{ const d=parseDMY(m.testDate); return d && d.getTime()>=lo && d.getTime()<hi; });
+  let recs=[]; try{ recs=(await dbGetMany(want.map(m=>m.id))).filter(Boolean); }catch(e){}
+  if(seq!==LAB_DASH_SEQ) return;
+  LAB_CACHE=recs;
+  const models=[...new Set(metas.map(m=>m.model).concat(recs.map(r=>(r.lab||{}).model)).filter(Boolean))].sort();
+  const cur=$("#ld-model").value;
+  $("#ld-model").innerHTML='<option value="">全部品号</option>'+
+    models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join("");
+  $("#ld-model").value=models.includes(cur)?cur:"";
+  labRenderDash();
 }
 function labRenderDash(){
   rangeToday("#ld-date");
@@ -11345,22 +11358,15 @@ function offBar(off){
 }
 async function labOpenDash(){
   labShow("dash");
-  $("#ld-kpis").innerHTML='<div class="lkpi"><div class="n">…</div><div class="t">读取中</div></div>';
-  await labLoadAll(true);
-  const models=[...new Set(LAB_CACHE.filter(r=>r.locked).map(r=>(r.lab||{}).model).filter(Boolean))].sort();
-  const cur=$("#ld-model").value;
-  $("#ld-model").innerHTML='<option value="">全部品号</option>'+
-    models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join("");
-  $("#ld-model").value=models.includes(cur)?cur:"";
-  labRenderDash();
+  await labDashLoad();
 }
 $("#ldashbtn").addEventListener("click",labToggle("dash",labOpenDash));
-rangeWire("#ld-range","#ld-date",labRenderDash);
+rangeWire("#ld-range","#ld-date",labDashLoad);
 $("#ld-model").addEventListener("change",labRenderDash);
 $("#ld-clear").addEventListener("click",()=>{
   $("#ld-range").value="cur"; $("#ld-model").value="";
   rangeToday("#ld-date", true);
-  labRenderDash();
+  labDashLoad();
 });
 
 async function unzip(buf){

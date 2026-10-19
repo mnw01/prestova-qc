@@ -14413,7 +14413,7 @@ function labInWindow(t){
   const from=w.from?w.from.getTime():0, to=w.to?w.to.getTime():Infinity;
   return t.getTime()>=from&&t.getTime()<to;
 }
-/* 记录表画的那几批完整记录（只含日期范围里的）。看板另读全量，在 LAB_CACHE */
+/* 记录表画的那几批完整记录（只含日期范围里的）。看板读自己那一段，在 LAB_CACHE */
 let LAB_SHEET=null, LAB_SHEET_SEQ=0;
 /* 按索引挑出日期范围里的批，只读这些（一个事务读完），再画。范围 / 日期一变就
    重来一次 —— 当月一百多批，几十毫秒。
@@ -14702,14 +14702,34 @@ function labAgg(recs,range,onlyModel){
 }
 
 /* ── 看板：渲染 ───────────────────────────────────────────────────── */
-let LAB_CACHE=null;              /* 看板用的全量完整记录，每次打开看板读一次 */
+let LAB_CACHE=null;              /* 看板用的完整记录：只有所选区间里已提交的那几批 */
 const pct = (a,b) => b ? Math.round(a/b*1000)/10 : 0;
 
-async function labLoadAll(force){
-  if(LAB_CACHE && !force) return LAB_CACHE;
-  let rows=[]; try{ rows=await metaAll(); }catch(e){}
-  let out=[]; try{ out=(await dbGetMany(rows.filter(m=>m.type==="lab").map(m=>m.id))).filter(Boolean); }catch(e){}
-  return (LAB_CACHE=out);
+/* 看板只读**所选区间里已提交的批**，按索引里的测试日期挑（labAgg 也是按测试日期
+   算区间），默认当月一百来批 —— 原来每次打开都把全部实验室记录（线上 1800 批）
+   读一遍。区间 / 基准日期一变就重读；品号只在读来的里面筛，不用重读。
+   不先把 KPI 清成「读取中」：上一次的留着直到新的画好，只有第一次打开才写一句。
+   连着改两次区间时，先发的那次后回来不能盖掉后发的 —— 用序号认最后一次。 */
+let LAB_DASH_SEQ=0;
+async function labDashLoad(){
+  const seq=++LAB_DASH_SEQ;
+  rangeToday("#ld-date");          /* 跟 labRenderDash 用同一个基准日期算窗口 */
+  if(!LAB_CACHE) $("#ld-kpis").innerHTML='<div class="lkpi"><div class="n">…</div><div class="t">读取中</div></div>';
+  let metas=[]; try{ metas=(await metaAll()).filter(m=>m.type==="lab" && m.locked); }catch(e){}
+  const w=labRangeOf($("#ld-range").value, dashAnchor("#ld-date"));
+  const lo=w.from?w.from.getTime():0, hi=w.to?w.to.getTime():Infinity;
+  const want=metas.filter(m=>{ const d=parseDMY(m.testDate); return d && d.getTime()>=lo && d.getTime()<hi; });
+  let recs=[]; try{ recs=(await dbGetMany(want.map(m=>m.id))).filter(Boolean); }catch(e){}
+  if(seq!==LAB_DASH_SEQ) return;
+  LAB_CACHE=recs;
+  /* 品号下拉列**全部**已提交批次里出现过的（索引里有品号），换区间不用重选 ——
+     跟 labRenderDash 的「只算已提交」一致 */
+  const models=[...new Set(metas.map(m=>m.model).concat(recs.map(r=>(r.lab||{}).model)).filter(Boolean))].sort();
+  const cur=$("#ld-model").value;
+  $("#ld-model").innerHTML='<option value="">全部品号</option>'+
+    models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join("");
+  $("#ld-model").value=models.includes(cur)?cur:"";
+  labRenderDash();
 }
 function labRenderDash(){
   rangeToday("#ld-date");
@@ -14794,23 +14814,15 @@ function offBar(off){
 }
 async function labOpenDash(){
   labShow("dash");
-  $("#ld-kpis").innerHTML='<div class="lkpi"><div class="n">…</div><div class="t">读取中</div></div>';
-  await labLoadAll(true);
-  /* 品号下拉只列已提交批次里出现过的 —— 跟 labRenderDash 的统计范围一致 */
-  const models=[...new Set(LAB_CACHE.filter(r=>r.locked).map(r=>(r.lab||{}).model).filter(Boolean))].sort();
-  const cur=$("#ld-model").value;
-  $("#ld-model").innerHTML='<option value="">全部品号</option>'+
-    models.map(m=>'<option value="'+esc(m)+'">'+esc(m)+'</option>').join("");
-  $("#ld-model").value=models.includes(cur)?cur:"";
-  labRenderDash();
+  await labDashLoad();
 }
 $("#ldashbtn").addEventListener("click",labToggle("dash",labOpenDash));
-rangeWire("#ld-range","#ld-date",labRenderDash);
+rangeWire("#ld-range","#ld-date",labDashLoad);
 $("#ld-model").addEventListener("change",labRenderDash);
 $("#ld-clear").addEventListener("click",()=>{
   $("#ld-range").value="cur"; $("#ld-model").value="";
   rangeToday("#ld-date", true);
-  labRenderDash();
+  labDashLoad();
 });
 
 /* ── 读 .xlsx ──────────────────────────────────────────────────────
