@@ -1622,7 +1622,8 @@ table.frec-table tbody tr.draft .lockdot,
 #lab table.lrec th{background:linear-gradient(var(--accent-soft),var(--accent-soft)),var(--card);
   font-size:10.5px;color:var(--ink-2);font-weight:600;letter-spacing:.02em;
   position:sticky;top:0;z-index:2;box-shadow:inset 0 -1px 0 var(--hairline)}
-#lab table.lrec thead tr:nth-child(2) th{top:var(--lrec-h1,0px);z-index:1}
+#lab table.lrec thead tr:nth-child(2) th{top:calc(var(--lrec-h1,0px) - 1px);z-index:1}
+#lab table.lrec thead tr:first-child th,#lab table.lstdt thead tr:first-child th{border-top:0;top:-1px}
 #lab table.lrec td.std{color:var(--ink-3)}
 #lab table.lrec td.nm{text-align:left;font-weight:600}
 #lab table.lrec td.over{color:var(--no);font-weight:700;background:var(--overbg)}

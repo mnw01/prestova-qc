@@ -2313,7 +2313,16 @@ table.frec-table tbody tr.draft .lockdot,
 /* 表头有两行（部分单元格 rowspan=2）。第二行要粘在第一行下面，而第一行的
    高度取决于内容会不会折行，写死不靠谱 —— 渲染完由 JS 量一次，写进
    --lrec-h1（见 labRecRender 末尾）。 */
-#lab table.lrec thead tr:nth-child(2) th{top:var(--lrec-h1,0px);z-index:1}
+#lab table.lrec thead tr:nth-child(2) th{top:calc(var(--lrec-h1,0px) - 1px);z-index:1}
+/* 表头第一行不要上边框（标准表同理）。border-collapse 下边框归表格画、不跟着粘住的
+   单元格走：往下滚时表头粘在顶上，它那条 1px 上边框却留在原地滚走了，空出来的那
+   一条缝里能看见底下滚过去的字（用户 2026-10-20 截图里表头上沿那一线）。顶上那条
+   线本来就由外面的滚动框边框画，去掉格子自己的上边框，表头就直接贴住框顶。
+   另外四张记录表的格子只有下边框，没有这个问题。
+   粘的位置是 -1px（第二行跟着减 1，见上一条）：只去边框，在 125% 这种非整数缩放下
+   框顶 1px 边框是 1.25 个物理像素，表头底色跟框顶之间还剩零点几个像素对不齐，字
+   还会透一丝出来。往上多顶 1px，多出来那条藏在框的边框后面，缝就盖死了。 */
+#lab table.lrec thead tr:first-child th,#lab table.lstdt thead tr:first-child th{border-top:0;top:-1px}
 #lab table.lrec td.std{color:var(--ink-3)}
 #lab table.lrec td.nm{text-align:left;font-weight:600}
 /* the only free-text column — let it wrap instead of stretching the table */
