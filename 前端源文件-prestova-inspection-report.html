@@ -3130,6 +3130,54 @@ table.frec-table tbody tr.draft .lockdot,
    深色下提到卡片色。浅色不动。 */
 @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) #sidenav{--sunk:#30302e} }
 :root[data-theme="dark"] #sidenav{--sunk:#30302e}
+
+/* ── 下拉框弹出的那张列表（电脑上）────────────────────────────────────
+   原生列表是浏览器 / 系统画的：底色跟着 select 走（深色 #262624，比后面的卡片还
+   深一档），鼠标指着的那行是系统高亮的浅蓝 #a2c9ff，深色下很扎眼（用户 2026-10-20）。
+   Chrome / Edge 135 起支持 appearance:base-select，列表可以自己画：卡片色底、圆角、
+   悬停淡灰（--seg-bg，跟顶栏按钮的悬停同一档）、当前项淡蓝。
+   · 只在有鼠标的设备上（hover + 精确指针）。手机 / 平板保留系统的选择器，那个在
+     触屏上更好用（大字号、整屏滚动）。
+   · @supports 挡住不认识的浏览器（Safari / Firefox），它们照旧用原生列表。
+   · 不碰 A4 表单里的下拉（.sheet），那是照纸质报告排的版，打印也走另一套。
+   · 整段在 @media screen 里，打印件碰不到。 */
+@media screen and (hover:hover) and (pointer:fine){
+  @supports (appearance:base-select){
+    select:not(.sheet select),
+    select:not(.sheet select)::picker(select){appearance:base-select}
+    /* 箭头画成跟原生一样的「⌄」，打开时翻过来 */
+    select:not(.sheet select){display:inline-flex;align-items:center;gap:6px}
+    select:not(.sheet select)::picker-icon{
+      /* 高度给一整行（1lh）：选中的是空选项时，框里只剩这个箭头撑高度，
+         不给够一行的话空框会比有字的矮一截 */
+      content:"";flex:0 0 auto;width:12px;height:1lh;margin-inline-start:auto;
+      background:currentColor;opacity:.75;transition:transform .15s;
+      -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px 12px no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px 12px no-repeat;
+    }
+    select:not(.sheet select):open::picker-icon{transform:rotate(180deg)}
+    /* 宽度：原生下拉按最长那项定宽，base-select 按当前选中那项定宽（试过
+       field-sizing:fixed，不管用）。大多数下拉框在网格里撑满一格，不受影响；只有这两个
+       「人工改判」是按文字定宽、挨着别的按钮，换一项就会左右挪。给个最小宽度兜住：
+       原生下中文 142px、印尼语 157px，取大的。以后新加按文字定宽的下拉框，也要这样兜 */
+    #oqc #oq-override,#lab #lvoverride{min-inline-size:158px}
+    select:not(.sheet select)::picker(select){
+      background:var(--card,#fff);color:var(--ink);
+      border:1px solid var(--card-line,#e2e7ee);border-radius:8px;padding:4px;margin-block:4px;
+      box-shadow:0 10px 28px -8px rgba(0,0,0,.32);
+      max-block-size:min(440px,60vh);overflow-y:auto;
+      scrollbar-width:thin;scrollbar-color:var(--field-line,#cdd5e0) transparent;
+    }
+    select:not(.sheet select) option{
+      padding:6px 10px;border-radius:5px;font-size:13px;line-height:1.35;color:var(--ink);
+      white-space:nowrap;cursor:pointer;
+    }
+    select:not(.sheet select) option::checkmark{display:none}
+    select:not(.sheet select) option:hover,
+    select:not(.sheet select) option:focus-visible{background:var(--seg-bg,#f2f2f2);outline:0}
+    select:not(.sheet select) option:checked{background:color-mix(in srgb,var(--accent) 14%,transparent);font-weight:600}
+    select:not(.sheet select) option:disabled{color:var(--ink-3);cursor:default}
+  }
+}
 #sidenav .sn-brand{display:flex;align-items:center;gap:10px;height:58px;flex:0 0 58px;padding:0 14px 0 18px;
   border-bottom:1px solid var(--card-line)}
 /* 公司标志（房子 + 叶子，米色底，从实验室报告页眉那张 logo 裁出来的），两个主题都一样 */
