@@ -39,7 +39,7 @@
   /* 页面明确选了浅色（data-theme="light"，现在是默认）就不跟系统变深 */
   :root:not([data-theme="light"]){
     --ink:#e3e1d9;--ink-2:#bcbab1;--ink-3:#8e8c85;
-    --paper:#30302e;--ground:#1f1e1d;--chrome:#30302e;--deck:#1a1918;--grid:rgba(235,225,205,.05);
+    --paper:#30302e;--ground:#262624;--chrome:#30302e;--deck:#1a1918;--grid:rgba(235,225,205,.05);
     --rule:#4a4844;--rule-2:#333c48;--hairline:#3e3d39;
     --accent:#4CC2FF;--accent-soft:#262624;   /* 纸上它是「可填写栏位」的底纹，对应板块的 --field（输入框底），不是板块那个可见的浅蓝面板底 */
     --pass:#4fbb8a;--fail:#e08c82;--flag:#fcd34d;
@@ -49,7 +49,7 @@
 @media screen{
   :root[data-theme="dark"]{
     --ink:#e3e1d9;--ink-2:#bcbab1;--ink-3:#8e8c85;
-    --paper:#30302e;--ground:#1f1e1d;--chrome:#30302e;--deck:#1a1918;--grid:rgba(235,225,205,.05);
+    --paper:#30302e;--ground:#262624;--chrome:#30302e;--deck:#1a1918;--grid:rgba(235,225,205,.05);
     --rule:#4a4844;--rule-2:#333c48;--hairline:#3e3d39;
     --accent:#4CC2FF;--accent-soft:#262624;   /* 纸上它是「可填写栏位」的底纹，对应板块的 --field（输入框底），不是板块那个可见的浅蓝面板底 */
     --pass:#4fbb8a;--fail:#e08c82;--flag:#fcd34d;
@@ -123,7 +123,7 @@
     --card:#30302e; --card-line:#3e3d39;
     --field:#262624; --field-line:#4a4844;
     --accent:#4CC2FF; --accent-soft:#0f2a38; --accent-fill:#4CC2FF; --accent-on:#08202e;
-    --deck:#1a1918; --bar-bg:#262624; --seg-bg:#1f1e1d; --seg-on:#3a3936; --sunk:#2b2a27;
+    --deck:#1a1918; --bar-bg:#262624; --seg-bg:#3a3936; --seg-on:#3a3936; --sunk:#2b2a27;
     --sh-1:0 1px 2px rgba(0,0,0,.5);
   }
 }
@@ -135,7 +135,7 @@
   --card:#30302e; --card-line:#3e3d39;
   --field:#262624; --field-line:#4a4844;
   --accent:#4CC2FF; --accent-soft:#0f2a38; --accent-fill:#4CC2FF; --accent-on:#08202e;
-  --deck:#1a1918; --bar-bg:#262624; --seg-bg:#1f1e1d; --seg-on:#3a3936; --sunk:#2b2a27;
+  --deck:#1a1918; --bar-bg:#262624; --seg-bg:#3a3936; --seg-on:#3a3936; --sunk:#2b2a27;
   --sh-1:0 1px 2px rgba(0,0,0,.5);
 }
 :root[data-theme="light"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar,#sidenav){
@@ -3050,7 +3050,11 @@ table.frec-table tbody tr.draft .lockdot,
   }
   /* 深色不照控制台（它是近纯黑 + 纯白字），改成 Claude 桌面面板那种暖灰（用户
      2026-10-07：「黑能不能改成 claude 面板这种颜色，白字太亮不好看」）：
-     侧边栏 #1f1e1d、画布 #262624、卡片 #30302e，正文 #e3e1d9 不用纯白。
+     画布 #262624、卡片 #30302e，正文 #e3e1d9 不用纯白。
+     原来侧边栏用更深一档的 #1f1e1d（照 Claude 面板），右边铺满卡片以后显得太黑、
+     跟顶栏接不上，2026-10-20 改成跟顶栏同色（见 #sidenav）。--seg-bg 原来也是
+     #1f1e1d：它是悬停底（顶栏按钮、记录表的清除筛选 / 导出）和头像圆底，深色下
+     悬停反而变黑一块，一并提到 #3a3936 —— 浅色是悬停略深，深色对应的是略亮。
      板块里那些早年写死的冷灰深色值也一并换成了同亮度的暖灰。 */
   @media (prefers-color-scheme:dark){
     :root:not([data-theme="light"]) :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar,#sidenav){
@@ -3058,7 +3062,7 @@ table.frec-table tbody tr.draft .lockdot,
       --hairline:#34332f;
       --card:#30302e; --card-line:#3e3d39;
       --field:#262624; --field-line:#4a4844;
-      --deck:#1f1e1d; --bar-bg:#262624; --seg-bg:#1f1e1d; --seg-on:#3a3936; --sunk:#2b2a27;
+      --deck:#262624; --bar-bg:#262624; --seg-bg:#3a3936; --seg-on:#3a3936; --sunk:#2b2a27;
       --sh-1:none;
     }
   }
@@ -3067,7 +3071,7 @@ table.frec-table tbody tr.draft .lockdot,
     --hairline:#34332f;
     --card:#30302e; --card-line:#3e3d39;
     --field:#262624; --field-line:#4a4844;
-    --deck:#1f1e1d; --bar-bg:#262624; --seg-bg:#1f1e1d; --seg-on:#3a3936; --sunk:#2b2a27;
+    --deck:#262624; --bar-bg:#262624; --seg-bg:#3a3936; --seg-on:#3a3936; --sunk:#2b2a27;
     --sh-1:none;
   }
   /* 不合格日历的格子沿用原来的样子（用户 2026-10-07：「热力图也是之前的那个红好看」）。
@@ -3116,9 +3120,16 @@ table.frec-table tbody tr.draft .lockdot,
    打印一律不出现。 */
 #sidenav{
   display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:80;
-  width:260px;background:var(--deck);color:var(--ink);font-size:13px;
+  width:260px;background:var(--bar-bg);color:var(--ink);font-size:13px;
   border-right:1px solid var(--card-line);
 }
+/* 侧边栏跟顶栏、画布同一个面（--bar-bg）。浅色本来就是这样（两个都是 #fbfbfb）；
+   深色原来用的是 --deck #1f1e1d，比右边的顶栏和画布 #262624 深一档、比卡片 #30302e
+   深两档，看着像一块黑板贴在旁边，品牌栏和顶栏也接不成一条（用户 2026-10-20）。
+   底色提上来以后，选中 / 悬停那档 --sunk #2b2a27 只比底色亮 5，几乎看不出来，
+   深色下提到卡片色。浅色不动。 */
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) #sidenav{--sunk:#30302e} }
+:root[data-theme="dark"] #sidenav{--sunk:#30302e}
 #sidenav .sn-brand{display:flex;align-items:center;gap:10px;height:58px;flex:0 0 58px;padding:0 14px 0 18px;
   border-bottom:1px solid var(--card-line)}
 /* 公司标志（房子 + 叶子，米色底，从实验室报告页眉那张 logo 裁出来的），两个主题都一样 */

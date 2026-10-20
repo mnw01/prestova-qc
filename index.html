@@ -59,7 +59,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
 @media screen and (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --ink:#e3e1d9;--ink-2:#bcbab1;--ink-3:#8e8c85;
-    --paper:#30302e;--ground:#1f1e1d;--chrome:#30302e;--deck:#1a1918;--grid:rgba(235,225,205,.05);
+    --paper:#30302e;--ground:#262624;--chrome:#30302e;--deck:#1a1918;--grid:rgba(235,225,205,.05);
     --rule:#4a4844;--rule-2:#333c48;--hairline:#3e3d39;
     --accent:#4CC2FF;--accent-soft:#262624; 
     --pass:#4fbb8a;--fail:#e08c82;--flag:#fcd34d;
@@ -69,7 +69,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
 @media screen{
   :root[data-theme="dark"]{
     --ink:#e3e1d9;--ink-2:#bcbab1;--ink-3:#8e8c85;
-    --paper:#30302e;--ground:#1f1e1d;--chrome:#30302e;--deck:#1a1918;--grid:rgba(235,225,205,.05);
+    --paper:#30302e;--ground:#262624;--chrome:#30302e;--deck:#1a1918;--grid:rgba(235,225,205,.05);
     --rule:#4a4844;--rule-2:#333c48;--hairline:#3e3d39;
     --accent:#4CC2FF;--accent-soft:#262624; 
     --pass:#4fbb8a;--fail:#e08c82;--flag:#fcd34d;
@@ -107,7 +107,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
     --card:#30302e; --card-line:#3e3d39;
     --field:#262624; --field-line:#4a4844;
     --accent:#4CC2FF; --accent-soft:#0f2a38; --accent-fill:#4CC2FF; --accent-on:#08202e;
-    --deck:#1a1918; --bar-bg:#262624; --seg-bg:#1f1e1d; --seg-on:#3a3936; --sunk:#2b2a27;
+    --deck:#1a1918; --bar-bg:#262624; --seg-bg:#3a3936; --seg-on:#3a3936; --sunk:#2b2a27;
     --sh-1:0 1px 2px rgba(0,0,0,.5);
   }
 }
@@ -119,7 +119,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;margin:0}
   --card:#30302e; --card-line:#3e3d39;
   --field:#262624; --field-line:#4a4844;
   --accent:#4CC2FF; --accent-soft:#0f2a38; --accent-fill:#4CC2FF; --accent-on:#08202e;
-  --deck:#1a1918; --bar-bg:#262624; --seg-bg:#1f1e1d; --seg-on:#3a3936; --sunk:#2b2a27;
+  --deck:#1a1918; --bar-bg:#262624; --seg-bg:#3a3936; --seg-on:#3a3936; --sunk:#2b2a27;
   --sh-1:0 1px 2px rgba(0,0,0,.5);
 }
 :root[data-theme="light"] :is(#home,#lab,#iqc,#ipqc,#oqc,#cfr1633,#pmpop,#fdash,.bar,.prtfoot,.frec-card,.hcorner,#lockbar,#sidenav){
@@ -2019,7 +2019,7 @@ table.frec-table tbody tr.draft .lockdot,
       --hairline:#34332f;
       --card:#30302e; --card-line:#3e3d39;
       --field:#262624; --field-line:#4a4844;
-      --deck:#1f1e1d; --bar-bg:#262624; --seg-bg:#1f1e1d; --seg-on:#3a3936; --sunk:#2b2a27;
+      --deck:#262624; --bar-bg:#262624; --seg-bg:#3a3936; --seg-on:#3a3936; --sunk:#2b2a27;
       --sh-1:none;
     }
   }
@@ -2028,7 +2028,7 @@ table.frec-table tbody tr.draft .lockdot,
     --hairline:#34332f;
     --card:#30302e; --card-line:#3e3d39;
     --field:#262624; --field-line:#4a4844;
-    --deck:#1f1e1d; --bar-bg:#262624; --seg-bg:#1f1e1d; --seg-on:#3a3936; --sunk:#2b2a27;
+    --deck:#262624; --bar-bg:#262624; --seg-bg:#3a3936; --seg-on:#3a3936; --sunk:#2b2a27;
     --sh-1:none;
   }
   #home .hhcard .hh-grid,#home .hhcard .hh-leg,#home .hhcard .hh-mods{--sunk:#eef0f3;--card:#ffffff}
@@ -2056,9 +2056,11 @@ table.frec-table tbody tr.draft .lockdot,
 
 #sidenav{
   display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:80;
-  width:260px;background:var(--deck);color:var(--ink);font-size:13px;
+  width:260px;background:var(--bar-bg);color:var(--ink);font-size:13px;
   border-right:1px solid var(--card-line);
 }
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) #sidenav{--sunk:#30302e} }
+:root[data-theme="dark"] #sidenav{--sunk:#30302e}
 #sidenav .sn-brand{display:flex;align-items:center;gap:10px;height:58px;flex:0 0 58px;padding:0 14px 0 18px;
   border-bottom:1px solid var(--card-line)}
 #sidenav .sn-logo{flex:0 0 30px;width:30px;height:30px;border-radius:8px;overflow:hidden;
